@@ -1,0 +1,14 @@
+node_modules/
+coverage/
+dist/
+playwright-report/
+test-results/
+.cucumber-js/
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
