@@ -28,13 +28,36 @@ type OpenApiDoc = {
   };
 };
 
-function loadOpenApi(): OpenApiDoc {
-  const path = resolve("openapi/openapi.yaml");
-  const raw = readFileSync(path, "utf8");
+type ContractCase = {
+  label: string;
+  method: string;
+  path: string;
+  body?: unknown;
+  expectedStatus: number;
+  schemaPath: string;
+  schemaMethod: string;
+  schemaStatus: string;
+  save?: { as: string; from: string };
+};
+
+type GauntletConfig = {
+  contract?: {
+    openapiPath?: string;
+    serverEntry?: string;
+    port?: number;
+    cases?: ContractCase[];
+  };
+};
+
+function loadConfig(): GauntletConfig {
+  return JSON.parse(readFileSync(resolve("gauntlet.config.json"), "utf8")) as GauntletConfig;
+}
+
+function loadOpenApi(openapiPath: string): OpenApiDoc {
+  const raw = readFileSync(resolve(openapiPath), "utf8");
   return yaml.load(raw) as OpenApiDoc;
 }
 
-/** Deep-clone schema and inline OpenAPI component $refs. */
 function inlineRefs(doc: OpenApiDoc, schema: unknown, seen = new Set<string>()): unknown {
   if (Array.isArray(schema)) {
     return schema.map((item) => inlineRefs(doc, item, seen));
@@ -84,9 +107,21 @@ function responseSchema(
   return inlineRefs(doc, schema) as JsonSchema;
 }
 
-function startServer(): Promise<{ stop: () => Promise<void>; baseUrl: string }> {
-  const port = 3456;
-  const child = spawn(process.execPath, ["--import", "tsx", "src/server.ts"], {
+function interpolate(template: string, vars: Record<string, string>): string {
+  return template.replace(/\{\{(\w+)\}\}/g, (_, key: string) => {
+    const value = vars[key];
+    if (value === undefined) {
+      throw new Error(`Missing template var: ${key}`);
+    }
+    return value;
+  });
+}
+
+function startServer(
+  serverEntry: string,
+  port: number,
+): Promise<{ stop: () => Promise<void>; baseUrl: string }> {
+  const child = spawn(process.execPath, ["--import", "tsx", serverEntry], {
     env: {
       ...process.env,
       PORT: String(port),
@@ -107,20 +142,21 @@ function startServer(): Promise<{ stop: () => Promise<void>; baseUrl: string }> 
       }
     }, 15_000);
 
-    const onData = async (chunk: Buffer) => {
+    const onData = (chunk: Buffer) => {
       const text = chunk.toString("utf8");
       if (text.includes("listening") && !settled) {
         settled = true;
         clearTimeout(timeout);
-        await new Promise((r) => setTimeout(r, 200));
-        resolveStart({
-          baseUrl,
-          stop: async () => {
-            if (!child.killed) {
-              child.kill("SIGTERM");
-            }
-          },
-        });
+        setTimeout(() => {
+          resolveStart({
+            baseUrl,
+            stop: async () => {
+              if (!child.killed) {
+                child.kill("SIGTERM");
+              }
+            },
+          });
+        }, 200);
       }
     };
 
@@ -139,7 +175,17 @@ function startServer(): Promise<{ stop: () => Promise<void>; baseUrl: string }> 
 }
 
 async function main(): Promise<void> {
-  const doc = loadOpenApi();
+  const config = loadConfig();
+  const contract = config.contract;
+  if (!contract?.cases?.length) {
+    throw new Error("gauntlet.config.json: contract.cases is required");
+  }
+
+  const openapiPath = contract.openapiPath ?? "openapi/openapi.yaml";
+  const serverEntry = contract.serverEntry ?? "src/server.ts";
+  const port = contract.port ?? 3456;
+  const doc = loadOpenApi(openapiPath);
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const AjvCtor = (Ajv as any).default ?? Ajv;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -147,88 +193,40 @@ async function main(): Promise<void> {
   const ajv = new AjvCtor({ allErrors: true, strict: false });
   addFormatsFn(ajv);
 
-  const server = await startServer();
+  const server = await startServer(serverEntry, port);
   const failures: string[] = [];
-
-  const check = (
-    label: string,
-    status: number,
-    expectedStatus: number,
-    body: unknown,
-    schema: JsonSchema,
-  ) => {
-    const validate = ajv.compile(schema);
-    if (status !== expectedStatus || !validate(body)) {
-      failures.push(
-        `${label} failed: status=${status} expected=${expectedStatus} errors=${JSON.stringify(validate.errors)} body=${JSON.stringify(body)}`,
-      );
-    } else {
-      console.info(`✓ ${label}`);
-    }
-  };
+  const vars: Record<string, string> = {};
 
   try {
-    {
-      const res = await fetch(`${server.baseUrl}/health`);
-      check(
-        "GET /health",
-        res.status,
-        200,
-        await res.json(),
-        responseSchema(doc, "/health", "get", "200"),
-      );
-    }
-
-    {
-      const res = await fetch(`${server.baseUrl}/api/todos`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: "Contract todo" }),
-      });
+    for (const testCase of contract.cases) {
+      const path = interpolate(testCase.path, vars);
+      const init: RequestInit = { method: testCase.method };
+      if (testCase.body !== undefined) {
+        init.headers = { "Content-Type": "application/json" };
+        init.body = JSON.stringify(testCase.body);
+      }
+      const res = await fetch(`${server.baseUrl}${path}`, init);
       const body = await res.json();
-      check(
-        "POST /api/todos 201",
-        res.status,
-        201,
-        body,
-        responseSchema(doc, "/api/todos", "post", "201"),
+      const schema = responseSchema(
+        doc,
+        testCase.schemaPath,
+        testCase.schemaMethod,
+        testCase.schemaStatus,
       );
-
-      const listRes = await fetch(`${server.baseUrl}/api/todos`);
-      check(
-        "GET /api/todos",
-        listRes.status,
-        200,
-        await listRes.json(),
-        responseSchema(doc, "/api/todos", "get", "200"),
-      );
-
-      const id = (body as { id: string }).id;
-      const completeRes = await fetch(`${server.baseUrl}/api/todos/${id}/complete`, {
-        method: "POST",
-      });
-      check(
-        "POST /api/todos/{id}/complete",
-        completeRes.status,
-        200,
-        await completeRes.json(),
-        responseSchema(doc, "/api/todos/{id}/complete", "post", "200"),
-      );
-    }
-
-    {
-      const res = await fetch(`${server.baseUrl}/api/todos`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: "   " }),
-      });
-      check(
-        "POST /api/todos 400",
-        res.status,
-        400,
-        await res.json(),
-        responseSchema(doc, "/api/todos", "post", "400"),
-      );
+      const validate = ajv.compile(schema);
+      if (res.status !== testCase.expectedStatus || !validate(body)) {
+        failures.push(
+          `${testCase.label} failed: status=${res.status} expected=${testCase.expectedStatus} errors=${JSON.stringify(validate.errors)} body=${JSON.stringify(body)}`,
+        );
+      } else {
+        console.info(`✓ ${testCase.label}`);
+        if (testCase.save && body && typeof body === "object") {
+          const value = (body as Record<string, unknown>)[testCase.save.from];
+          if (typeof value === "string") {
+            vars[testCase.save.as] = value;
+          }
+        }
+      }
     }
   } finally {
     await server.stop();

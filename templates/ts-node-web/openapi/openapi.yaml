@@ -1,0 +1,34 @@
+openapi: 3.0.3
+info:
+  title: Gauntlet App API
+  version: 0.1.0
+  description: Health-only OpenAPI skeleton. Expand with human-approved contracts per feature.
+servers:
+  - url: http://localhost:3000
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      summary: Health check
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+components:
+  schemas:
+    Health:
+      type: object
+      required: [status, service, timestamp]
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        service:
+          type: string
+        timestamp:
+          type: string
+          format: date-time

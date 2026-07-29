@@ -1,102 +1,90 @@
 # AI Code Gauntlet
 
-Scaffold for **disciplined AI-assisted development** (Uncle Bob–style constraints on a modern TS web stack).
+**Kit** for disciplined AI-assisted development (Uncle Bob–style constraints on a modern TS stack).
+
+This repo is **not** “only a Todo app”. It is:
+
+| Path | Role |
+|------|------|
+| [`templates/ts-node-web`](./templates/ts-node-web) | **Greenfield skeleton** (health-only) |
+| [`examples/todo`](./examples/todo) | **Full demo** that proves every gate |
+| [`packages/create-ai-gauntlet`](./packages/create-ai-gauntlet) | CLI: `create` + `adopt` |
+| [`docs/`](./docs) | Premisses, greenfield, adopt, original plan |
 
 ```
-📝 Cucumber (Gherkin)     → human-defended behavior
-🎭 Playwright             → UI + API acceptance drivers
-🧪 Vitest                 → unit stream + coverage floors
-📜 OpenAPI                → HTTP contract checks
-🔍 ESLint + Prettier + TS → static shape
-🤖 AGENTS.md + skills     → agent rules
-🔁 npm run verify         → full automatic gauntlet
+📝 Gherkin (human-owned)     → behavior
+🎭 Playwright drivers        → acceptance
+🧪 Vitest + coverage         → unit stream
+📜 OpenAPI contracts         → HTTP shape
+🔍 ESLint + Prettier + tsc   → static shape
+🤖 AGENTS.md + skills        → agent rules
+🔁 npm run verify            → ordered gauntlet
 ```
 
-## Quick start
+## Quick paths
+
+### 1) Try the demo (Todo)
 
 ```bash
-cd ai-code-gauntlet
+cd examples/todo
 npm install
 npm run prepare:browsers
 npm run verify
+npm run dev
 ```
 
-Local app:
+### 2) Start a new app (greenfield)
 
 ```bash
-npm run dev
-# http://localhost:3000
+# from kit root
+node packages/create-ai-gauntlet/bin/create-ai-gauntlet.js create ../my-app
+cd ../my-app
+npm install && npm run prepare:browsers && npm run verify
 ```
 
-## Project layout
+Or copy `templates/ts-node-web`. Details: [docs/GREENFIELD.md](./docs/GREENFIELD.md).
 
-```
-features/               # Gherkin specs (human-owned)
-e2e/steps|support/      # Cucumber + Playwright drivers
-openapi/openapi.yaml    # API contract (human-owned)
-src/domain              # pure business rules
-src/api                 # HTTP adapters (Hono)
-src/web                 # minimal UI for E2E demo
-tests/unit              # Vitest
-scripts/verify.ts       # ordered quality gates
-.agent/skills           # agent playbooks
-AGENTS.md               # hard rules for agents
-.github/workflows       # CI = same gates
+### 3) Add gauntlet to an existing app (adopt)
+
+```bash
+node packages/create-ai-gauntlet/bin/create-ai-gauntlet.js adopt /path/to/app --gates static,unit
 ```
 
-## Verify pipeline
+Details: [docs/ADOPT.md](./docs/ADOPT.md).
 
-`npm run verify` runs, in order:
+### 4) Verify the whole kit (CI locally)
 
-| #   | Gate             | Command                    |
-| --- | ---------------- | -------------------------- |
-| 1   | Format           | `prettier --check`         |
-| 2   | Lint             | `eslint`                   |
-| 3   | Types            | `tsc --noEmit`             |
-| 4   | Unit + coverage  | `vitest run --coverage`    |
-| 5   | OpenAPI contract | `scripts/check-openapi.ts` |
-| 6   | E2E acceptance   | Cucumber + Playwright      |
+```bash
+npm run install:all
+npm run prepare:browsers
+npm run verify   # template + example
+```
 
-Coverage floors (see `vitest.config.ts`): **80%** lines/functions/statements, **70%** branches on domain/API sources.
+## Premisses
 
-## Agent workflow
+See [docs/PREMISES.md](./docs/PREMISES.md) and [docs/original-plan.md](./docs/original-plan.md).
 
-1. Human writes/approves **Feature + scenarios**
-2. Human approves **OpenAPI** changes when HTTP is involved
-3. Agent implements against red tests
-4. Agent runs **`npm run verify`** and fixes until green (max ~5 cycles)
-5. Human does a short exploratory check
+**You** defend Gherkin + OpenAPI. **The agent** implements. **`verify` / CI** are the filter.
 
-See **[AGENTS.md](./AGENTS.md)** and **[.agent/skills](./.agent/skills)**.
+## Config
 
-### Skills
+Apps use `gauntlet.config.json` to enable/order gates. Example:
 
-| Skill             | File                                 | When                         |
-| ----------------- | ------------------------------------ | ---------------------------- |
-| implement-feature | `.agent/skills/implement-feature.md` | Build against approved specs |
-| write-gherkin     | `.agent/skills/write-gherkin.md`     | Draft scenarios with human   |
-| fix-until-green   | `.agent/skills/fix-until-green.md`   | Restore failing verify/CI    |
+```json
+{
+  "gates": [
+    { "id": "format", "command": "npm", "args": ["run", "format"] },
+    { "id": "unit", "command": "npm", "args": ["run", "test:unit:coverage"] }
+  ]
+}
+```
 
-## Sample domain
+Set `"enabled": false` on a gate during gradual adopt.
 
-In-memory **Todo** app:
+## Phase 2 (quality, not template)
 
-- `GET /health`
-- `GET|POST /api/todos`
-- `POST /api/todos/:id/complete`
-- Thin UI at `/` for Playwright scenarios
-
-## CI
-
-[`.github/workflows/verify.yml`](./.github/workflows/verify.yml) runs the same gauntlet on push/PR.
-
-## Phase 2 (optional next)
-
-- Mutation testing (Stryker) on `src/domain`
-- Complexity / CRAP-like budget
-- Gherkin leakage linter
-- Differential E2E selection
+Optional later: mutation testing, complexity/CRAP-like, Gherkin leakage linter, differential E2E.
 
 ## License
 
-MIT (template). Use freely as a starter for agentic projects.
+MIT

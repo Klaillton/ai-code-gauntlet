@@ -1,0 +1,70 @@
+{
+  "name": "todo-example",
+  "gates": [
+    { "id": "format", "command": "npm", "args": ["run", "format"] },
+    { "id": "lint", "command": "npm", "args": ["run", "lint"] },
+    { "id": "typecheck", "command": "npm", "args": ["run", "typecheck"] },
+    { "id": "unit", "command": "npm", "args": ["run", "test:unit:coverage"] },
+    { "id": "contract", "command": "npm", "args": ["run", "test:contract"] },
+    { "id": "e2e", "command": "npm", "args": ["run", "test:e2e"] }
+  ],
+  "contract": {
+    "openapiPath": "openapi/openapi.yaml",
+    "serverEntry": "src/server.ts",
+    "port": 3456,
+    "cases": [
+      {
+        "label": "GET /health",
+        "method": "GET",
+        "path": "/health",
+        "expectedStatus": 200,
+        "schemaPath": "/health",
+        "schemaMethod": "get",
+        "schemaStatus": "200"
+      },
+      {
+        "label": "POST /api/todos 201",
+        "method": "POST",
+        "path": "/api/todos",
+        "body": { "title": "Contract todo" },
+        "expectedStatus": 201,
+        "schemaPath": "/api/todos",
+        "schemaMethod": "post",
+        "schemaStatus": "201",
+        "save": { "as": "todoId", "from": "id" }
+      },
+      {
+        "label": "GET /api/todos",
+        "method": "GET",
+        "path": "/api/todos",
+        "expectedStatus": 200,
+        "schemaPath": "/api/todos",
+        "schemaMethod": "get",
+        "schemaStatus": "200"
+      },
+      {
+        "label": "POST /api/todos/{id}/complete",
+        "method": "POST",
+        "path": "/api/todos/{{todoId}}/complete",
+        "expectedStatus": 200,
+        "schemaPath": "/api/todos/{id}/complete",
+        "schemaMethod": "post",
+        "schemaStatus": "200"
+      },
+      {
+        "label": "POST /api/todos 400",
+        "method": "POST",
+        "path": "/api/todos",
+        "body": { "title": "   " },
+        "expectedStatus": 400,
+        "schemaPath": "/api/todos",
+        "schemaMethod": "post",
+        "schemaStatus": "400"
+      }
+    ]
+  },
+  "agent": {
+    "protectedGlobs": ["features/**/*.feature", "openapi/openapi.yaml"],
+    "maxVerifyCycles": 5
+  }
+}

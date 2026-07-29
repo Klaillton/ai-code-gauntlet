@@ -1,0 +1,31 @@
+{
+  "name": "my-gauntlet-app",
+  "gates": [
+    { "id": "format", "command": "npm", "args": ["run", "format"] },
+    { "id": "lint", "command": "npm", "args": ["run", "lint"] },
+    { "id": "typecheck", "command": "npm", "args": ["run", "typecheck"] },
+    { "id": "unit", "command": "npm", "args": ["run", "test:unit:coverage"] },
+    { "id": "contract", "command": "npm", "args": ["run", "test:contract"] },
+    { "id": "e2e", "command": "npm", "args": ["run", "test:e2e"] }
+  ],
+  "contract": {
+    "openapiPath": "openapi/openapi.yaml",
+    "serverEntry": "src/server.ts",
+    "port": 3456,
+    "cases": [
+      {
+        "label": "GET /health",
+        "method": "GET",
+        "path": "/health",
+        "expectedStatus": 200,
+        "schemaPath": "/health",
+        "schemaMethod": "get",
+        "schemaStatus": "200"
+      }
+    ]
+  },
+  "agent": {
+    "protectedGlobs": ["features/**/*.feature", "openapi/openapi.yaml"],
+    "maxVerifyCycles": 5
+  }
+}

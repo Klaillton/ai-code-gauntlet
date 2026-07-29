@@ -12,5 +12,3 @@ test-results/
 .idea/
 .vscode/*
 !.vscode/extensions.json
-tmp/
-**/tmp/

@@ -1,0 +1,26 @@
+{
+  "name": "create-ai-gauntlet",
+  "version": "0.1.0",
+  "description": "Scaffold or adopt the AI Code Gauntlet into TypeScript apps",
+  "type": "module",
+  "bin": {
+    "create-ai-gauntlet": "./bin/create-ai-gauntlet.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "keywords": [
+    "gauntlet",
+    "atdd",
+    "cucumber",
+    "playwright",
+    "scaffold",
+    "template"
+  ]
+}
