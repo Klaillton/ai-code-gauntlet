@@ -27,7 +27,7 @@
   "dependencies": {
     "@hono/node-server": "^2.0.10",
     "ai-code-gauntlet": "file:../..",
-    "hono": "^4.7.2"
+    "hono": "^4.12.34"
   },
   "devDependencies": {
     "@cucumber/cucumber": "^11.2.0",
@@ -40,7 +40,7 @@
     "ajv-formats": "^3.0.1",
     "eslint": "^9.22.0",
     "eslint-config-prettier": "^10.1.1",
-    "js-yaml": "^4.1.0",
+    "js-yaml": "^4.3.1",
     "playwright": "^1.51.0",
     "prettier": "^3.5.3",
     "tsx": "^4.19.3",
