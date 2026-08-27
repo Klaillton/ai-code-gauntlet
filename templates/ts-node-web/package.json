@@ -25,12 +25,12 @@
     "prepare:browsers": "playwright install chromium"
   },
   "dependencies": {
-    "@hono/node-server": "^1.14.1",
+    "@hono/node-server": "^2.0.10",
     "ai-code-gauntlet": "file:../..",
     "hono": "^4.7.2"
   },
   "devDependencies": {
-    "@cucumber/cucumber": "^11.2.0",
+    "@cucumber/cucumber": "^13.2.0",
     "@eslint/js": "^9.22.0",
     "@playwright/test": "^1.51.0",
     "@types/js-yaml": "^4.0.9",

@@ -25,7 +25,7 @@
     "prepare:browsers": "playwright install chromium"
   },
   "dependencies": {
-    "@hono/node-server": "^1.14.1",
+    "@hono/node-server": "^2.0.10",
     "ai-code-gauntlet": "file:../..",
     "hono": "^4.7.2"
   },
