@@ -17,7 +17,13 @@ import {
 } from "./inventory.js";
 
 export type DriftId = "D1" | "D2" | "D3" | "D5" | "D6" | "D8" | "D9" | "allowlist";
-export type Finding = { id: DriftId; severity: "fail" | "warn" | "info"; message: string };
+
+export type Finding = {
+  id: DriftId;
+  severity: "fail" | "warn" | "info";
+  message: string;
+};
+
 export type SpecSyncResult = {
   ok: boolean;
   strictness: Strictness;
@@ -27,28 +33,32 @@ export type SpecSyncResult = {
 
 const KIND_SET = new Set<string>(ALLOWLIST_KINDS);
 const EXEMPT_SET = new Set<string>(EXEMPT_FROM);
+
 const CSS_LEAK_RE =
   /(?:^|[\s"'`])(?:div|span|button|input|form|ul|li|a|p|h[1-6]|nav|section|header|footer)\.[\w-]+/;
 const ID_LEAK_RE = /(?:^|[\s"'`])#[A-Za-z][\w-]*/;
-const PATH_LEAK_RE =
-  /(?:^|[\s"'`])\/(?:api|health)(?:\/[A-Za-z0-9._~!$&'()*+,;=:@{}/-]*)?/;
+const PATH_LEAK_RE = /(?:^|[\s"'`])\/(?:api|health)(?:\/[A-Za-z0-9._~!$&'()*+,;=:@{}/-]*)?/;
 
 function todayUtc(): string {
   return new Date().toISOString().slice(0, 10);
 }
+
 function isIsoDate(value: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}(T[\d:.]+Z)?$/.test(value)) return false;
+  if (!/^\d{4}-\d{2}-\d{2}(T[\d:.]+Z)?$/.test(value)) {
+    return false;
+  }
   const day = value.slice(0, 10);
   const parsed = Date.parse(`${day}T00:00:00.000Z`);
   return !Number.isNaN(parsed) && new Date(parsed).toISOString().slice(0, 10) === day;
 }
+
 function isExpired(entry: AllowlistEntry): boolean {
   return entry.expires.slice(0, 10) < todayUtc();
 }
 
 function asAllowlist(raw: unknown): { entries: AllowlistEntry[]; findings: Finding[] } {
   const findings: Finding[] = [];
-  if (raw === undefined || !Array.isArray(raw)) {
+  if (raw === undefined) {
     findings.push({
       id: "allowlist",
       severity: "fail",
@@ -56,6 +66,15 @@ function asAllowlist(raw: unknown): { entries: AllowlistEntry[]; findings: Findi
     });
     return { entries: [], findings };
   }
+  if (!Array.isArray(raw)) {
+    findings.push({
+      id: "allowlist",
+      severity: "fail",
+      message: "gauntlet.config.json allowlist must be an array",
+    });
+    return { entries: [], findings };
+  }
+
   const entries: AllowlistEntry[] = [];
   raw.forEach((item, index) => {
     if (!item || typeof item !== "object") {
@@ -69,7 +88,9 @@ function asAllowlist(raw: unknown): { entries: AllowlistEntry[]; findings: Findi
     const rec = item as Record<string, unknown>;
     const missing: string[] = [];
     for (const field of ["kind", "method", "path", "reason", "exemptFrom", "owner", "expires"]) {
-      if (rec[field] === undefined || rec[field] === "") missing.push(field);
+      if (rec[field] === undefined || rec[field] === "") {
+        missing.push(field);
+      }
     }
     if (missing.length > 0) {
       findings.push({
@@ -139,6 +160,7 @@ function asAllowlist(raw: unknown): { entries: AllowlistEntry[]; findings: Findi
       expires: rec.expires,
     });
   });
+
   return { entries, findings };
 }
 
@@ -158,7 +180,9 @@ function exempt(
   from: ExemptFrom,
 ): AllowlistEntry | undefined {
   const entry = findAllowlist(entries, method, path);
-  if (!entry || isExpired(entry)) return undefined;
+  if (!entry || isExpired(entry)) {
+    return undefined;
+  }
   return entry.exemptFrom.includes(from) ? entry : undefined;
 }
 
@@ -169,7 +193,9 @@ function checkD1(inventory: Inventory, allowlist: AllowlistEntry[]): Finding[] {
   );
   for (const route of inventory.routes) {
     const key = routeKey(route.method, route.normalizedPath);
-    if (openapiKeys.has(key)) continue;
+    if (openapiKeys.has(key)) {
+      continue;
+    }
     const listed = findAllowlist(allowlist, route.method, route.path);
     if (listed && isExpired(listed)) {
       findings.push({
@@ -179,7 +205,9 @@ function checkD1(inventory: Inventory, allowlist: AllowlistEntry[]): Finding[] {
       });
       continue;
     }
-    if (exempt(allowlist, route.method, route.path, "openapi")) continue;
+    if (exempt(allowlist, route.method, route.path, "openapi")) {
+      continue;
+    }
     findings.push({
       id: "D1",
       severity: "fail",
@@ -215,11 +243,19 @@ function checkD3(inventory: Inventory, allowlist: AllowlistEntry[]): Finding[] {
     const operationId = op.operationId;
     const key = routeKey(op.method, op.path);
     if (!operationId) {
-      findings.push({ id: "D3", severity, message: `D3 ${key} has no operationId` });
+      findings.push({
+        id: "D3",
+        severity,
+        message: `D3 ${key} has no operationId`,
+      });
       continue;
     }
-    if (tagged.has(operationId)) continue;
-    if (exempt(allowlist, op.method, op.path, "gherkin")) continue;
+    if (tagged.has(operationId)) {
+      continue;
+    }
+    if (exempt(allowlist, op.method, op.path, "gherkin")) {
+      continue;
+    }
     findings.push({
       id: "D3",
       severity,
@@ -232,11 +268,15 @@ function checkD3(inventory: Inventory, allowlist: AllowlistEntry[]): Finding[] {
 function checkD5(inventory: Inventory, allowlist: AllowlistEntry[]): Finding[] {
   const findings: Finding[] = [];
   for (const mod of inventory.domainModules) {
-    if (mod.coveredBy.length > 0) continue;
+    if (mod.coveredBy.length > 0) {
+      continue;
+    }
     const listed = allowlist.find(
       (entry) => entry.kind === "internal" && entry.path === mod.path && !isExpired(entry),
     );
-    if (listed?.exemptFrom.includes("unit")) continue;
+    if (listed?.exemptFrom.includes("unit")) {
+      continue;
+    }
     findings.push({
       id: "D5",
       severity: "fail",
@@ -250,10 +290,18 @@ function leakInStep(step: string): string | undefined {
   if (/\bdata-testid\b/i.test(step) || /\bgetByTestId\b/.test(step)) {
     return "data-testid / getByTestId";
   }
-  if (/\bnth-child\b/.test(step)) return "nth-child selector";
-  if (CSS_LEAK_RE.test(step)) return "CSS element selector";
-  if (ID_LEAK_RE.test(step)) return "CSS id selector";
-  if (PATH_LEAK_RE.test(step)) return "raw HTTP path";
+  if (/\bnth-child\b/.test(step)) {
+    return "nth-child selector";
+  }
+  if (CSS_LEAK_RE.test(step)) {
+    return "CSS element selector";
+  }
+  if (ID_LEAK_RE.test(step)) {
+    return "CSS id selector";
+  }
+  if (PATH_LEAK_RE.test(step)) {
+    return "raw HTTP path";
+  }
   return undefined;
 }
 
@@ -281,7 +329,10 @@ function gitLines(cwd: string, args: string[]): string[] | undefined {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
     });
-    return out.split(/\r?\n/).map((line) => line.trim()).filter((line) => line.length > 0);
+    return out
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
   } catch {
     return undefined;
   }
@@ -300,12 +351,14 @@ function checkD6(inventory: Inventory): Finding[] {
       },
     ];
   }
+
   const files = new Set<string>([
     ...(gitLines(cwd, ["diff", "--name-only", "HEAD"]) ?? []),
     ...(gitLines(cwd, ["diff", "--name-only", "--cached"]) ?? []),
     ...(gitLines(cwd, ["diff", "--name-only", "origin/main...HEAD"]) ?? []),
     ...(gitLines(cwd, ["diff", "--name-only", "main...HEAD"]) ?? []),
   ]);
+
   if (files.size === 0) {
     return [
       {
@@ -315,6 +368,7 @@ function checkD6(inventory: Inventory): Finding[] {
       },
     ];
   }
+
   const changed = [...files];
   const srcApiChanged = changed.some((file) => file.includes("src/api/"));
   const srcDomainChanged = changed.some((file) => file.includes("src/domain/"));
@@ -322,6 +376,7 @@ function checkD6(inventory: Inventory): Finding[] {
   const featuresChanged = changed.some((file) => file.endsWith(".feature"));
   const unitChanged = changed.some((file) => file.includes("tests/unit/"));
   const findings: Finding[] = [];
+
   if (srcApiChanged && !openapiChanged && !featuresChanged) {
     findings.push({
       id: "D6",
@@ -358,6 +413,7 @@ export function runSpecSync(cwd = process.cwd()): SpecSyncResult {
     ...checkD8(inventory),
     ...checkD6(inventory),
   ];
+
   const ok = findings.every((finding) => finding.severity !== "fail");
   return { ok, strictness: inventory.strictness, findings, inventory };
 }
@@ -369,8 +425,11 @@ export function printFindings(result: SpecSyncResult): void {
     const log = finding.severity === "fail" ? console.error : console.info;
     log(`  ${mark} [${finding.id}/${finding.severity}] ${finding.message}`);
   }
-  if (result.ok) console.info("spec-sync passed.");
-  else console.error("spec-sync failed.");
+  if (result.ok) {
+    console.info("spec-sync passed.");
+  } else {
+    console.error("spec-sync failed.");
+  }
 }
 
 export function writeSpecSyncReport(result: SpecSyncResult, cwd = process.cwd()): void {
@@ -391,7 +450,9 @@ export function writeSpecSyncReport(result: SpecSyncResult, cwd = process.cwd())
 
 function isDirectRun(): boolean {
   const entry = process.argv[1];
-  if (!entry) return false;
+  if (!entry) {
+    return false;
+  }
   return fileURLToPath(import.meta.url) === resolve(entry);
 }
 
@@ -399,7 +460,11 @@ function main(): void {
   const result = runSpecSync();
   writeSpecSyncReport(result);
   printFindings(result);
-  if (!result.ok) process.exitCode = 1;
+  if (!result.ok) {
+    process.exitCode = 1;
+  }
 }
 
-if (isDirectRun()) main();
+if (isDirectRun()) {
+  main();
+}
