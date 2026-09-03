@@ -1,0 +1,5 @@
+# Spec surfaces — human-owned. Agents need a protect-specs grant.
+examples/todo/features/**/*.feature @Klaillton
+examples/todo/openapi/openapi.yaml @Klaillton
+templates/ts-node-web/features/**/*.feature @Klaillton
+templates/ts-node-web/openapi/openapi.yaml @Klaillton
