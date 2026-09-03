@@ -23,6 +23,7 @@
     "spec-sync": "tsx scripts/spec-sync.ts",
     "no-cheat": "tsx scripts/no-cheat.ts",
     "protect-specs": "tsx scripts/protect-specs.ts",
+    "deps-lock": "tsx scripts/deps-lock.ts",
     "docs:generate": "tsx scripts/generate-docs.ts",
     "docs:check": "tsx scripts/check-docs-fresh.ts",
     "verify": "tsx scripts/verify.ts",
