@@ -286,7 +286,13 @@ export function runMutation(cwd = process.cwd()): MutationReport {
   try {
     for (const file of files) {
       const source = originals.get(file) ?? "";
-      const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+      const sourceFile = ts.createSourceFile(
+        file,
+        source,
+        ts.ScriptTarget.Latest,
+        true,
+        ts.ScriptKind.TS,
+      );
       const planned = planMutants(sourceFile);
       const rel = posixRel(cwd, file);
       for (const mutant of planned) {
@@ -306,7 +312,9 @@ export function runMutation(cwd = process.cwd()): MutationReport {
         if (status === "survived") {
           const from = source.slice(mutant.start, mutant.end);
           const to = mutant.replacement || "(empty)";
-          findings.push(`Survivor ${rel}:${loc.line}:${loc.column} ${mutant.operator} (${from} -> ${to})`);
+          findings.push(
+            `Survivor ${rel}:${loc.line}:${loc.column} ${mutant.operator} (${from} -> ${to})`,
+          );
         }
       }
     }
@@ -326,7 +334,9 @@ export function runMutation(cwd = process.cwd()): MutationReport {
     );
   }
   if (score < threshold) {
-    findings.push(`Kill score ${score}% is below threshold ${threshold}%. TODO: raise after measuring.`);
+    findings.push(
+      `Kill score ${score}% is below threshold ${threshold}%. TODO: raise after measuring.`,
+    );
   }
 
   const report: MutationReport = {
