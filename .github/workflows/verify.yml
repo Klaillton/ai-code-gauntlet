@@ -20,6 +20,10 @@ jobs:
         working-directory: templates/ts-node-web
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fetch main for spec diffs
+        run: git fetch origin main --depth=1 || true
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -31,6 +35,12 @@ jobs:
         env:
           CI: true
           GAUNTLET_E2E: "1"
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gauntlet-template
+          path: templates/ts-node-web/gauntlet-report.json
+          if-no-files-found: ignore
 
   example-todo:
     name: Example Todo
@@ -41,6 +51,10 @@ jobs:
         working-directory: examples/todo
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fetch main for spec diffs
+        run: git fetch origin main --depth=1 || true
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -57,4 +71,10 @@ jobs:
         with:
           name: coverage-todo
           path: examples/todo/coverage/
+          if-no-files-found: ignore
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gauntlet-todo
+          path: examples/todo/gauntlet-report.json
           if-no-files-found: ignore
