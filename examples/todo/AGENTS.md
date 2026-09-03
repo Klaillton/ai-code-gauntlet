@@ -13,8 +13,9 @@ Ship behavior that is:
 1. Specified in human-approved **Gherkin** (`features/**/*.feature`)
 2. Contracted in human-approved **OpenAPI** (`openapi/openapi.yaml`)
 3. Proven by **two test streams**: unit (Vitest) + acceptance (Cucumber + Playwright)
-4. Shaped by **static gates**: TypeScript, ESLint, Prettier, coverage thresholds
-5. Kept honest by **spec-sync** (D1–D8), **no-cheat** (D9), and **protect-specs**
+4. Shaped by **static gates**: TypeScript, ESLint, Prettier, coverage, complexity
+5. Kept honest by **spec-sync** (D1–D8), **no-cheat** (D9), protect-specs,
+   complexity, and mutation (src/domain)
 
 You implement. Humans defend the specs.
 
@@ -67,7 +68,7 @@ Do not go green by deleting tests. Fix the product or ask the human.
 
 - Do not commit secrets or `.env` files with credentials
 - Do not add dependencies unless the human asked in the current turn
-  (deps-lock is a later gate, not in this kit yet)
+  (deps-lock is a later gate on PR #5, not in this kit yet)
 - Do not lower coverage floors
 
 If a gate fails because the **spec is wrong**, stop and ask the human.
@@ -136,6 +137,8 @@ in step defs, not in `.feature` files.
 npm run dev                 # local server
 npm run test:unit           # Vitest
 npm run test:unit:coverage  # Vitest + thresholds
+npm run test:mutation       # Stryker-equivalent on src/domain (60% floor)
+npm run complexity          # domain cyclomatic max 10
 npm run test:contract       # OpenAPI runtime contract checks
 npm run test:e2e            # Cucumber + Playwright (starts server)
 npm run protect-specs       # fail if specs changed without a human grant
@@ -152,13 +155,15 @@ npm run agent:loop          # re-run verify (max iterations via MAX_ITERATIONS)
 1. Prettier check
 2. ESLint
 3. `tsc --noEmit`
-4. protect-specs
-5. no-cheat
-6. spec-sync
-7. docs (D7)
-8. Unit + coverage thresholds
-9. OpenAPI contract (`check-openapi.ts`)
-10. Cucumber + Playwright E2E
+4. complexity (domain cyclomatic max 10)
+5. protect-specs
+6. no-cheat
+7. spec-sync
+8. docs (D7)
+9. Unit + coverage thresholds
+10. Mutation (`src/domain`, 60% kill-score floor)
+11. OpenAPI contract (`check-openapi.ts`)
+12. Cucumber + Playwright E2E
 
 Root `npm run verify` runs the template then the example. Install browsers
 with `npm run prepare:browsers` first.
@@ -181,6 +186,7 @@ Current floors: lines/functions/statements **80%**, branches **70%** on `src/**`
 - HTTP adapters live in `src/api`
 - UI is intentionally thin (`src/web`); keep business rules out of HTML
 - Prefer small functions and early returns
+- Domain functions must stay at cyclomatic complexity **≤ 10**
 - No god-files: if a module is hard to test, split it
 
 ## Definition of done
@@ -190,7 +196,8 @@ A change is done only when:
 - [ ] Relevant Gherkin scenarios pass (domain language)
 - [ ] Unit tests cover new domain rules
 - [ ] OpenAPI still validates for touched endpoints
-- [ ] `npm run verify` is green (including protect-specs, no-cheat, spec-sync, D7)
+- [ ] `npm run verify` is green (including protect-specs, no-cheat, spec-sync,
+      D7, complexity, mutation)
 - [ ] No skipped or focused tests introduced
 - [ ] Human granted protect-specs if any `.feature` or OpenAPI change was required
 
@@ -203,13 +210,16 @@ Agents must pause for human review when:
 - Flaky E2E that “needs” retries or skipped tests
 - Max agent fix iterations exhausted
 
-## Phase 2 / 3 (not wired)
+## Phase 2 / 3
 
-Do not pretend these exist today:
+**Wired:** mutation (`test:mutation` / `mutation` gate, 60% floor — TODO raise)
+and complexity (`complexity` gate, max 10) on `src/domain`.
+See kit `docs/ADR-phase2-mutation-complexity.md`. D8 gherkin leak is already
+in spec-sync.
 
-- Mutation testing (Stryker) / test-ownership freeze
+Not wired here (PR #5 / later):
+
+- Official Stryker package + raised mutation threshold
 - Architectural drift (dependency-cruiser: domain must not import infra)
 - Perf / query budgets
-- Hallucinated deps / lockfile human approval (deps-lock)
-
-Gherkin leakage is **D8** and **is** wired.
+- Hallucinated deps / lockfile human approval (deps-lock on PR #5)
