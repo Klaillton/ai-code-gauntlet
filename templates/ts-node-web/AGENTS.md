@@ -3,6 +3,9 @@
 Rules for any AI coding agent working in this repository.
 Discipline lives in **gates and tools**, not in prompt politeness.
 
+**protect-specs** and **no-cheat** are hard tools. They fail `npm run verify`.
+They are not requests.
+
 ## Mission
 
 Ship behavior that is:
@@ -11,130 +14,104 @@ Ship behavior that is:
 2. Contracted in human-approved **OpenAPI** (`openapi/openapi.yaml`)
 3. Proven by **two test streams**: unit (Vitest) + acceptance (Cucumber + Playwright)
 4. Shaped by **static gates**: TypeScript, ESLint, Prettier, coverage thresholds
+5. Kept honest by **spec-sync** (D1–D8), **no-cheat** (D9), and **protect-specs**
 
 You implement. Humans defend the specs.
 
-## Hard prohibitions
+This template is **lenient**: D3 (operationId without `@op` scenario) **warns**.
+D1, D2, D5, D7, D8, D9, and protect-specs still **fail**.
+D6 warns when git diffs are unmatched (fail-closed in the Todo example).
 
-Unless the human **explicitly** grants permission in the current turn:
+## Hard prohibitions (enforced)
 
-- **Do not** edit `features/**/*.feature`
-- **Do not** edit `openapi/openapi.yaml` in a breaking way (removing fields, changing required, renumbering statuses)
-- **Do not** weaken tests to make them pass (delete scenarios, loosen asserts, add `.skip` / `xit` / `test.skip`, raise timeouts to hide flakes)
-- **Do not** disable coverage thresholds or ESLint rules to go green
-- **Do not** commit secrets or `.env` files with credentials
+A prompt “please don’t” is not enough. These fail the gauntlet.
 
-If a gate fails because the **spec is wrong**, stop and ask the human. Do not silently rewrite the contract.
+### Specs — protect-specs
+
+Do not edit:
+
+- `features/**/*.feature`
+- `openapi/openapi.yaml`
+- any path in `agent.protectedGlobs` (`gauntlet.config.json`)
+
+The gate inspects `git diff` for `HEAD`, the index, `origin/main...HEAD`,
+`main...HEAD`, and `GITHUB_BASE_REF` when CI sets it.
+
+If those files change, verify **fails** unless a **human grant** exists:
+
+1. `ALLOW_SPEC_EDIT=1` (document why in the PR; do not bake this into CI)
+2. File `.gauntlet/allow-spec-edit` (human-only, gitignored, local)
+3. `allowSpecEdit: true` in `gauntlet.config.json` (default **false**; do not flip it)
+4. GitHub pull_request label `specs-approved`
+
+If git is unavailable, the gate records info and does not fail. Agents still
+must not edit specs.
+
+### Cheating — no-cheat / D9
+
+Fails on detect:
+
+- Focus/skip modifiers in tests (`test`/`it`/`describe` + skip or only;
+  `xit` / `xdescribe` / `xtest`; Cucumber `pending(`; `@skip`;
+  `Scenario (skipped)`)
+- Comments that disable coverage thresholds
+- Any gauntlet gate with `enabled: false` (mainline verify is fail-closed)
+- Coverage floors lowered versus `HEAD` / `origin/main` / `main`
+  `vitest.config.ts`
+
+Do not go green by deleting tests. Fix the product or ask the human.
+
+### Other
+
+- Do not commit secrets or `.env` files with credentials
+- Do not add dependencies unless the human asked in the current turn
+- Do not lower coverage floors
+
+If a gate fails because the **spec is wrong**, stop and ask the human.
 
 ## What you may change freely
 
 - `src/**` production code
 - `tests/unit/**` unit tests
-- `e2e/steps/**` and `e2e/support/**` (drivers / page wiring) — keep domain language in Gherkin
-- Non-breaking OpenAPI additions only when the human asked for a new endpoint/field
-- Docs under `README.md`, `.agent/**` when improving agent guidance
+- `e2e/steps/**` and `e2e/support/**` — keep domain language in Gherkin
+- Non-breaking OpenAPI additions only with a human protect-specs grant
+- `docs/generated/**` only via `npm run docs:generate`
 
-## Workflow (ATDD-style)
+## How to add a new endpoint (SDD)
 
-For every new or changed behavior:
+1. Human writes a Gherkin scenario tagged `@op:<operationId>` (grant protect-specs).
+2. Human approves the OpenAPI path, operationId, and schemas.
+3. Add a contract case when the operation is HTTP-visible.
+4. Implement domain, unit tests, and the HTTP adapter.
+5. Run `npm run docs:generate` then `npm run verify`.
+6. Non-product routes use the typed allowlist:
+   `kind`, `method`, `path`, `reason`, `exemptFrom`, `owner`, `expires`.
+   Kinds: `test-harness` | `static-ui` | `internal` | `wip-red` only.
 
-```
-1. Confirm Feature + scenarios exist (or human is writing them)
-2. Confirm scenarios FAIL for the new behavior (red)
-3. Align OpenAPI if the behavior is HTTP-visible (human approves contract)
-4. Write / update failing unit tests for domain rules
-5. Implement the minimum code to pass unit + acceptance
-6. Run `npm run verify`
-7. Fix until green — max 5 verify cycles, then hand back
-8. Do not claim done without a green verify in this session
-```
-
-### Layer responsibilities
-
-| Layer         | Artifact                    | Owner of truth                     |
-| ------------- | --------------------------- | ---------------------------------- |
-| Behavior WHAT | `features/*.feature`        | Human                              |
-| HTTP contract | `openapi/openapi.yaml`      | Human                              |
-| Domain HOW    | `tests/unit` + `src/domain` | Agent (under unit gate)            |
-| UI/API driver | `e2e/**` Playwright steps   | Agent (must not leak into Gherkin) |
-| Static shape  | ESLint / Prettier / `tsc`   | Config + CI                        |
-
-### Gherkin golden rule
-
-Steps describe **domain outcomes**, not DOM trivia.
-
-- Good: `Then I should see a todo titled "Ship it"`
-- Bad: `Then the div.todo-list li:nth-child(1) has class completed`
-
-`data-testid` in the app is allowed for stable automation; keep those details in step defs, not in `.feature` files.
+Keep CSS, `data-testid`, and raw HTTP paths in step defs, not in `.feature`
+files (D8).
 
 ## Commands
 
 ```bash
-npm run dev                 # local server
-npm run test:unit           # Vitest
-npm run test:unit:coverage  # Vitest + thresholds
-npm run test:contract       # OpenAPI runtime contract checks
-npm run test:e2e            # Cucumber + Playwright (starts server)
 npm run verify              # FULL gauntlet — required before "done"
-npm run agent:loop          # re-run verify (use after fixes; max iterations via MAX_ITERATIONS)
+npm run protect-specs
+npm run no-cheat
+npm run spec-sync
+npm run docs:generate
+npm run docs:check
+npm run prepare:browsers    # Playwright Chromium, once
 ```
 
-`npm run verify` order:
-
-1. Prettier check
-2. ESLint
-3. `tsc --noEmit`
-4. Unit + coverage thresholds
-5. OpenAPI contract
-6. Cucumber + Playwright E2E
+`npm run verify` order: format, lint, typecheck, protect-specs, no-cheat,
+spec-sync, docs, unit+coverage, contract, e2e.
 
 ## Coverage
 
-Configured in `vitest.config.ts`. Do not lower thresholds without human approval.
-Current floors: lines/functions/statements **80%**, branches **70%** on `src/**` (server bootstrap and static HTML helper excluded).
+Do not lower thresholds in `vitest.config.ts`.
+Floors: lines/functions/statements **80%**, branches **70%** on `src/**`.
 
-## E2E notes
+## Phase 2 / 3 (not wired)
 
-- Server is started by `scripts/run-e2e.ts` with `GAUNTLET_E2E=1`
-- Reset endpoint `POST /api/test/reset` only works when `GAUNTLET_E2E=1`
-- Prefer Chromium; run `npm run prepare:browsers` once locally
-
-## Architecture constraints
-
-- Domain logic lives in `src/domain` — pure, unit-tested, no HTTP
-- HTTP adapters live in `src/api`
-- UI is intentionally thin (`src/web`) for demo E2E; keep business rules out of the HTML string when possible
-- Prefer small functions and early returns
-- No god-files: if a module is hard to test, split it
-
-## Definition of done
-
-A change is done only when:
-
-- [ ] Relevant Gherkin scenarios pass (and still express domain language)
-- [ ] Unit tests cover new domain rules
-- [ ] OpenAPI still validates for touched endpoints
-- [ ] `npm run verify` is green
-- [ ] No skipped tests introduced
-- [ ] Human was asked if any `.feature` or breaking OpenAPI change seemed necessary
-
-## Human checkpoints
-
-Agents must pause for human review when:
-
-- Changing acceptance scenarios
-- Breaking or expanding API contracts
-- Security, auth, payments, or personal data behavior
-- Flaky E2E that “needs” retries/skips
-- Max agent fix iterations exhausted
-
-## Phase-2 gates (not wired yet)
-
-When tests start lying, add:
-
-- Mutation testing (e.g. Stryker) on `src/domain`
-- Complexity budget / CRAP-like metric per touched module
-- Gherkin DRY / leakage checks
-
-Do not pretend these exist today.
+Mutation (Stryker), architecture (dependency-cruiser), perf budgets, and
+deps-lock are **not** implemented. Gherkin leakage is **D8** and is wired.
