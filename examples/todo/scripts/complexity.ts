@@ -161,7 +161,13 @@ export function runComplexity(cwd = process.cwd()): ComplexityReport {
 
   for (const file of walkTs(includeDir)) {
     const source = readFileSync(file, "utf8");
-    const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+    const sourceFile = ts.createSourceFile(
+      file,
+      source,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS,
+    );
     functions.push(...collectFunctions(sourceFile, posixRel(cwd, file)));
   }
 
@@ -199,7 +205,9 @@ function isDirectRun(): boolean {
 
 function main(): void {
   const result = runComplexity();
-  console.info(`complexity (${result.include}) — ${result.functions.length} function(s), max ${result.max}`);
+  console.info(
+    `complexity (${result.include}) — ${result.functions.length} function(s), max ${result.max}`,
+  );
   for (const fn of result.functions) {
     console.info(`  ${fn.file}:${fn.line} ${fn.name} = ${fn.complexity}`);
   }
