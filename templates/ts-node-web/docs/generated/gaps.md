@@ -5,6 +5,8 @@
 
 # Spec-sync gaps (generated)
 
+Live D6 (git differential) and D9 (no-cheat) appear in `gauntlet-report.json` / CI logs, not in this committed file.
+
 ## Blocking
 
 _None._

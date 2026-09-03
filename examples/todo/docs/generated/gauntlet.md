@@ -34,4 +34,5 @@
 - Link operations to scenarios with `@op:<operationId>`
 - Allowlist kinds: `test-harness` | `static-ui` | `internal` | `wip-red`
 - Required allowlist fields: kind, method, path, reason, exemptFrom, owner, expires
+- Seed allowlist entries expire **2026-12-02**; renew before that date (expired entries do not exempt)
 - protect-specs and no-cheat are hard tools, not polite requests
