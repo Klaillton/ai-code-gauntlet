@@ -62,7 +62,6 @@ function createProject(dir, { sample } = {}) {
     skip: ["node_modules", "coverage", "dist", "playwright-report", "test-results", ".git"],
   });
 
-  // Rename package for non-sample skeleton
   if (sample !== "todo") {
     const pkgPath = join(target, "package.json");
     const pkgName = pkgNameFromDir(dir);
@@ -75,7 +74,6 @@ function createProject(dir, { sample } = {}) {
     if (existsSync(cfgPath)) {
       const cfg = JSON.parse(readFileSync(cfgPath, "utf8"));
       cfg.name = pkgName;
-      // Fail-closed: strip any legacy enabled flags from template copies
       for (const gate of cfg.gates || []) {
         if (Object.prototype.hasOwnProperty.call(gate, "enabled")) {
           delete gate.enabled;
@@ -126,7 +124,6 @@ function gateEnabled(id, enabledIds) {
   return expanded.has(id);
 }
 
-/** Hardening gates always present on adopt (fail-closed; no enabled:false). */
 const HARDENING_GATE_IDS = ["protect-specs", "no-cheat", "spec-sync", "docs"];
 
 function stripEnabledFlags(gates) {
@@ -150,12 +147,14 @@ function ensureGate(gates, gate, afterId) {
 }
 
 /**
- * Build adopt config from templates/ts-node-web gauntlet.config.json.
- * Includes protect-specs / no-cheat / spec-sync / docs; adds deps-lock when
- * the template ships scripts/deps-lock.ts (e.g. after Phase 2 PR lands).
+ * Prefer templates/ts-node-web gauntlet.config.json as source of truth.
+ * Always ensure hardening gates; add deps-lock only when template ships the script.
+ * Never write enabled:false (verify + D9 fail-closed).
  */
 function buildAdoptConfig(name, skeleton) {
   const templateCfgPath = join(skeleton, "gauntlet.config.json");
+  const hasDepsLock = existsSync(join(skeleton, "scripts", "deps-lock.ts"));
+
   let config;
   if (existsSync(templateCfgPath)) {
     config = JSON.parse(readFileSync(templateCfgPath, "utf8"));
@@ -191,46 +190,58 @@ function buildAdoptConfig(name, skeleton) {
   config.name = name;
   if (config.allowSpecEdit === undefined) config.allowSpecEdit = false;
   if (!config.strictness) config.strictness = "lenient";
-  config.gates = Array.isArray(config.gates) ? config.gates : [];
+  config.gates = Array.isArray(config.gates) ? [...config.gates] : [];
 
-  // Ensure core + hardening gates match current template order
-  const required = [
-    { id: "format", command: "npm", args: ["run", "format"] },
-    { id: "lint", command: "npm", args: ["run", "lint"] },
-    { id: "typecheck", command: "npm", args: ["run", "typecheck"] },
-    { id: "protect-specs", command: "npm", args: ["run", "protect-specs"] },
-    { id: "no-cheat", command: "npm", args: ["run", "no-cheat"] },
-    { id: "spec-sync", command: "npm", args: ["run", "spec-sync"] },
-    { id: "docs", command: "npm", args: ["run", "docs:check"] },
-    { id: "unit", command: "npm", args: ["run", "test:unit:coverage"] },
-    { id: "contract", command: "npm", args: ["run", "test:contract"] },
-    { id: "e2e", command: "npm", args: ["run", "test:e2e"] },
-  ];
+  const defaults = {
+    format: { id: "format", command: "npm", args: ["run", "format"] },
+    lint: { id: "lint", command: "npm", args: ["run", "lint"] },
+    typecheck: { id: "typecheck", command: "npm", args: ["run", "typecheck"] },
+    "protect-specs": { id: "protect-specs", command: "npm", args: ["run", "protect-specs"] },
+    "deps-lock": { id: "deps-lock", command: "npm", args: ["run", "deps-lock"] },
+    "no-cheat": { id: "no-cheat", command: "npm", args: ["run", "no-cheat"] },
+    "spec-sync": { id: "spec-sync", command: "npm", args: ["run", "spec-sync"] },
+    docs: { id: "docs", command: "npm", args: ["run", "docs:check"] },
+    unit: { id: "unit", command: "npm", args: ["run", "test:unit:coverage"] },
+    contract: { id: "contract", command: "npm", args: ["run", "test:contract"] },
+    e2e: { id: "e2e", command: "npm", args: ["run", "test:e2e"] },
+  };
 
-  // Seed missing required gates (preserve template extras / order when present)
-  const byId = new Map(config.gates.map((g) => [g.id, g]));
-  const ordered = [];
-  for (const g of required) {
-    ordered.push(byId.get(g.id) || g);
-    byId.delete(g.id);
+  // If template had no/empty gates, seed the full current list
+  if (config.gates.length === 0) {
+    config.gates = [
+      defaults.format,
+      defaults.lint,
+      defaults.typecheck,
+      defaults["protect-specs"],
+      ...(hasDepsLock ? [defaults["deps-lock"]] : []),
+      defaults["no-cheat"],
+      defaults["spec-sync"],
+      defaults.docs,
+      defaults.unit,
+      defaults.contract,
+      defaults.e2e,
+    ];
+  } else {
+    // Ensure baseline + hardening gates exist; preserve template order/extras
+    ensureGate(config.gates, defaults.format);
+    ensureGate(config.gates, defaults.lint, "format");
+    ensureGate(config.gates, defaults.typecheck, "lint");
+    ensureGate(config.gates, defaults["protect-specs"], "typecheck");
+    if (hasDepsLock) {
+      ensureGate(config.gates, defaults["deps-lock"], "protect-specs");
+    } else {
+      config.gates = config.gates.filter((g) => g.id !== "deps-lock");
+    }
+    ensureGate(config.gates, defaults["no-cheat"], hasDepsLock ? "deps-lock" : "protect-specs");
+    ensureGate(config.gates, defaults["spec-sync"], "no-cheat");
+    ensureGate(config.gates, defaults.docs, "spec-sync");
+    ensureGate(config.gates, defaults.unit, "docs");
+    ensureGate(config.gates, defaults.contract, "unit");
+    ensureGate(config.gates, defaults.e2e, "contract");
   }
-  // Keep any remaining template gates (e.g. complexity) inserted before unit
-  for (const leftover of byId.values()) {
-    const unitIdx = ordered.findIndex((g) => g.id === "unit");
-    if (unitIdx >= 0) ordered.splice(unitIdx, 0, leftover);
-    else ordered.push(leftover);
-  }
-  config.gates = ordered;
 
-  // deps-lock: include only when template ships the script (Phase 2+)
-  const hasDepsLock = existsSync(join(skeleton, "scripts", "deps-lock.ts"));
-  if (hasDepsLock) {
-    ensureGate(
-      config.gates,
-      { id: "deps-lock", command: "npm", args: ["run", "deps-lock"] },
-      "protect-specs",
-    );
-    if (config.allowDepsEdit === undefined) config.allowDepsEdit = false;
+  if (hasDepsLock && config.allowDepsEdit === undefined) {
+    config.allowDepsEdit = false;
   }
 
   stripEnabledFlags(config.gates);
@@ -304,7 +315,6 @@ function adoptProject(dir, { gates } = {}) {
   const enabled = defaultGates(gates);
   const skeleton = templatePath(null);
 
-  // Always copy charter + skills + scripts (scripts overwritten so hardening lands)
   for (const rel of [".agent", "scripts", "AGENTS.md"]) {
     const from = join(skeleton, rel);
     const to = join(target, rel);
@@ -320,7 +330,6 @@ function adoptProject(dir, { gates } = {}) {
     }
   }
 
-  // Docs generated baseline for docs:check (D7)
   const docsGenFrom = join(skeleton, "docs");
   const docsGenTo = join(target, "docs");
   if (existsSync(docsGenFrom) && !existsSync(join(docsGenTo, "generated"))) {
@@ -328,7 +337,6 @@ function adoptProject(dir, { gates } = {}) {
     console.log("+ docs/ (generated baseline)");
   }
 
-  // Config files if missing
   for (const rel of [
     "eslint.config.js",
     "tsconfig.json",
@@ -347,7 +355,6 @@ function adoptProject(dir, { gates } = {}) {
 
   mergeGitignore(target, skeleton);
 
-  // Minimal features/e2e/openapi if missing and gates request them
   if (gateEnabled("e2e", enabled) || gateEnabled("contract", enabled)) {
     if (!existsSync(join(target, "features"))) {
       mkdirSync(join(target, "features"), { recursive: true });
@@ -373,7 +380,6 @@ function adoptProject(dir, { gates } = {}) {
     console.log("  (deps-lock omitted — not on template yet; see Phase 2 / PR #5)");
   }
 
-  // Merge package.json scripts carefully
   const pkgPath = join(target, "package.json");
   if (existsSync(pkgPath)) {
     const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
@@ -477,7 +483,6 @@ export async function main(argv) {
     return;
   }
 
-  // Shorthand: create-ai-gauntlet my-app
   if (!cmd.startsWith("-")) {
     createProject(cmd, { sample: null });
     return;
