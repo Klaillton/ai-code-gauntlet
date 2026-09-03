@@ -13,7 +13,7 @@ Ship behavior that is:
 1. Specified in human-approved **Gherkin** (`features/**/*.feature`)
 2. Contracted in human-approved **OpenAPI** (`openapi/openapi.yaml`)
 3. Proven by **two test streams**: unit (Vitest) + acceptance (Cucumber + Playwright)
-4. Shaped by **static gates**: TypeScript, ESLint, Prettier, coverage thresholds
+4. Shaped by **static gates**: TypeScript, ESLint, Prettier, coverage, complexity
 5. Kept honest by **spec-sync** (D1–D8), **no-cheat** (D9), and **protect-specs**
 
 You implement. Humans defend the specs.
@@ -21,6 +21,8 @@ You implement. Humans defend the specs.
 This template is **lenient**: D3 (operationId without `@op` scenario) **warns**.
 D1, D2, D5, D7, D8, D9, and protect-specs still **fail**.
 D6 warns when git diffs are unmatched (fail-closed in the Todo example).
+Complexity is a verify gate. Mutation is **opt-in** (`npm run test:mutation`);
+the `mutation` gate is omitted here for speed.
 
 ## Hard prohibitions (enforced)
 
@@ -103,20 +105,28 @@ npm run verify              # FULL gauntlet — required before "done"
 npm run protect-specs
 npm run no-cheat
 npm run spec-sync
+npm run complexity          # domain cyclomatic max 10
+npm run test:mutation       # opt-in; not in template verify
 npm run docs:generate
 npm run docs:check
 npm run prepare:browsers    # Playwright Chromium, once
 ```
 
-`npm run verify` order: format, lint, typecheck, protect-specs, no-cheat,
-spec-sync, docs, unit+coverage, contract, e2e.
+`npm run verify` order: format, lint, typecheck, complexity, protect-specs,
+no-cheat, spec-sync, docs, unit+coverage, contract, e2e.
 
 ## Coverage
 
 Do not lower thresholds in `vitest.config.ts`.
 Floors: lines/functions/statements **80%**, branches **70%** on `src/**`.
 
-## Phase 2 / 3 (not wired)
+## Phase 2 / 3
 
-Mutation (Stryker), architecture (dependency-cruiser), perf budgets, and
-deps-lock are **not** implemented. Gherkin leakage is **D8** and is wired.
+**Wired:** complexity gate (max 10 on `src/domain`). Mutation script exists
+but the gate is **omitted** from template verify for speed. D8 gherkin leak
+is already in spec-sync.
+
+See `docs/ADR-phase2-mutation-complexity.md` in the kit repo.
+
+Not wired here (PR #5 / later): deps-lock, spec-review, official Stryker,
+dependency-cruiser, perf budgets.
