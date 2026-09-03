@@ -72,6 +72,8 @@ Scripts:
 - `scripts/generate-docs.ts` — `docs/generated/{api,behaviors,gauntlet,gaps}.md`
 - `scripts/check-docs-fresh.ts` — D7 content compare
 - `scripts/verify.ts` — ordered gates + `gauntlet-report.json`; `enabled:false` fails
+- `scripts/complexity.ts` — domain cyclomatic max 10 (see Phase 2 ADR)
+- `scripts/mutation.ts` — Stryker-equivalent on `src/domain` (see Phase 2 ADR)
 
 `scripts/check-openapi.ts` remains the **runtime** contract gate. Spec-sync is static drift.
 
@@ -120,20 +122,26 @@ Allowlist seed entries expire **2026-12-02** — renew before that date
 - Coverage thresholds and existing gates are unchanged.
 - Agents cannot skip tests, disable gates, or edit specs without a human grant.
 
-## Phase 2 / Phase 3 — additional failure modes (roadmap)
+## Phase 2 / Phase 3 — additional failure modes
 
-These are **not** implemented in this change.
+Mutation + complexity are wired. See
+[ADR-phase2-mutation-complexity.md](./ADR-phase2-mutation-complexity.md).
+Gherkin leakage is D8 and **is** wired (`checkD8` in spec-sync).
 
 ### Phase 2 — semantic honesty of tests and structure
 
-1. **Test invalidation / false positives** — freeze/test-ownership; Stryker on `src/domain`.
-2. **Architectural drift** — dependency-cruiser: `src/domain` must not import `src/api` / infra.
-3. **Spec gaps** — Spec Review AI before coding; complements D3.
+1. **Test invalidation** — mutation gate on `src/domain` (Todo; template has
+   the script, gate omitted). Initial kill-score floor **60%** (TODO: raise).
+2. **Complexity budget** — cyclomatic max **10** per domain function (both apps).
+   CRAP ≤ 8 needs a coverage combo; later.
+3. **Architectural drift** — dependency-cruiser: `src/domain` must not import
+   `src/api` / infra. Still roadmap.
+4. **Spec gaps** — Spec Review AI before coding: open on PR #5 (not this change).
 
 ### Phase 3 — cost, supply chain, and ops honesty
 
-4. **Invisible cost / performance** — benchmark budgets; later ORM/SQL checks.
-5. **Hallucinated deps / supply chain** — human approval for package.json; SBOM; Dependabot/Snyk.
-   deps-lock is a follow-up, not this PR.
+5. **Invisible cost / performance** — benchmark budgets; later ORM/SQL checks.
+6. **Hallucinated deps / supply chain** — human approval for package.json;
+   SBOM; Dependabot/Snyk. deps-lock is PR #5, not this PR.
 
-Gherkin leakage is D8 and **is** wired. Phase 2/3 must not weaken D1-D9 or lower coverage floors.
+Phase 2/3 must not weaken D1-D9 or lower coverage floors.
