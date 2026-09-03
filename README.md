@@ -11,13 +11,16 @@ This repo is **not** only a Todo app. It is:
 | [`packages/create-ai-gauntlet`](./packages/create-ai-gauntlet) | CLI: `create` + `adopt` |
 | [`docs/`](./docs) | Premisses, greenfield, adopt, original plan |
 | [`docs/ADR-spec-sync-drift.md`](./docs/ADR-spec-sync-drift.md) | Spec-sync drift catalog (D1-D9) |
+| [`docs/ADR-phase2-mutation-complexity.md`](./docs/ADR-phase2-mutation-complexity.md) | Phase 2: mutation + complexity |
 
 ```
 Gherkin (human-owned)      -> behavior (protect-specs)
 OpenAPI (human-owned)      -> HTTP shape (protect-specs)
 Playwright drivers         -> acceptance
 Vitest + coverage          -> unit stream (no-cheat)
-spec-sync inventory        -> D1-D8 drift
+Mutation (src/domain)      -> test honesty (Todo gate; template opt-in)
+Complexity (src/domain)    -> cyclomatic max 10
+spec-sync inventory        -> D1-D8 drift (D8 = gherkin leak)
 no-cheat                   -> skip/only, disabled gates, lowered floors
 ESLint + Prettier + tsc    -> static shape
 AGENTS.md + skills         -> agent rules (tools, not politeness)
@@ -81,15 +84,24 @@ past the gauntlet.
 
 Todo is `strict` (D3 fail). The template is `lenient` (D3 warn).
 
-## Phase 2 / 3 (roadmap — not wired)
+## Phase 2 / 3
 
-Gherkin leakage is **D8** (wired). Remaining later:
+**Wired now (this branch):** mutation + complexity on `src/domain`. See
+[docs/ADR-phase2-mutation-complexity.md](./docs/ADR-phase2-mutation-complexity.md).
 
-- Test invalidation -> freeze/test-ownership; Stryker mutation
+- Mutation: Stryker-equivalent, **60%** kill-score floor (TODO: raise after CI
+  measures). Todo has the `mutation` gate; template has `test:mutation` only.
+- Complexity: cyclomatic **max 10** per domain function (CRAP ≤8 needs coverage
+  combo — later). Both apps have the `complexity` gate.
+- Gherkin leakage is **D8** (already in spec-sync; confirmed, not changed).
+
+**Open on PR #5 (do not duplicate):** deps-lock + spec-review skill.
+Merge **#5 first**, then rebase this branch. Remaining later:
+
 - Architectural drift -> dependency-cruiser (domain must not import infra)
 - Invisible cost / perf -> benchmark budgets; ORM/SQL later
-- Hallucinated deps -> human approval for package.json; SBOM/Dependabot (deps-lock)
-- Spec gaps -> Spec Review AI before coding
+- Official Stryker package + raised mutation threshold
+- Hallucinated deps / SBOM (deps-lock on PR #5)
 
 ## License
 
