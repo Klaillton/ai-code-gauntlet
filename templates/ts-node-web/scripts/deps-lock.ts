@@ -1,4 +1,4 @@
-import { basename, relative, resolve, sep } from "node:path";
+import { basename, resolve, sep } from "node:path";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -11,9 +11,7 @@ export type DepsFinding = {
   message: string;
 };
 
-function posixRel(from: string, to: string): string {
-  return relative(from, to).split(sep).join("/");
-}
+type ConfigWithDeps = ReturnType<typeof loadConfig> & { allowDepsEdit?: boolean };
 
 function prBaseDiffs(cwd: string): string[] {
   const base = process.env.GITHUB_BASE_REF;
@@ -101,7 +99,7 @@ export function runDepsLock(cwd = process.cwd()): {
   ok: boolean;
   findings: DepsFinding[];
 } {
-  const config = loadConfig(cwd);
+  const config = loadConfig(cwd) as ConfigWithDeps;
   const grant = depsEditAllowed(cwd, config.allowDepsEdit === true);
   const findings: DepsFinding[] = [];
 
