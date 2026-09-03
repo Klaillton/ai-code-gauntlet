@@ -44,7 +44,7 @@ Routes that are not product HTTP must be explicitly allowlisted. Required fields
 
 Expired entries do not grant exemption. Unknown kinds fail closed.
 
-Todo seed (owner `klaillton`, expires `2026-12-02`):
+Todo seed (owner `klaillton`, expires **`2026-12-02`** — renew before that date):
 
 - `POST /api/test/reset` — `test-harness`, exempt `openapi`+`gherkin`, E2E harness (`GAUNTLET_E2E=1`)
 - `GET /` — `static-ui`, exempt `openapi`, HTML shell
@@ -79,10 +79,14 @@ Scripts:
 
 Verify fails if the diff includes protected globs unless one of:
 
-1. `ALLOW_SPEC_EDIT=1` (document in the PR; do not bake into CI)
+1. `ALLOW_SPEC_EDIT=1` (document in the PR; do **not** bake this into CI as a permanent env)
 2. `.gauntlet/allow-spec-edit` (gitignored, local, human-only)
-3. `allowSpecEdit: true` in config (default **false**)
+3. `allowSpecEdit: true` in config (default **false**; keep fail-closed)
 4. GitHub PR label `specs-approved`
+
+On `pull_request`, `.github/workflows/verify.yml` exports `ALLOW_SPEC_EDIT=1`
+**only when** the PR has label `specs-approved`. That is CI wiring for grant
+(4), not a standing override. Unlabeled PRs and pushes to main stay fail-closed.
 
 ## How to add a new endpoint (SDD)
 
@@ -97,8 +101,16 @@ Keep selectors and raw paths in step defs, not in feature files (D8).
 
 ## D6 / D7 notes
 
-D6 is fail-closed in strict when git cannot prove the diff. Generated `gaps.md`
-does **not** snapshot live D6/D9 text, so D7 stays deterministic.
+CI checkout uses `fetch-depth: 0` and fetches `origin/main` so
+`origin/main...HEAD` works. Empty diff vs HEAD/main is **info** ("nothing to
+check"), not a silent pass of unmatched src. D6 is fail-closed in strict when
+git cannot prove the diff.
+
+Generated `gaps.md` does **not** snapshot live D6/D9 text; those findings
+appear in `gauntlet-report.json` and CI logs so D7 stays deterministic.
+
+Allowlist seed entries expire **2026-12-02** — renew before that date
+(expired entries do not exempt).
 
 ## Consequences
 

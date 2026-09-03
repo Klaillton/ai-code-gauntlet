@@ -35,10 +35,15 @@ The gate inspects `git diff` for `HEAD`, the index, `origin/main...HEAD`,
 
 If those files change, verify **fails** unless a **human grant** exists:
 
-1. `ALLOW_SPEC_EDIT=1` (document why in the PR; do not bake this into CI)
+1. `ALLOW_SPEC_EDIT=1` (document why in the PR; do **not** bake this into CI as a permanent env)
 2. File `.gauntlet/allow-spec-edit` (human-only, gitignored, local)
 3. `allowSpecEdit: true` in `gauntlet.config.json` (default **false**; do not flip it)
 4. GitHub pull_request label `specs-approved`
+
+On GitHub Actions `pull_request` jobs, `.github/workflows/verify.yml` exports
+`ALLOW_SPEC_EDIT=1` **only if** the PR has label `specs-approved`. That is the
+CI wiring for grant (4), not a standing override. Unlabeled PRs and pushes to
+main stay fail-closed.
 
 If git is unavailable, the gate records info and does not fail. Agents still
 must not edit specs. On a full-tree local verify with no diff, the same rule
