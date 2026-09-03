@@ -3,8 +3,8 @@
 Rules for any AI coding agent working in this repository.
 Discipline lives in **gates and tools**, not in prompt politeness.
 
-**protect-specs** and **no-cheat** are hard tools. They fail `npm run verify`.
-They are not requests.
+**protect-specs**, **deps-lock**, and **no-cheat** are hard tools. They fail
+`npm run verify`. They are not requests.
 
 ## Mission
 
@@ -14,12 +14,12 @@ Ship behavior that is:
 2. Contracted in human-approved **OpenAPI** (`openapi/openapi.yaml`)
 3. Proven by **two test streams**: unit (Vitest) + acceptance (Cucumber + Playwright)
 4. Shaped by **static gates**: TypeScript, ESLint, Prettier, coverage thresholds
-5. Kept honest by **spec-sync** (D1–D8), **no-cheat** (D9), and **protect-specs**
+5. Kept honest by **spec-sync** (D1–D8), **no-cheat** (D9), **protect-specs**, and **deps-lock**
 
-You implement. Humans defend the specs.
+You implement. Humans defend the specs and dependency manifests.
 
 This template is **lenient**: D3 (operationId without `@op` scenario) **warns**.
-D1, D2, D5, D7, D8, D9, and protect-specs still **fail**.
+D1, D2, D5, D7, D8, D9, protect-specs, and deps-lock still **fail**.
 D6 warns when git diffs are unmatched (fail-closed in the Todo example).
 
 ## Hard prohibitions (enforced)
@@ -52,6 +52,18 @@ main stay fail-closed.
 If git is unavailable, the gate records info and does not fail. Agents still
 must not edit specs.
 
+### Dependencies — deps-lock
+
+Do not edit without a human grant:
+
+- kit root `package.json` / `package-lock.json`
+- `examples/*/package.json` / `package-lock.json`
+- `templates/*/package.json` / `package-lock.json`
+
+Grants: `ALLOW_DEPS_EDIT=1`, `.gauntlet/allow-deps-edit`, `allowDepsEdit: true`
+(default false), or PR label `deps-approved`. CI exports `ALLOW_DEPS_EDIT=1`
+only when the PR has `deps-approved`.
+
 ### Cheating — no-cheat / D9
 
 Fails on detect:
@@ -69,7 +81,7 @@ Do not go green by deleting tests. Fix the product or ask the human.
 ### Other
 
 - Do not commit secrets or `.env` files with credentials
-- Do not add dependencies unless the human asked in the current turn
+- Do not add dependencies unless the human asked **and** granted deps-lock
 - Do not lower coverage floors
 
 If a gate fails because the **spec is wrong**, stop and ask the human.
@@ -84,6 +96,7 @@ If a gate fails because the **spec is wrong**, stop and ask the human.
 
 ## How to add a new endpoint (SDD)
 
+0. Run **spec-review** (`.agent/skills/spec-review.md`) — human approval first.
 1. Human writes a Gherkin scenario tagged `@op:<operationId>` (grant protect-specs).
 2. Human approves the OpenAPI path, operationId, and schemas.
 3. Add a contract case when the operation is HTTP-visible.
@@ -96,11 +109,17 @@ If a gate fails because the **spec is wrong**, stop and ask the human.
 Keep CSS, `data-testid`, and raw HTTP paths in step defs, not in `.feature`
 files (D8).
 
+## Workflow
+
+For **new behavior**, run `.agent/skills/spec-review.md` **before**
+`implement-feature`. Do not code until the human approves the review.
+
 ## Commands
 
 ```bash
 npm run verify              # FULL gauntlet — required before "done"
 npm run protect-specs
+npm run deps-lock
 npm run no-cheat
 npm run spec-sync
 npm run docs:generate
@@ -108,15 +127,16 @@ npm run docs:check
 npm run prepare:browsers    # Playwright Chromium, once
 ```
 
-`npm run verify` order: format, lint, typecheck, protect-specs, no-cheat,
-spec-sync, docs, unit+coverage, contract, e2e.
+`npm run verify` order: format, lint, typecheck, protect-specs, deps-lock,
+no-cheat, spec-sync, docs, unit+coverage, contract, e2e.
 
 ## Coverage
 
 Do not lower thresholds in `vitest.config.ts`.
 Floors: lines/functions/statements **80%**, branches **70%** on `src/**`.
 
-## Phase 2 / 3 (not wired)
+## Phase 2 remaining / Phase 3 (not wired)
 
-Mutation (Stryker), architecture (dependency-cruiser), perf budgets, and
-deps-lock are **not** implemented. Gherkin leakage is **D8** and is wired.
+Mutation (Stryker), architecture (dependency-cruiser), and perf budgets are
+**not** implemented yet. **deps-lock** and **spec-review** **are** wired.
+Gherkin leakage is **D8** and is wired.
