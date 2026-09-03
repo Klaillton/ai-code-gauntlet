@@ -20,6 +20,11 @@
     "test:unit:coverage": "vitest run --coverage",
     "test:contract": "tsx scripts/check-openapi.ts",
     "test:e2e": "tsx scripts/run-e2e.ts",
+    "spec-sync": "tsx scripts/spec-sync.ts",
+    "no-cheat": "tsx scripts/no-cheat.ts",
+    "protect-specs": "tsx scripts/protect-specs.ts",
+    "docs:generate": "tsx scripts/generate-docs.ts",
+    "docs:check": "tsx scripts/check-docs-fresh.ts",
     "verify": "tsx scripts/verify.ts",
     "agent:loop": "tsx scripts/agent-loop.ts",
     "prepare:browsers": "playwright install chromium"

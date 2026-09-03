@@ -1,12 +1,38 @@
 {
   "name": "todo-example",
+  "strictness": "strict",
+  "allowSpecEdit": false,
   "gates": [
     { "id": "format", "command": "npm", "args": ["run", "format"] },
     { "id": "lint", "command": "npm", "args": ["run", "lint"] },
     { "id": "typecheck", "command": "npm", "args": ["run", "typecheck"] },
+    { "id": "protect-specs", "command": "npm", "args": ["run", "protect-specs"] },
+    { "id": "no-cheat", "command": "npm", "args": ["run", "no-cheat"] },
+    { "id": "spec-sync", "command": "npm", "args": ["run", "spec-sync"] },
+    { "id": "docs", "command": "npm", "args": ["run", "docs:check"] },
     { "id": "unit", "command": "npm", "args": ["run", "test:unit:coverage"] },
     { "id": "contract", "command": "npm", "args": ["run", "test:contract"] },
     { "id": "e2e", "command": "npm", "args": ["run", "test:e2e"] }
+  ],
+  "allowlist": [
+    {
+      "kind": "test-harness",
+      "method": "POST",
+      "path": "/api/test/reset",
+      "reason": "E2E harness GAUNTLET_E2E=1",
+      "exemptFrom": ["openapi", "gherkin"],
+      "owner": "klaillton",
+      "expires": "2026-12-02"
+    },
+    {
+      "kind": "static-ui",
+      "method": "GET",
+      "path": "/",
+      "reason": "HTML shell",
+      "exemptFrom": ["openapi"],
+      "owner": "klaillton",
+      "expires": "2026-12-02"
+    }
   ],
   "contract": {
     "openapiPath": "openapi/openapi.yaml",
