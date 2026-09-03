@@ -16,4 +16,6 @@ gauntlet-report.json
 spec-sync-report.json
 no-cheat-report.json
 protect-specs-report.json
+mutation-report.json
+complexity-report.json
 .gauntlet/allow-spec-edit

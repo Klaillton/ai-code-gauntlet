@@ -2,10 +2,15 @@
   "name": "my-gauntlet-app",
   "strictness": "lenient",
   "allowSpecEdit": false,
+  "complexity": {
+    "include": ["src/domain"],
+    "max": 10
+  },
   "gates": [
     { "id": "format", "command": "npm", "args": ["run", "format"] },
     { "id": "lint", "command": "npm", "args": ["run", "lint"] },
     { "id": "typecheck", "command": "npm", "args": ["run", "typecheck"] },
+    { "id": "complexity", "command": "npm", "args": ["run", "complexity"] },
     { "id": "protect-specs", "command": "npm", "args": ["run", "protect-specs"] },
     { "id": "no-cheat", "command": "npm", "args": ["run", "no-cheat"] },
     { "id": "spec-sync", "command": "npm", "args": ["run", "spec-sync"] },
