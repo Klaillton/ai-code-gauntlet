@@ -69,6 +69,7 @@ Scripts:
 - `scripts/spec-sync.ts` — D1-D6, D8; exit 1 on fails
 - `scripts/no-cheat.ts` — D9; does **not** scan `scripts/` (self-match)
 - `scripts/protect-specs.ts` — spec-edit grant; `GITHUB_BASE_REF` in CI
+- `scripts/deps-lock.ts` — package manifest grant (see ADR-phase2-deps-spec-review.md)
 - `scripts/generate-docs.ts` — `docs/generated/{api,behaviors,gauntlet,gaps}.md`
 - `scripts/check-docs-fresh.ts` — D7 content compare
 - `scripts/verify.ts` — ordered gates + `gauntlet-report.json`; `enabled:false` fails
@@ -122,18 +123,21 @@ Allowlist seed entries expire **2026-12-02** — renew before that date
 
 ## Phase 2 / Phase 3 — additional failure modes (roadmap)
 
-These are **not** implemented in this change.
+### Phase 2 (partial — see ADR-phase2-deps-spec-review.md)
 
-### Phase 2 — semantic honesty of tests and structure
+**Wired:**
+
+- **deps-lock** — human grant required for `package.json` / `package-lock.json` edits (root, examples/*, templates/*); CI grant via label `deps-approved` → `ALLOW_DEPS_EDIT=1`
+- **spec-review** — `.agent/skills/spec-review.md` devil's-advocate checklist before `implement-feature`; feeds human approval / gaps.md
+
+**Not yet wired (next overnight chunk):**
 
 1. **Test invalidation / false positives** — freeze/test-ownership; Stryker on `src/domain`.
 2. **Architectural drift** — dependency-cruiser: `src/domain` must not import `src/api` / infra.
-3. **Spec gaps** — Spec Review AI before coding; complements D3.
 
 ### Phase 3 — cost, supply chain, and ops honesty
 
-4. **Invisible cost / performance** — benchmark budgets; later ORM/SQL checks.
-5. **Hallucinated deps / supply chain** — human approval for package.json; SBOM; Dependabot/Snyk.
-   deps-lock is a follow-up, not this PR.
+3. **Invisible cost / performance** — benchmark budgets; later ORM/SQL checks.
+4. **Supply chain beyond deps-lock** — SBOM; Dependabot/Snyk (deps-lock human grant is already Phase 2).
 
 Gherkin leakage is D8 and **is** wired. Phase 2/3 must not weaken D1-D9 or lower coverage floors.
