@@ -12,3 +12,8 @@ test-results/
 .idea/
 .vscode/*
 !.vscode/extensions.json
+gauntlet-report.json
+spec-sync-report.json
+no-cheat-report.json
+protect-specs-report.json
+.gauntlet/allow-spec-edit

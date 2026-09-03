@@ -4,3 +4,7 @@ dist
 playwright-report
 test-results
 package-lock.json
+gauntlet-report.json
+spec-sync-report.json
+no-cheat-report.json
+protect-specs-report.json
