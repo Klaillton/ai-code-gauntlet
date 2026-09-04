@@ -13,8 +13,8 @@ Ship behavior that is:
 1. Specified in human-approved **Gherkin** (`features/**/*.feature`)
 2. Contracted in human-approved **OpenAPI** (`openapi/openapi.yaml`)
 3. Proven by **two test streams**: unit (Vitest) + acceptance (Cucumber + Playwright)
-4. Shaped by **static gates**: TypeScript, ESLint, Prettier, coverage thresholds
-5. Kept honest by **spec-sync** (D1–D8), **no-cheat** (D9), **protect-specs**, and **deps-lock**
+4. Shaped by **static gates**: TypeScript, ESLint, Prettier, coverage thresholds, complexity
+5. Kept honest by **spec-sync** (D1–D8), **no-cheat** (D9), **protect-specs**, **deps-lock**, and mutation (opt-in)
 
 You implement. Humans defend the specs and dependency manifests.
 
@@ -118,6 +118,8 @@ For **new behavior**, run `.agent/skills/spec-review.md` **before**
 
 ```bash
 npm run verify              # FULL gauntlet — required before "done"
+npm run complexity
+npm run test:mutation       # opt-in (not in template verify gate order)
 npm run protect-specs
 npm run deps-lock
 npm run no-cheat
@@ -127,7 +129,7 @@ npm run docs:check
 npm run prepare:browsers    # Playwright Chromium, once
 ```
 
-`npm run verify` order: format, lint, typecheck, protect-specs, deps-lock,
+`npm run verify` order: format, lint, typecheck, complexity, protect-specs, deps-lock,
 no-cheat, spec-sync, docs, unit+coverage, contract, e2e.
 
 ## Coverage
@@ -135,8 +137,15 @@ no-cheat, spec-sync, docs, unit+coverage, contract, e2e.
 Do not lower thresholds in `vitest.config.ts`.
 Floors: lines/functions/statements **80%**, branches **70%** on `src/**`.
 
-## Phase 2 remaining / Phase 3 (not wired)
+## Phase 2 / Phase 3
 
-Mutation (Stryker), architecture (dependency-cruiser), and perf budgets are
-**not** implemented yet. **deps-lock** and **spec-review** **are** wired.
+deps-lock + spec-review and complexity are wired.
+
+- deps-lock + spec-review: human dependency grant plus pre-implement spec review
+- complexity: `complexity` gate max 10 on `src/domain`
+- mutation: script is available as `npm run test:mutation` (opt-in, not in template verify)
+
 Gherkin leakage is **D8** and is wired.
+
+Not wired yet: official Stryker package + raised threshold, architectural drift,
+perf/query budgets, SBOM automation beyond deps-lock.

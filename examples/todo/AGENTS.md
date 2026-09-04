@@ -13,8 +13,8 @@ Ship behavior that is:
 1. Specified in human-approved **Gherkin** (`features/**/*.feature`)
 2. Contracted in human-approved **OpenAPI** (`openapi/openapi.yaml`)
 3. Proven by **two test streams**: unit (Vitest) + acceptance (Cucumber + Playwright)
-4. Shaped by **static gates**: TypeScript, ESLint, Prettier, coverage thresholds
-5. Kept honest by **spec-sync** (D1–D8), **no-cheat** (D9), **protect-specs**, and **deps-lock**
+4. Shaped by **static gates**: TypeScript, ESLint, Prettier, coverage thresholds, complexity
+5. Kept honest by **spec-sync** (D1–D8), **no-cheat** (D9), **protect-specs**, **deps-lock**, and mutation
 
 You implement. Humans defend the specs and dependency manifests.
 
@@ -159,6 +159,8 @@ in step defs, not in `.feature` files.
 npm run dev                 # local server
 npm run test:unit           # Vitest
 npm run test:unit:coverage  # Vitest + thresholds
+npm run test:mutation       # Stryker-equivalent on src/domain (60% floor)
+npm run complexity          # domain cyclomatic max 10
 npm run test:contract       # OpenAPI runtime contract checks
 npm run test:e2e            # Cucumber + Playwright (starts server)
 npm run protect-specs       # fail if specs changed without a human grant
@@ -176,14 +178,16 @@ npm run agent:loop          # re-run verify (max iterations via MAX_ITERATIONS)
 1. Prettier check
 2. ESLint
 3. `tsc --noEmit`
-4. protect-specs
-5. deps-lock
-6. no-cheat
-7. spec-sync
-8. docs (D7)
-9. Unit + coverage thresholds
-10. OpenAPI contract (`check-openapi.ts`)
-11. Cucumber + Playwright E2E
+4. complexity (domain cyclomatic max 10)
+5. protect-specs
+6. deps-lock
+7. no-cheat
+8. spec-sync
+9. docs (D7)
+10. Unit + coverage thresholds
+11. Mutation (`src/domain`, 60% kill-score floor)
+12. OpenAPI contract (`check-openapi.ts`)
+13. Cucumber + Playwright E2E
 
 Root `npm run verify` runs the template then the example. Install browsers
 with `npm run prepare:browsers` first.
@@ -206,6 +210,7 @@ Current floors: lines/functions/statements **80%**, branches **70%** on `src/**`
 - HTTP adapters live in `src/api`
 - UI is intentionally thin (`src/web`); keep business rules out of HTML
 - Prefer small functions and early returns
+- Domain functions must stay at cyclomatic complexity **≤ 10**
 - No god-files: if a module is hard to test, split it
 
 ## Definition of done
@@ -216,7 +221,7 @@ A change is done only when:
 - [ ] Relevant Gherkin scenarios pass (domain language)
 - [ ] Unit tests cover new domain rules
 - [ ] OpenAPI still validates for touched endpoints
-- [ ] `npm run verify` is green (protect-specs, deps-lock, no-cheat, spec-sync, D7)
+- [ ] `npm run verify` is green (protect-specs, deps-lock, no-cheat, spec-sync, D7, complexity, mutation)
 - [ ] No skipped or focused tests introduced
 - [ ] Human granted protect-specs if any `.feature` or OpenAPI change was required
 - [ ] Human granted deps-lock if any package.json / lockfile change was required
@@ -232,14 +237,19 @@ Agents must pause for human review when:
 - Max agent fix iterations exhausted
 - Spec-review found gaps that need product decisions
 
-## Phase 2 remaining / Phase 3 (not wired)
+## Phase 2 / 3
 
-Do not pretend these exist today:
+**Wired now:** deps-lock + spec-review and mutation + complexity.
 
-- Mutation testing (Stryker) / test-ownership freeze
+- deps-lock + spec-review: human dependency grant plus pre-implement spec review
+- mutation: `test:mutation` gate on `src/domain` (60% floor; TODO raise)
+- complexity: `complexity` gate max 10 on `src/domain`
+
+Gherkin leakage is **D8** and **is** wired.
+
+Not wired yet:
+
+- Official Stryker package + raised mutation threshold
 - Architectural drift (dependency-cruiser: domain must not import infra)
 - Perf / query budgets
 - SBOM automation beyond deps-lock
-
-**Wired in Phase 2 start:** deps-lock + spec-review skill.
-Gherkin leakage is **D8** and **is** wired.

@@ -60,6 +60,8 @@ function writeReport(config: GauntletConfig, gates: GateResult[], ok: boolean): 
     noCheat: readJson("no-cheat-report.json"),
     protectSpecs: readJson("protect-specs-report.json"),
     depsLock: readJson("deps-lock-report.json"),
+    complexity: readJson("complexity-report.json"),
+    mutation: readJson("mutation-report.json"),
   };
   writeFileSync(resolve("gauntlet-report.json"), `${JSON.stringify(report, null, 2)}\n`);
 }

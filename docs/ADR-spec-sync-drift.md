@@ -121,23 +121,29 @@ Allowlist seed entries expire **2026-12-02** — renew before that date
 - Coverage thresholds and existing gates are unchanged.
 - Agents cannot skip tests, disable gates, or edit specs without a human grant.
 
-## Phase 2 / Phase 3 — additional failure modes (roadmap)
+## Phase 2 / Phase 3 — additional failure modes
 
-### Phase 2 (partial — see ADR-phase2-deps-spec-review.md)
+Mutation + complexity are wired. See
+[ADR-phase2-mutation-complexity.md](./ADR-phase2-mutation-complexity.md).
+Gherkin leakage is D8 and **is** wired (`checkD8` in spec-sync).
 
-**Wired:**
+### Phase 2 — semantic honesty of tests and structure
 
-- **deps-lock** — human grant required for `package.json` / `package-lock.json` edits (root, examples/*, templates/*); CI grant via label `deps-approved` → `ALLOW_DEPS_EDIT=1`
-- **spec-review** — `.agent/skills/spec-review.md` devil's-advocate checklist before `implement-feature`; feeds human approval / gaps.md
-
-**Not yet wired (next overnight chunk):**
-
-1. **Test invalidation / false positives** — freeze/test-ownership; Stryker on `src/domain`.
-2. **Architectural drift** — dependency-cruiser: `src/domain` must not import `src/api` / infra.
+1. **deps-lock** — human grant required for `package.json` / `package-lock.json`
+   edits (root, examples/*, templates/*); CI grant via label
+   `deps-approved` -> `ALLOW_DEPS_EDIT=1`.
+2. **spec-review** — `.agent/skills/spec-review.md` devil's-advocate checklist
+   before `implement-feature`; feeds human approval / gaps.md.
+3. **Test invalidation** — mutation gate on `src/domain` (Todo gate enabled;
+   template script stays opt-in). Initial kill-score floor **60%** (TODO: raise).
+4. **Complexity budget** — cyclomatic max **10** per domain function (both apps).
+   CRAP <= 8 needs a coverage combo; later.
+5. **Architectural drift** — dependency-cruiser: `src/domain` must not import
+   `src/api` / infra. Still roadmap.
 
 ### Phase 3 — cost, supply chain, and ops honesty
 
-3. **Invisible cost / performance** — benchmark budgets; later ORM/SQL checks.
-4. **Supply chain beyond deps-lock** — SBOM; Dependabot/Snyk (deps-lock human grant is already Phase 2).
+6. **Invisible cost / performance** — benchmark budgets; later ORM/SQL checks.
+7. **Supply chain beyond deps-lock** — SBOM; Dependabot/Snyk.
 
-Gherkin leakage is D8 and **is** wired. Phase 2/3 must not weaken D1-D9 or lower coverage floors.
+Phase 2/3 must not weaken D1-D9 or lower coverage floors.

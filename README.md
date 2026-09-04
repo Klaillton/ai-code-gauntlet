@@ -86,14 +86,16 @@ past the gauntlet.
 
 Todo is `strict` (D3 fail). The template is `lenient` (D3 warn).
 
-## Phase 2 (partial) / Phase 3 (roadmap)
+## Phase 2 / Phase 3 (roadmap)
 
-**Wired now:** deps-lock + spec-review skill. See
-[docs/ADR-phase2-deps-spec-review.md](./docs/ADR-phase2-deps-spec-review.md).
+**Wired now:**
+
+- deps-lock + spec-review skill — [docs/ADR-phase2-deps-spec-review.md](./docs/ADR-phase2-deps-spec-review.md)
+- mutation + complexity — [docs/ADR-phase2-mutation-complexity.md](./docs/ADR-phase2-mutation-complexity.md)
 
 Gherkin leakage is **D8** (wired). Remaining later:
 
-- Test invalidation -> freeze/test-ownership; Stryker mutation
+- Test invalidation hardening beyond current mutation MVP (freeze/test-ownership; raise threshold)
 - Architectural drift -> dependency-cruiser (domain must not import infra)
 - Invisible cost / perf -> benchmark budgets; ORM/SQL later
 - SBOM / Dependabot beyond the deps-lock human grant
