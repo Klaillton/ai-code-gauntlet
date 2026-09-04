@@ -13,14 +13,15 @@
 1. `format` (enabled) — `npm run format`
 2. `lint` (enabled) — `npm run lint`
 3. `typecheck` (enabled) — `npm run typecheck`
-4. `protect-specs` (enabled) — `npm run protect-specs`
-5. `deps-lock` (enabled) — `npm run deps-lock`
-6. `no-cheat` (enabled) — `npm run no-cheat`
-7. `spec-sync` (enabled) — `npm run spec-sync`
-8. `docs` (enabled) — `npm run docs:check`
-9. `unit` (enabled) — `npm run test:unit:coverage`
-10. `contract` (enabled) — `npm run test:contract`
-11. `e2e` (enabled) — `npm run test:e2e`
+4. `complexity` (enabled) — `npm run complexity`
+5. `protect-specs` (enabled) — `npm run protect-specs`
+6. `deps-lock` (enabled) — `npm run deps-lock`
+7. `no-cheat` (enabled) — `npm run no-cheat`
+8. `spec-sync` (enabled) — `npm run spec-sync`
+9. `docs` (enabled) — `npm run docs:check`
+10. `unit` (enabled) — `npm run test:unit:coverage`
+11. `contract` (enabled) — `npm run test:contract`
+12. `e2e` (enabled) — `npm run test:e2e`
 
 ## Allowlist
 
