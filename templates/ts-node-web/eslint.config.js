@@ -27,4 +27,10 @@ export default tseslint.config(
       "no-console": ["warn", { allow: ["warn", "error", "info"] }],
     },
   },
+  {
+    files: ["src/domain/**/*.ts"],
+    rules: {
+      complexity: ["error", { max: 10 }],
+    },
+  },
 );
