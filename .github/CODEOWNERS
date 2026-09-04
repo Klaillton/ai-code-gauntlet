@@ -3,3 +3,12 @@ examples/todo/features/**/*.feature @Klaillton
 examples/todo/openapi/openapi.yaml @Klaillton
 templates/ts-node-web/features/**/*.feature @Klaillton
 templates/ts-node-web/openapi/openapi.yaml @Klaillton
+
+# Dependency manifests — human-owned. Agents need a deps-lock grant.
+# Leading / = repo root only; examples/* and templates/* stay scoped (not packages/**).
+/package.json @Klaillton
+/package-lock.json @Klaillton
+examples/*/package.json @Klaillton
+examples/*/package-lock.json @Klaillton
+templates/*/package.json @Klaillton
+templates/*/package-lock.json @Klaillton
