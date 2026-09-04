@@ -12,6 +12,7 @@ This repo is **not** only a Todo app. It is:
 | [`docs/`](./docs) | Premisses, greenfield, adopt, original plan |
 | [`docs/ADR-spec-sync-drift.md`](./docs/ADR-spec-sync-drift.md) | Spec-sync drift catalog (D1-D9) |
 | [`docs/ADR-phase2-deps-spec-review.md`](./docs/ADR-phase2-deps-spec-review.md) | Phase 2: deps-lock + spec-review |
+| [`docs/ADR-phase2-mutation-complexity.md`](./docs/ADR-phase2-mutation-complexity.md) | Phase 2: mutation + complexity |
 
 ```
 Gherkin (human-owned)      -> behavior (protect-specs)
@@ -19,7 +20,9 @@ OpenAPI (human-owned)      -> HTTP shape (protect-specs)
 package manifests          -> deps-lock (human grant)
 Playwright drivers         -> acceptance
 Vitest + coverage          -> unit stream (no-cheat)
-spec-sync inventory        -> D1-D8 drift
+Mutation (src/domain)      -> test honesty (Todo gate; template opt-in)
+Complexity (src/domain)    -> cyclomatic max 10
+spec-sync inventory        -> D1-D8 drift (D8 = gherkin leak)
 no-cheat                   -> skip/only, disabled gates, lowered floors
 ESLint + Prettier + tsc    -> static shape
 AGENTS.md + skills         -> agent rules (incl. spec-review before implement)
@@ -91,11 +94,20 @@ Todo is `strict` (D3 fail). The template is `lenient` (D3 warn).
 **Wired now:** deps-lock + spec-review skill. See
 [docs/ADR-phase2-deps-spec-review.md](./docs/ADR-phase2-deps-spec-review.md).
 
-Gherkin leakage is **D8** (wired). Remaining later:
+**Also wired:** mutation + complexity on `src/domain`. See
+[docs/ADR-phase2-mutation-complexity.md](./docs/ADR-phase2-mutation-complexity.md).
 
-- Test invalidation -> freeze/test-ownership; Stryker mutation
+- Mutation: Stryker-equivalent, **60%** kill-score floor (TODO: raise after CI
+  measures). Todo has the `mutation` gate; template has `test:mutation` only.
+- Complexity: cyclomatic **max 10** per domain function (CRAP ≤8 needs coverage
+  combo — later). Both apps have the `complexity` gate.
+- Gherkin leakage is **D8** (already in spec-sync; confirmed, not changed).
+
+Remaining later:
+
 - Architectural drift -> dependency-cruiser (domain must not import infra)
 - Invisible cost / perf -> benchmark budgets; ORM/SQL later
+- Official Stryker package + raised mutation threshold
 - SBOM / Dependabot beyond the deps-lock human grant
 
 ## License
