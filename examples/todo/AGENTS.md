@@ -3,8 +3,8 @@
 Rules for any AI coding agent working in this repository.
 Discipline lives in **gates and tools**, not in prompt politeness.
 
-**protect-specs** and **no-cheat** are hard tools. They fail `npm run verify`.
-They are not requests.
+**protect-specs**, **deps-lock**, and **no-cheat** are hard tools. They fail
+`npm run verify`. They are not requests.
 
 ## Mission
 
@@ -13,11 +13,10 @@ Ship behavior that is:
 1. Specified in human-approved **Gherkin** (`features/**/*.feature`)
 2. Contracted in human-approved **OpenAPI** (`openapi/openapi.yaml`)
 3. Proven by **two test streams**: unit (Vitest) + acceptance (Cucumber + Playwright)
-4. Shaped by **static gates**: TypeScript, ESLint, Prettier, coverage, complexity
-5. Kept honest by **spec-sync** (D1–D8), **no-cheat** (D9), protect-specs,
-   complexity, and mutation (src/domain)
+4. Shaped by **static gates**: TypeScript, ESLint, Prettier, coverage thresholds
+5. Kept honest by **spec-sync** (D1–D8), **no-cheat** (D9), **protect-specs**, and **deps-lock**
 
-You implement. Humans defend the specs.
+You implement. Humans defend the specs and dependency manifests.
 
 ## Hard prohibitions (enforced)
 
@@ -50,6 +49,23 @@ If git is unavailable, the gate records info and does not fail. Agents still
 must not edit specs. On a full-tree local verify with no diff, the same rule
 applies: do not touch those paths.
 
+### Dependencies — deps-lock
+
+Do not edit without a human grant:
+
+- kit root `package.json` / `package-lock.json`
+- `examples/*/package.json` / `package-lock.json`
+- `templates/*/package.json` / `package-lock.json`
+
+Same git-diff surfaces as protect-specs. Grants:
+
+1. `ALLOW_DEPS_EDIT=1` (document in the PR; do **not** bake into CI permanently)
+2. `.gauntlet/allow-deps-edit` (human-only, gitignored, local)
+3. `allowDepsEdit: true` in `gauntlet.config.json` (default **false**)
+4. GitHub pull_request label `deps-approved`
+
+CI exports `ALLOW_DEPS_EDIT=1` **only if** the PR has label `deps-approved`.
+
 ### Cheating — no-cheat / D9
 
 Fails on detect:
@@ -67,8 +83,7 @@ Do not go green by deleting tests. Fix the product or ask the human.
 ### Other
 
 - Do not commit secrets or `.env` files with credentials
-- Do not add dependencies unless the human asked in the current turn
-  (deps-lock is a later gate on PR #5, not in this kit yet)
+- Do not add dependencies unless the human asked **and** granted deps-lock
 - Do not lower coverage floors
 
 If a gate fails because the **spec is wrong**, stop and ask the human.
@@ -86,6 +101,8 @@ Do not silently rewrite the contract.
 
 ## How to add a new endpoint (SDD)
 
+0. Run **spec-review** (`.agent/skills/spec-review.md`) — devil's advocate;
+   get human approval before coding.
 1. Human writes a Gherkin scenario tagged `@op:<operationId>` (grant protect-specs).
 2. Human approves the OpenAPI path, operationId, and schemas.
 3. Add a contract case when the operation is HTTP-visible.
@@ -101,15 +118,19 @@ files (D8).
 ## Workflow (ATDD-style)
 
 ```
-1. Confirm Feature + scenarios exist (or human is writing them)
-2. Confirm scenarios FAIL for the new behavior (red)
-3. Align OpenAPI if HTTP-visible (human approves + protect-specs grant)
-4. Write / update failing unit tests for domain rules
-5. Implement the minimum code to pass unit + acceptance
-6. npm run docs:generate && npm run verify
-7. Fix until green — max 5 verify cycles, then hand back
-8. Do not claim done without a green verify in this session
+1. For new behavior: run spec-review → human approval (gaps / edges / security)
+2. Confirm Feature + scenarios exist (or human is writing them)
+3. Confirm scenarios FAIL for the new behavior (red)
+4. Align OpenAPI if HTTP-visible (human approves + protect-specs grant)
+5. Write / update failing unit tests for domain rules
+6. Implement the minimum code to pass unit + acceptance
+7. npm run docs:generate && npm run verify
+8. Fix until green — max 5 verify cycles, then hand back
+9. Do not claim done without a green verify in this session
 ```
+
+Do **not** start `implement-feature` until spec-review is approved when the
+change introduces new behavior.
 
 ### Layer responsibilities
 
@@ -117,6 +138,7 @@ files (D8).
 | ------------- | --------------------------- | ---------------------------------- |
 | Behavior WHAT | `features/*.feature`        | Human                              |
 | HTTP contract | `openapi/openapi.yaml`      | Human                              |
+| Dependencies  | `package.json` / lockfile   | Human (deps-lock)                  |
 | Domain HOW    | `tests/unit` + `src/domain` | Agent (under unit + D5/D6)         |
 | UI/API driver | `e2e/**` Playwright steps   | Agent (must not leak into Gherkin) |
 | Static shape  | ESLint / Prettier / `tsc`   | Config + CI                        |
@@ -137,11 +159,10 @@ in step defs, not in `.feature` files.
 npm run dev                 # local server
 npm run test:unit           # Vitest
 npm run test:unit:coverage  # Vitest + thresholds
-npm run test:mutation       # Stryker-equivalent on src/domain (60% floor)
-npm run complexity          # domain cyclomatic max 10
 npm run test:contract       # OpenAPI runtime contract checks
 npm run test:e2e            # Cucumber + Playwright (starts server)
 npm run protect-specs       # fail if specs changed without a human grant
+npm run deps-lock           # fail if package manifests changed without a grant
 npm run no-cheat            # fail on skip/only, disabled gates, lowered floors
 npm run spec-sync           # D1–D8 inventory drift
 npm run docs:generate       # write docs/generated/*
@@ -155,15 +176,14 @@ npm run agent:loop          # re-run verify (max iterations via MAX_ITERATIONS)
 1. Prettier check
 2. ESLint
 3. `tsc --noEmit`
-4. complexity (domain cyclomatic max 10)
-5. protect-specs
+4. protect-specs
+5. deps-lock
 6. no-cheat
 7. spec-sync
 8. docs (D7)
 9. Unit + coverage thresholds
-10. Mutation (`src/domain`, 60% kill-score floor)
-11. OpenAPI contract (`check-openapi.ts`)
-12. Cucumber + Playwright E2E
+10. OpenAPI contract (`check-openapi.ts`)
+11. Cucumber + Playwright E2E
 
 Root `npm run verify` runs the template then the example. Install browsers
 with `npm run prepare:browsers` first.
@@ -186,40 +206,40 @@ Current floors: lines/functions/statements **80%**, branches **70%** on `src/**`
 - HTTP adapters live in `src/api`
 - UI is intentionally thin (`src/web`); keep business rules out of HTML
 - Prefer small functions and early returns
-- Domain functions must stay at cyclomatic complexity **≤ 10**
 - No god-files: if a module is hard to test, split it
 
 ## Definition of done
 
 A change is done only when:
 
+- [ ] Spec-review completed (new behavior) and human approved
 - [ ] Relevant Gherkin scenarios pass (domain language)
 - [ ] Unit tests cover new domain rules
 - [ ] OpenAPI still validates for touched endpoints
-- [ ] `npm run verify` is green (including protect-specs, no-cheat, spec-sync,
-      D7, complexity, mutation)
+- [ ] `npm run verify` is green (protect-specs, deps-lock, no-cheat, spec-sync, D7)
 - [ ] No skipped or focused tests introduced
 - [ ] Human granted protect-specs if any `.feature` or OpenAPI change was required
+- [ ] Human granted deps-lock if any package.json / lockfile change was required
 
 ## Human checkpoints
 
 Agents must pause for human review when:
 
 - Changing acceptance scenarios or OpenAPI (needs a protect-specs grant)
+- Changing dependencies / lockfiles (needs a deps-lock grant)
 - Security, auth, payments, or personal data behavior
 - Flaky E2E that “needs” retries or skipped tests
 - Max agent fix iterations exhausted
+- Spec-review found gaps that need product decisions
 
-## Phase 2 / 3
+## Phase 2 remaining / Phase 3 (not wired)
 
-**Wired:** mutation (`test:mutation` / `mutation` gate, 60% floor — TODO raise)
-and complexity (`complexity` gate, max 10) on `src/domain`.
-See kit `docs/ADR-phase2-mutation-complexity.md`. D8 gherkin leak is already
-in spec-sync.
+Do not pretend these exist today:
 
-Not wired here (PR #5 / later):
-
-- Official Stryker package + raised mutation threshold
+- Mutation testing (Stryker) / test-ownership freeze
 - Architectural drift (dependency-cruiser: domain must not import infra)
 - Perf / query budgets
-- Hallucinated deps / lockfile human approval (deps-lock on PR #5)
+- SBOM automation beyond deps-lock
+
+**Wired in Phase 2 start:** deps-lock + spec-review skill.
+Gherkin leakage is **D8** and **is** wired.
