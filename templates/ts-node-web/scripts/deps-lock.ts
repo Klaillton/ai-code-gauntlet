@@ -56,10 +56,7 @@ export function isProtectedDepPath(repoRelPath: string): boolean {
   if (parts.length === 1) {
     return true;
   }
-  if (
-    parts.length === 3 &&
-    (parts[0] === "examples" || parts[0] === "templates")
-  ) {
+  if (parts.length === 3 && (parts[0] === "examples" || parts[0] === "templates")) {
     return true;
   }
   return false;
@@ -159,7 +156,7 @@ export function runDepsLock(cwd = process.cwd()): {
     message:
       "deps-lock blocked package.json / package-lock.json edits without human grant: " +
       depChanges.join(", ") +
-      ". Set ALLOW_DEPS_EDIT=1, add .gauntlet/allow-deps-edit, or label deps-approved.",
+      ". Set ALLOW_DEPS_EDIT=1, add .gauntlet/allow-deps-edit, set allowDepsEdit: true in gauntlet.config.json, or label deps-approved.",
   });
   writeReport(cwd, false, findings);
   return { ok: false, findings };
