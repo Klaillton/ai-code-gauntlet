@@ -48,7 +48,7 @@ jobs:
   example-todo:
     name: Example Todo
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: examples/todo
@@ -81,5 +81,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: gauntlet-todo
-          path: examples/todo/gauntlet-report.json
+          path: |
+            examples/todo/gauntlet-report.json
+            examples/todo/mutation-report.json
+            examples/todo/complexity-report.json
           if-no-files-found: ignore
