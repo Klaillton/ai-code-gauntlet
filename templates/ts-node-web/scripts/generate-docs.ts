@@ -58,18 +58,18 @@ function renderApi(inventory: Inventory): string {
 ## OpenAPI operations
 
 ${
-    opRows.length > 0
-      ? mdTable(["operationId", "method", "path", "@op scenario"], opRows)
-      : "_No OpenAPI operations._"
-  }
+  opRows.length > 0
+    ? mdTable(["operationId", "method", "path", "@op scenario"], opRows)
+    : "_No OpenAPI operations._"
+}
 
 ## Implemented routes
 
 ${
-    routeRows.length > 0
-      ? mdTable(["method", "path", "in OpenAPI", "allowlist"], routeRows)
-      : "_No routes discovered._"
-  }
+  routeRows.length > 0
+    ? mdTable(["method", "path", "in OpenAPI", "allowlist"], routeRows)
+    : "_No routes discovered._"
+}
 `;
 }
 
@@ -85,9 +85,7 @@ function renderBehaviors(inventory: Inventory): string {
     const scenarios = byFile.get(file) ?? [];
     const items = scenarios.map((scenario) => {
       const tags =
-        scenario.tags.length > 0
-          ? scenario.tags.map((tag) => "`" + tag + "`").join(" ")
-          : "_none_";
+        scenario.tags.length > 0 ? scenario.tags.map((tag) => "`" + tag + "`").join(" ") : "_none_";
       return `- **${scenario.name}** — tags: ${tags}`;
     });
     sections.push(`## ${file}\n\n${items.join("\n")}`);
@@ -131,10 +129,10 @@ ${gates.length > 0 ? gates.join("\n") : "_No gates configured._"}
 ## Allowlist
 
 ${
-    allowRows.length > 0
-      ? mdTable(["method", "path", "kind", "exemptFrom", "owner", "expires"], allowRows)
-      : "_No allowlist entries._"
-  }
+  allowRows.length > 0
+    ? mdTable(["method", "path", "kind", "exemptFrom", "owner", "expires"], allowRows)
+    : "_No allowlist entries._"
+}
 
 ## Policy
 

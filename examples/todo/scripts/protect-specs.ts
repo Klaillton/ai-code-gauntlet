@@ -51,7 +51,7 @@ function matchGlob(rel: string, glob: string): boolean {
   const normalized = rel.split(sep).join("/");
   const pattern = glob.split(sep).join("/");
   if (pattern.endsWith("/**/*.feature")) {
-    const prefix = pattern.slice(0, -("/**/*.feature".length));
+    const prefix = pattern.slice(0, -"/**/*.feature".length);
     const head = prefix === "" ? "features/" : prefix + "/";
     return normalized.startsWith(head) && normalized.endsWith(".feature");
   }
@@ -62,9 +62,7 @@ function matchGlob(rel: string, glob: string): boolean {
     const headOk =
       prefix.length === 0 || normalized.startsWith(prefix + "/") || normalized === prefix;
     const tailOk =
-      suffix.length === 0 ||
-      normalized.endsWith(suffix) ||
-      normalized.includes("/" + suffix);
+      suffix.length === 0 || normalized.endsWith(suffix) || normalized.includes("/" + suffix);
     return headOk && tailOk;
   }
   return normalized === pattern || normalized.endsWith("/" + pattern);
@@ -105,10 +103,7 @@ export function runProtectSpecs(cwd = process.cwd()): {
   findings: ProtectFinding[];
 } {
   const config = loadConfig(cwd);
-  const globs = config.agent?.protectedGlobs ?? [
-    "features/**/*.feature",
-    "openapi/openapi.yaml",
-  ];
+  const globs = config.agent?.protectedGlobs ?? ["features/**/*.feature", "openapi/openapi.yaml"];
   const grant = specEditAllowed(cwd, config.allowSpecEdit === true);
   const findings: ProtectFinding[] = [];
 
@@ -130,7 +125,7 @@ export function runProtectSpecs(cwd = process.cwd()): {
     ...(gitLines(cwd, ["diff", "--name-only", "--cached"]) ?? []),
     ...(gitLines(cwd, ["diff", "--name-only", "origin/main...HEAD"]) ?? []),
     ...(gitLines(cwd, ["diff", "--name-only", "main...HEAD"]) ?? []),
-    ...(prBaseDiffs(cwd)),
+    ...prBaseDiffs(cwd),
   ]);
 
   const localChanges: string[] = [];

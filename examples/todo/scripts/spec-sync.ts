@@ -346,8 +346,7 @@ function checkD6(inventory: Inventory): Finding[] {
       {
         id: "D6",
         severity: inventory.strictness === "strict" ? "fail" : "warn",
-        message:
-          "D6 git is required to prove src changes have matching specs/tests (fail-closed).",
+        message: "D6 git is required to prove src changes have matching specs/tests (fail-closed).",
       },
     ];
   }
@@ -419,7 +418,7 @@ export function runSpecSync(cwd = process.cwd()): SpecSyncResult {
 }
 
 export function printFindings(result: SpecSyncResult): void {
-  console.info(`spec-sync (${result.strictness}) — ${result.findings.length} finding(s)`);
+  console.info(`spec-sync (${result.strictness}) - ${result.findings.length} finding(s)`);
   for (const finding of result.findings) {
     const mark = finding.severity === "fail" ? "x" : finding.severity === "warn" ? "!" : "i";
     const log = finding.severity === "fail" ? console.error : console.info;
