@@ -20,7 +20,7 @@ function mdTable(headers: string[], rows: string[][]): string {
 }
 
 function cell(value: string): string {
-  return value.replace(/\|/g, "\\|") || "—";
+  return value.replace(/\|/g, "\\|") || "\u2014";
 }
 
 function renderApi(inventory: Inventory): string {
@@ -58,18 +58,18 @@ function renderApi(inventory: Inventory): string {
 ## OpenAPI operations
 
 ${
-    opRows.length > 0
-      ? mdTable(["operationId", "method", "path", "@op scenario"], opRows)
-      : "_No OpenAPI operations._"
-  }
+  opRows.length > 0
+    ? mdTable(["operationId", "method", "path", "@op scenario"], opRows)
+    : "_No OpenAPI operations._"
+}
 
 ## Implemented routes
 
 ${
-    routeRows.length > 0
-      ? mdTable(["method", "path", "in OpenAPI", "allowlist"], routeRows)
-      : "_No routes discovered._"
-  }
+  routeRows.length > 0
+    ? mdTable(["method", "path", "in OpenAPI", "allowlist"], routeRows)
+    : "_No routes discovered._"
+}
 `;
 }
 
@@ -85,10 +85,8 @@ function renderBehaviors(inventory: Inventory): string {
     const scenarios = byFile.get(file) ?? [];
     const items = scenarios.map((scenario) => {
       const tags =
-        scenario.tags.length > 0
-          ? scenario.tags.map((tag) => "`" + tag + "`").join(" ")
-          : "_none_";
-      return `- **${scenario.name}** — tags: ${tags}`;
+        scenario.tags.length > 0 ? scenario.tags.map((tag) => "`" + tag + "`").join(" ") : "_none_";
+      return `- **${scenario.name}** \u2014 tags: ${tags}`;
     });
     sections.push(`## ${file}\n\n${items.join("\n")}`);
   }
@@ -106,7 +104,7 @@ ${sections.length > 0 ? sections.join("\n\n") : "_No scenarios found._"}
 function renderGauntlet(inventory: Inventory): string {
   const gates = inventory.config.gates.map((gate, index) => {
     const enabled = gate.enabled === false ? "skipped" : "enabled";
-    return `${index + 1}. \`${gate.id}\` (${enabled}) — \`${gate.command} ${gate.args.join(" ")}\``;
+    return `${index + 1}. \`${gate.id}\` (${enabled}) \u2014 \`${gate.command} ${gate.args.join(" ")}\``;
   });
   const allowRows = (inventory.config.allowlist ?? []).map((entry) => [
     entry.method.toUpperCase(),
@@ -131,14 +129,14 @@ ${gates.length > 0 ? gates.join("\n") : "_No gates configured._"}
 ## Allowlist
 
 ${
-    allowRows.length > 0
-      ? mdTable(["method", "path", "kind", "exemptFrom", "owner", "expires"], allowRows)
-      : "_No allowlist entries._"
-  }
+  allowRows.length > 0
+    ? mdTable(["method", "path", "kind", "exemptFrom", "owner", "expires"], allowRows)
+    : "_No allowlist entries._"
+}
 
 ## Policy
 
-- Surfaces: features (behavior), OpenAPI (HTTP), unit ↔ domain (HOW)
+- Surfaces: features (behavior), OpenAPI (HTTP), unit \u2194 domain (HOW)
 - Link operations to scenarios with \`@op:<operationId>\`
 - Allowlist kinds: \`test-harness\` | \`static-ui\` | \`internal\` | \`wip-red\`
 - Required allowlist fields: kind, method, path, reason, exemptFrom, owner, expires
