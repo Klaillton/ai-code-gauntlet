@@ -81,11 +81,7 @@ function scanCheats(cwd: string): CheatFinding[] {
       if (trimmed.length === 0) {
         return;
       }
-      if (
-        CHEAT_RE.test(line) ||
-        /@skip\b/.test(line) ||
-        /\bScenario\s+\(skipped\)/i.test(line)
-      ) {
+      if (CHEAT_RE.test(line) || /@skip\b/.test(line) || /\bScenario\s+\(skipped\)/i.test(line)) {
         findings.push({
           id: "D9",
           severity: "fail",

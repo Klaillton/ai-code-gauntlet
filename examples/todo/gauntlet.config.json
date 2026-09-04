@@ -2,11 +2,13 @@
   "name": "todo-example",
   "strictness": "strict",
   "allowSpecEdit": false,
+  "allowDepsEdit": false,
   "gates": [
     { "id": "format", "command": "npm", "args": ["run", "format"] },
     { "id": "lint", "command": "npm", "args": ["run", "lint"] },
     { "id": "typecheck", "command": "npm", "args": ["run", "typecheck"] },
     { "id": "protect-specs", "command": "npm", "args": ["run", "protect-specs"] },
+    { "id": "deps-lock", "command": "npm", "args": ["run", "deps-lock"] },
     { "id": "no-cheat", "command": "npm", "args": ["run", "no-cheat"] },
     { "id": "spec-sync", "command": "npm", "args": ["run", "spec-sync"] },
     { "id": "docs", "command": "npm", "args": ["run", "docs:check"] },

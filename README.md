@@ -11,16 +11,18 @@ This repo is **not** only a Todo app. It is:
 | [`packages/create-ai-gauntlet`](./packages/create-ai-gauntlet) | CLI: `create` + `adopt` |
 | [`docs/`](./docs) | Premisses, greenfield, adopt, original plan |
 | [`docs/ADR-spec-sync-drift.md`](./docs/ADR-spec-sync-drift.md) | Spec-sync drift catalog (D1-D9) |
+| [`docs/ADR-phase2-deps-spec-review.md`](./docs/ADR-phase2-deps-spec-review.md) | Phase 2: deps-lock + spec-review |
 
 ```
 Gherkin (human-owned)      -> behavior (protect-specs)
 OpenAPI (human-owned)      -> HTTP shape (protect-specs)
+package manifests          -> deps-lock (human grant)
 Playwright drivers         -> acceptance
 Vitest + coverage          -> unit stream (no-cheat)
 spec-sync inventory        -> D1-D8 drift
 no-cheat                   -> skip/only, disabled gates, lowered floors
 ESLint + Prettier + tsc    -> static shape
-AGENTS.md + skills         -> agent rules (tools, not politeness)
+AGENTS.md + skills         -> agent rules (incl. spec-review before implement)
 npm run verify             -> ordered gauntlet
 ```
 
@@ -67,11 +69,14 @@ npm run verify   # template + example; needs Chromium
 
 See [docs/PREMISES.md](./docs/PREMISES.md) and [docs/original-plan.md](./docs/original-plan.md).
 
-**You** defend Gherkin + OpenAPI. **The agent** implements. **`verify` / CI** are the filter.
+**You** defend Gherkin + OpenAPI + dependency manifests. **The agent** implements.
+**`verify` / CI** are the filter.
 
-protect-specs and no-cheat are **hard tools**. Agents cannot edit `features/**` or
-`openapi/openapi.yaml` without a human grant (`ALLOW_SPEC_EDIT=1`,
-`.gauntlet/allow-spec-edit`, or PR label `specs-approved`).
+protect-specs, deps-lock, and no-cheat are **hard tools**. Agents cannot edit
+`features/**` or `openapi/openapi.yaml` without a protect-specs grant, and
+cannot edit `package.json` / `package-lock.json` (root, examples, templates)
+without a deps-lock grant (`ALLOW_DEPS_EDIT=1`, `.gauntlet/allow-deps-edit`, or
+PR label `deps-approved`).
 
 ## Config
 
@@ -81,15 +86,17 @@ past the gauntlet.
 
 Todo is `strict` (D3 fail). The template is `lenient` (D3 warn).
 
-## Phase 2 / 3 (roadmap — not wired)
+## Phase 2 (partial) / Phase 3 (roadmap)
+
+**Wired now:** deps-lock + spec-review skill. See
+[docs/ADR-phase2-deps-spec-review.md](./docs/ADR-phase2-deps-spec-review.md).
 
 Gherkin leakage is **D8** (wired). Remaining later:
 
 - Test invalidation -> freeze/test-ownership; Stryker mutation
 - Architectural drift -> dependency-cruiser (domain must not import infra)
 - Invisible cost / perf -> benchmark budgets; ORM/SQL later
-- Hallucinated deps -> human approval for package.json; SBOM/Dependabot (deps-lock)
-- Spec gaps -> Spec Review AI before coding
+- SBOM / Dependabot beyond the deps-lock human grant
 
 ## License
 

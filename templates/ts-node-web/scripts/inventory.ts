@@ -98,8 +98,7 @@ export type Inventory = {
 
 const METHOD_SET = new Set<string>(HTTP_METHODS);
 
-const ROUTE_RE =
-  /\bapp\.(get|post|put|patch|delete|options|head)\(\s*(['"`])([^'"`]+)\2/gi;
+const ROUTE_RE = /\bapp\.(get|post|put|patch|delete|options|head)\(\s*(['"`])([^'"`]+)\2/gi;
 
 export function posixRel(from: string, to: string): string {
   return relative(from, to).split(sep).join("/");
