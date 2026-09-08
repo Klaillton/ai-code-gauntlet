@@ -23,15 +23,6 @@
   ],
   "allowlist": [
     {
-      "kind": "test-harness",
-      "method": "POST",
-      "path": "/api/test/reset",
-      "reason": "E2E harness GAUNTLET_E2E=1",
-      "exemptFrom": ["openapi", "gherkin"],
-      "owner": "klaillton",
-      "expires": "2026-12-02"
-    },
-    {
       "kind": "static-ui",
       "method": "GET",
       "path": "/",

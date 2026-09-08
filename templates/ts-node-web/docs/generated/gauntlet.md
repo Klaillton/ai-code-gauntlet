@@ -27,7 +27,6 @@
 
 | method | path | kind | exemptFrom | owner | expires |
 | --- | --- | --- | --- | --- | --- |
-| POST | /api/test/reset | test-harness | openapi, gherkin | klaillton | 2026-12-02 |
 | GET | / | static-ui | openapi | klaillton | 2026-12-02 |
 
 ## Policy
