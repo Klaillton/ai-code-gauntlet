@@ -1,11 +1,13 @@
 import { execFileSync } from "node:child_process";
-import { writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { dirname, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import process from "node:process";
+import yaml from "js-yaml";
 import {
   ALLOWLIST_KINDS,
   EXEMPT_FROM,
+  HTTP_METHODS,
   type AllowlistEntry,
   type AllowlistKind,
   type ExemptFrom,
@@ -13,6 +15,7 @@ import {
   type Inventory,
   type Strictness,
   buildInventory,
+  normalizeMethod,
   routeKey,
 } from "./inventory.js";
 
@@ -338,10 +341,214 @@ function gitLines(cwd: string, args: string[]): string[] | undefined {
   }
 }
 
+const ROUTE_RE = /\bapp\.(get|post|put|patch|delete|options|head)\(\s*(['"`])([^'"`]+)\2/gi;
+const METHOD_SET = new Set<string>(HTTP_METHODS);
+
+function posixRel(from: string, to: string): string {
+  return relative(from, to).split(sep).join("/");
+}
+
+function repoRoot(cwd: string): string | undefined {
+  const lines = gitLines(cwd, ["rev-parse", "--show-toplevel"]);
+  return lines?.[0];
+}
+
+function gitShow(cwd: string, ref: string, repoRelPath: string): string | undefined {
+  try {
+    return execFileSync("git", ["show", `${ref}:${repoRelPath}`], {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+  } catch {
+    return undefined;
+  }
+}
+
+function resolveBaseRef(cwd: string): string | undefined {
+  for (const candidate of ["origin/main", "main"]) {
+    const ok = gitLines(cwd, ["rev-parse", "--verify", candidate]);
+    if (ok?.[0]) {
+      return candidate;
+    }
+  }
+  return undefined;
+}
+
+/** Route keys discovered with the same ROUTE_RE as inventory. */
+export function parseRouteKeys(source: string): Set<string> {
+  const keys = new Set<string>();
+  for (const match of source.matchAll(ROUTE_RE)) {
+    const method = normalizeMethod(match[1] ?? "get");
+    const path = match[3] ?? "";
+    keys.add(routeKey(method, path));
+  }
+  return keys;
+}
+
+export function parseOpenApiRouteKeys(raw: string): Map<string, string | undefined> {
+  const doc = yaml.load(raw) as {
+    paths?: Record<string, Record<string, { operationId?: string } | undefined> | undefined>;
+  };
+  const out = new Map<string, string | undefined>();
+  for (const [path, item] of Object.entries(doc.paths ?? {})) {
+    if (!item) continue;
+    for (const [methodRaw, op] of Object.entries(item)) {
+      if (!METHOD_SET.has(methodRaw.toLowerCase())) continue;
+      const method = normalizeMethod(methodRaw);
+      out.set(routeKey(method, path), op?.operationId);
+    }
+  }
+  return out;
+}
+
+export function parseFeatureOperationIds(raw: string): Set<string> {
+  const ids = new Set<string>();
+  for (const line of raw.split(/\r?\n/)) {
+    for (const token of line.trim().split(/\s+/)) {
+      if (token.startsWith("@op:") && token.length > 4) {
+        ids.add(token.slice(4));
+      }
+    }
+  }
+  return ids;
+}
+
+function isExpiredEntry(entry: AllowlistEntry, today = todayUtc()): boolean {
+  return entry.expires.slice(0, 10) < today;
+}
+
+export function baseExempt(
+  entries: AllowlistEntry[],
+  method: string,
+  path: string,
+  from: ExemptFrom,
+  today = todayUtc(),
+): boolean {
+  const key = routeKey(method, path);
+  const entry = entries.find((e) => routeKey(e.method, e.path) === key);
+  if (!entry || isExpiredEntry(entry, today)) {
+    return false;
+  }
+  return entry.exemptFrom.includes(from);
+}
+
+function splitRouteKey(key: string): { method: string; path: string } {
+  const space = key.indexOf(" ");
+  return { method: key.slice(0, space), path: key.slice(space + 1) };
+}
+
+function scopedPrefix(root: string, cwd: string): string {
+  const rel = posixRel(root, cwd);
+  return rel === "" || rel === "." ? "" : rel;
+}
+
+function withPrefix(prefix: string, rel: string): string {
+  return prefix ? `${prefix}/${rel}` : rel;
+}
+
+export function isUnderScopedDir(file: string, prefix: string, dirRel: string): boolean {
+  const base = withPrefix(prefix, dirRel).replace(/\/+$/, "");
+  return file === base || file.startsWith(`${base}/`);
+}
+
+export type ApiDeltaInput = {
+  baseRoutes: Set<string>;
+  headRoutes: Set<string>;
+  baseOpenApi: Map<string, string | undefined>;
+  headOpenApi: Map<string, string | undefined>;
+  baseFeatureOps: Set<string>;
+  headFeatureOps: Set<string>;
+  baseAllowlist: AllowlistEntry[];
+  severity: Finding["severity"];
+  today?: string;
+};
+
+/** Pure D6 HTTP rules: route delta vs OpenAPI / Gherkin / base allowlist. */
+export function evaluateApiRouteDelta(input: ApiDeltaInput): Finding[] {
+  const today = input.today ?? todayUtc();
+  const findings: Finding[] = [];
+  const added = [...input.headRoutes].filter((k) => !input.baseRoutes.has(k));
+  const removed = [...input.baseRoutes].filter((k) => !input.headRoutes.has(k));
+
+  for (const key of added) {
+    const { method, path } = splitRouteKey(key);
+    if (input.headOpenApi.has(key)) {
+      continue;
+    }
+    if (baseExempt(input.baseAllowlist, method, path, "openapi", today)) {
+      continue;
+    }
+    findings.push({
+      id: "D6",
+      severity: input.severity,
+      message: `D6 new route ${key} is missing from OpenAPI (no valid base openapi exemption).`,
+    });
+  }
+
+  for (const key of removed) {
+    const { method, path } = splitRouteKey(key);
+    const wasInOpenApi = input.baseOpenApi.has(key);
+    if (wasInOpenApi) {
+      const opId = input.baseOpenApi.get(key);
+      if (input.headOpenApi.has(key)) {
+        findings.push({
+          id: "D6",
+          severity: input.severity,
+          message: `D6 deleted route ${key} still present in OpenAPI; remove it in the same diff.`,
+        });
+      }
+      if (opId && input.baseFeatureOps.has(opId) && input.headFeatureOps.has(opId)) {
+        findings.push({
+          id: "D6",
+          severity: input.severity,
+          message: `D6 deleted route ${key} still has @op:${opId} in Gherkin; remove it in the same diff.`,
+        });
+      }
+      continue;
+    }
+    const exemptOpen = baseExempt(input.baseAllowlist, method, path, "openapi", today);
+    const exemptGherkin = baseExempt(input.baseAllowlist, method, path, "gherkin", today);
+    if (exemptOpen && exemptGherkin) {
+      continue;
+    }
+    // Undocumented delete with no openapi+gherkin exemption: allowed cleanup.
+  }
+
+  return findings;
+}
+
+function walkFeatureFiles(dir: string): string[] {
+  if (!existsSync(dir)) {
+    return [];
+  }
+  const out: string[] = [];
+  for (const name of readdirSync(dir)) {
+    const full = resolve(dir, name);
+    if (statSync(full).isDirectory()) {
+      out.push(...walkFeatureFiles(full));
+    } else if (name.endsWith(".feature")) {
+      out.push(full);
+    }
+  }
+  return out;
+}
+
 function checkD6(inventory: Inventory): Finding[] {
   const cwd = inventory.cwd;
   const inside = gitLines(cwd, ["rev-parse", "--is-inside-work-tree"]);
   if (!inside) {
+    return [
+      {
+        id: "D6",
+        severity: inventory.strictness === "strict" ? "fail" : "warn",
+        message: "D6 git is required to prove src changes have matching specs/tests (fail-closed).",
+      },
+    ];
+  }
+
+  const root = repoRoot(cwd);
+  if (!root) {
     return [
       {
         id: "D6",
@@ -368,28 +575,147 @@ function checkD6(inventory: Inventory): Finding[] {
     ];
   }
 
+  const prefix = scopedPrefix(root, cwd);
+  const appRel = inventory.config.sdd?.appPath ?? "src/api/app.ts";
+  const apiDirRel = dirname(appRel).split(sep).join("/");
+  const domainDirRel = inventory.config.sdd?.domainDir ?? "src/domain";
+  const unitDirRel = inventory.config.sdd?.unitDir ?? "tests/unit";
+  const openapiRel =
+    inventory.config.sdd?.openapiPath ?? inventory.config.contract?.openapiPath ?? "openapi/openapi.yaml";
+  const featuresDirRel = inventory.config.sdd?.featuresDir ?? "features";
+  const configRel = "gauntlet.config.json";
+
+  const severity: Finding["severity"] = inventory.strictness === "strict" ? "fail" : "warn";
   const changed = [...files];
-  const srcApiChanged = changed.some((file) => file.includes("src/api/"));
-  const srcDomainChanged = changed.some((file) => file.includes("src/domain/"));
-  const openapiChanged = changed.some((file) => file.includes("openapi/"));
-  const featuresChanged = changed.some((file) => file.endsWith(".feature"));
-  const unitChanged = changed.some((file) => file.includes("tests/unit/"));
   const findings: Finding[] = [];
 
-  if (srcApiChanged && !openapiChanged && !featuresChanged) {
-    findings.push({
-      id: "D6",
-      severity: inventory.strictness === "strict" ? "fail" : "warn",
-      message: "D6 HTTP/src/api changed without OpenAPI or Gherkin in the same diff.",
-    });
-  }
+  const srcApiChanged = changed.some((file) => isUnderScopedDir(file, prefix, apiDirRel));
+  const srcDomainChanged = changed.some((file) => isUnderScopedDir(file, prefix, domainDirRel));
+  const unitChanged = changed.some((file) => isUnderScopedDir(file, prefix, unitDirRel));
+
   if (srcDomainChanged && !unitChanged) {
     findings.push({
       id: "D6",
-      severity: inventory.strictness === "strict" ? "fail" : "warn",
+      severity,
       message: "D6 src/domain changed without tests/unit in the same diff.",
     });
   }
+
+  if (srcApiChanged) {
+    const appRepoRel = withPrefix(prefix, appRel);
+    const appAbs = resolve(cwd, appRel);
+    const baseRef = resolveBaseRef(cwd);
+    const mergeBase = baseRef
+      ? gitLines(cwd, ["merge-base", baseRef, "HEAD"])?.[0]
+      : undefined;
+
+    const dirtyVsHead = Boolean(
+      (gitLines(cwd, ["diff", "--name-only", "HEAD", "--", appRel]) ?? []).length ||
+        (gitLines(cwd, ["diff", "--name-only", "--cached", "--", appRel]) ?? []).length,
+    );
+    // Working-tree edits: compare to HEAD. Committed PR edits: compare to merge-base.
+    const base = dirtyVsHead ? "HEAD" : (mergeBase ?? "HEAD");
+
+    const baseApp = gitShow(cwd, base, appRepoRel) ?? "";
+    const headApp = existsSync(appAbs)
+      ? readFileSync(appAbs, "utf8")
+      : (gitShow(cwd, "HEAD", appRepoRel) ?? "");
+
+    const baseOpenRaw = gitShow(cwd, base, withPrefix(prefix, openapiRel)) ?? "";
+    const headOpenAbs = resolve(cwd, openapiRel);
+    const headOpenRaw = existsSync(headOpenAbs)
+      ? readFileSync(headOpenAbs, "utf8")
+      : (gitShow(cwd, "HEAD", withPrefix(prefix, openapiRel)) ?? "");
+
+    const baseConfigRaw = gitShow(cwd, base, withPrefix(prefix, configRel)) ?? "{}";
+    let baseAllowlist: AllowlistEntry[] = [];
+    try {
+      const parsed = JSON.parse(baseConfigRaw) as { allowlist?: unknown };
+      baseAllowlist = asAllowlist(parsed.allowlist).entries;
+    } catch {
+      baseAllowlist = [];
+    }
+
+    const featuresAbs = resolve(cwd, featuresDirRel);
+    const headFeatureOps = new Set<string>();
+    for (const file of walkFeatureFiles(featuresAbs)) {
+      for (const id of parseFeatureOperationIds(readFileSync(file, "utf8"))) {
+        headFeatureOps.add(id);
+      }
+    }
+    const baseFeatureOps = new Set<string>();
+    // List feature files from base tree via name-only is hard; scan head paths and git-show base counterparts.
+    for (const file of walkFeatureFiles(featuresAbs)) {
+      const rel = posixRel(root, file);
+      const raw = gitShow(cwd, base, rel);
+      if (raw) {
+        for (const id of parseFeatureOperationIds(raw)) {
+          baseFeatureOps.add(id);
+        }
+      }
+    }
+    // Also pick up deleted feature files from the diff under features/
+    for (const file of changed) {
+      if (!file.endsWith(".feature") || !isUnderScopedDir(file, prefix, featuresDirRel)) {
+        continue;
+      }
+      const raw = gitShow(cwd, base, file);
+      if (raw) {
+        for (const id of parseFeatureOperationIds(raw)) {
+          baseFeatureOps.add(id);
+        }
+      }
+    }
+
+    const baseRoutes = parseRouteKeys(baseApp);
+    const headRoutes = parseRouteKeys(headApp);
+    const baseOpenApi = baseOpenRaw ? parseOpenApiRouteKeys(baseOpenRaw) : new Map();
+    const headOpenApi = headOpenRaw ? parseOpenApiRouteKeys(headOpenRaw) : new Map();
+
+    const appTouched = changed.some(
+      (file) => file === appRepoRel || file.endsWith(`/${appRel}`) || file === appRel,
+    );
+
+    if (appTouched || baseRoutes.size > 0 || headRoutes.size > 0) {
+      findings.push(
+        ...evaluateApiRouteDelta({
+          baseRoutes,
+          headRoutes,
+          baseOpenApi,
+          headOpenApi,
+          baseFeatureOps,
+          headFeatureOps,
+          baseAllowlist,
+          severity,
+        }),
+      );
+    }
+
+    // Other files under scoped src/api/ without app.ts touch and without route-key delta:
+    // fail-closed unless OpenAPI or Gherkin under this app also changed.
+    const routeDeltaEmpty =
+      baseRoutes.size === headRoutes.size && [...baseRoutes].every((k) => headRoutes.has(k));
+    const onlyNonAppApi = srcApiChanged && !appTouched && routeDeltaEmpty;
+    if (onlyNonAppApi) {
+      const openapiDirRel = dirname(openapiRel).split(sep).join("/");
+      const openapiTouched = changed.some(
+        (file) =>
+          file === withPrefix(prefix, openapiRel) ||
+          isUnderScopedDir(file, prefix, openapiDirRel === "." ? "openapi" : openapiDirRel),
+      );
+      const featuresChanged = changed.some(
+        (file) => file.endsWith(".feature") && isUnderScopedDir(file, prefix, featuresDirRel),
+      );
+      if (!openapiTouched && !featuresChanged) {
+        findings.push({
+          id: "D6",
+          severity,
+          message: "D6 HTTP/src/api changed without OpenAPI or Gherkin in the same diff.",
+        });
+      }
+    }
+  }
+
   if (findings.length === 0) {
     findings.push({
       id: "D6",
