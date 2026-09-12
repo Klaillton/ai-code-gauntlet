@@ -611,7 +611,7 @@ function checkD6(inventory: Inventory): Finding[] {
 
     const dirtyVsHead = Boolean(
       (gitLines(cwd, ["diff", "--name-only", "HEAD", "--", appRel]) ?? []).length ||
-        (gitLines(cwd, ["diff", "--name-only", "--cached", "--", appRel]) ?? []).length,
+      (gitLines(cwd, ["diff", "--name-only", "--cached", "--", appRel]) ?? []).length,
     );
     // Working-tree edits: compare to HEAD. Committed PR edits: compare to merge-base.
     const base = dirtyVsHead ? "HEAD" : (mergeBase ?? "HEAD");
