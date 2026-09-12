@@ -57,7 +57,7 @@ Todo seed (owner `klaillton`, expires **`2026-12-02`** — renew before that dat
 | **D2** | OpenAPI path+method has no matching route | fail |
 | **D3** | `operationId` has no `@op:<operationId>` scenario | fail if `strict`, warn if `lenient`; skip if exempt `gherkin` |
 | **D5** | `src/domain` module with no unit test (same-stem or import) | fail (unless internal allowlist exempts `unit`) |
-| **D6** | Scoped `src/api` / `src/domain` under the verify cwd: API uses **route-key delta** (not path co-change); domain still requires `tests/unit` in the same diff | fail-closed in **strict** (including git missing); warn in **lenient**; empty diff = info |
+| **D6** | Changed `src/api` / `src/domain` without matching spec/unit in git diff | fail-closed in **strict** (including git missing); warn in **lenient**; empty diff = info |
 | **D7** | Committed `docs/generated/*` does not match a fresh generate | fail |
 | **D8** | `.feature` steps leak CSS, `data-testid`, or raw HTTP paths | fail |
 | **D9** | skip/only/pending, disabled gates, lowered coverage floors | fail |
@@ -107,18 +107,6 @@ CI checkout uses `fetch-depth: 0` and fetches `origin/main` so
 check"), not a silent pass of unmatched src. D6 is fail-closed in strict when
 git cannot prove the diff.
 
-**D6 scope:** only paths under the verify app (`sdd.appPath` directory, default
-`src/api/`), with the repo-relative prefix of the verify cwd. A change only under
-`templates/ts-node-web/src/api/` does **not** fail `examples/todo` D6.
-
-**D6 HTTP:** compare route keys in `app.ts` (same `ROUTE_RE` as inventory) base
-vs HEAD. New routes need OpenAPI (or a non-expired base `exemptFrom: openapi`).
-Deleting a route that was in OpenAPI requires removing that path/method and its
-`@op:` in the same diff. Deleting a harness that was `exemptFrom: openapi` +
-`gherkin` on the **base** allowlist passes with no spec touch. `docs/generated`
-and `gauntlet.config.json` never satisfy D6. Do not treat empty OpenAPI/Gherkin
-hunks as the pair.
-
 Generated `gaps.md` does **not** snapshot live D6/D9 text; those findings
 appear in `gauntlet-report.json` and CI logs so D7 stays deterministic.
 
@@ -135,16 +123,18 @@ Allowlist seed entries expire **2026-12-02** — renew before that date
 
 ## Phase 2 / Phase 3 — additional failure modes (roadmap)
 
-### Phase 2 (partial — see ADR-phase2-deps-spec-review.md)
+### Phase 2 (see ADR-phase2-deps-spec-review.md + ADR-phase2-mutation-complexity.md)
 
 **Wired:**
 
 - **deps-lock** — human grant required for `package.json` / `package-lock.json` edits (root, examples/*, templates/*); CI grant via label `deps-approved` → `ALLOW_DEPS_EDIT=1`
 - **spec-review** — `.agent/skills/spec-review.md` devil's-advocate checklist before `implement-feature`; feeds human approval / gaps.md
+- **complexity** — cyclomatic max 10 on `src/domain` (`scripts/complexity.ts`); verify gate on template + Todo
+- **mutation (custom)** — `scripts/mutation.ts` on Todo verify after `unit`; template ships the script but omits the gate for speed (`npm run test:mutation` opt-in)
 
-**Not yet wired (next overnight chunk):**
+**Not yet wired:**
 
-1. **Test invalidation / false positives** — freeze/test-ownership; Stryker on `src/domain`.
+1. **Official Stryker / test-ownership freeze** — package-based mutation; freeze ownership beyond the custom runner.
 2. **Architectural drift** — dependency-cruiser: `src/domain` must not import `src/api` / infra.
 
 ### Phase 3 — cost, supply chain, and ops honesty

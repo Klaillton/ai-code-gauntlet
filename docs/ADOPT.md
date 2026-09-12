@@ -9,7 +9,7 @@ Não exija green total no dia 1. Adote por **camadas** de trabalho humano, mas o
 |--------|--------|--------|
 | 0 | `AGENTS.md` + skills | Sim |
 | 1 | format / lint / typecheck | Ideal |
-| Hardening | protect-specs, no-cheat, spec-sync, docs (+ deps-lock se no template) | Sim (sempre no config) |
+| Hardening | protect-specs, no-cheat, spec-sync, docs, complexity (+ deps-lock se no template; mutation no Todo) | Sim (sempre no config) |
 | 2 | unit + coverage | Ideal |
 | 3 | OpenAPI contract | Se houver API |
 | 4 | Gherkin + Playwright E2E | Poucos fluxos críticos |
@@ -34,17 +34,18 @@ node packages/create-ai-gauntlet/bin/create-ai-gauntlet.js adopt . --gates stati
 ## O que o adopt faz
 
 - Copia `.agent/skills`, `scripts/` completo do template (incluindo
-  `protect-specs.ts`, `no-cheat.ts`, `spec-sync.ts`, `generate-docs.ts`,
-  `check-docs-fresh.ts`, `inventory.ts`, `verify.ts`, …)
-- Se o template tiver `scripts/deps-lock.ts`, copia e **inclui** o gate `deps-lock`
+  `protect-specs.ts`, `no-cheat.ts`, `spec-sync.ts`, `complexity.ts`,
+  `mutation.ts`, `generate-docs.ts`, `check-docs-fresh.ts`, `inventory.ts`,
+  `verify.ts`, `deps-lock.ts`, …)
+- Inclui o gate `deps-lock` quando o template tem `scripts/deps-lock.ts`
 - Escreve `gauntlet.config.json` alinhado a `templates/ts-node-web`:
-  - lista completa de gates (sem `enabled: false`)
+  - lista completa de gates (sem `enabled: false`), incluindo `complexity`
   - `strictness: "lenient"`, `allowSpecEdit: false`
   - `allowDepsEdit: false` quando deps-lock estiver presente
   - allowlist seed do template (ajustar owner/expires no app)
 - Merge **não destrutivo** de scripts no `package.json` (incluindo
-  `protect-specs`, `no-cheat`, `spec-sync`, `docs:generate`, `docs:check`,
-  e `deps-lock` se aplicável)
+  `complexity`, `test:mutation`, `protect-specs`, `no-cheat`, `spec-sync`,
+  `docs:generate`, `docs:check`, e `deps-lock` se aplicável)
 - Copia baseline `docs/generated/` se faltar (gate `docs` / D7)
 - Merge entradas de `.gitignore` para reports e grants locais
 - Não apaga `src/` nem testes existentes
@@ -56,14 +57,17 @@ Greenfield `create` continua a copiar o template inteiro (já hardenado).
 
 | Gate | Script | Função |
 |------|--------|--------|
+| `complexity` | `npm run complexity` | Cyclomatic max 10 em `src/domain` |
 | `protect-specs` | `npm run protect-specs` | Diff em features/OpenAPI/`protectedGlobs` exige grant humano |
 | `deps-lock` | `npm run deps-lock` | Diff em `package.json` / lockfile exige grant (só se no template) |
 | `no-cheat` | `npm run no-cheat` | D9: skip/only/pending, `enabled:false`, coverage floors |
 | `spec-sync` | `npm run spec-sync` | Drift D1–D6, D8 (inventory) |
 | `docs` | `npm run docs:check` | D7: `docs/generated/*` fresco |
+| `mutation` (Todo) | `npm run test:mutation` | Kill-score floor on domain; template is opt-in only |
 
-Ordem típica (template): format → lint → typecheck → protect-specs →
+Ordem típica (template): format → lint → typecheck → complexity → protect-specs →
 [`deps-lock`] → no-cheat → spec-sync → docs → unit → contract → e2e.
+Todo adds `mutation` after `unit`.
 
 ## Grants humanos (não bakear no CI)
 
@@ -76,7 +80,7 @@ Verify falha se o diff tocar specs protegidos **a menos que** um destes exista:
 3. `allowSpecEdit: true` no config (default **false**)
 4. Label de PR **`specs-approved`** — o workflow exporta `ALLOW_SPEC_EDIT=1` só nesse caso
 
-### Deps (`deps-lock`, quando presente — Phase 2 / PR #5)
+### Deps (`deps-lock`, quando presente)
 
 1. `ALLOW_DEPS_EDIT=1`
 2. `.gauntlet/allow-deps-edit` (gitignored)
@@ -84,8 +88,8 @@ Verify falha se o diff tocar specs protegidos **a menos que** um destes exista:
 4. Label de PR **`deps-approved`**
 
 Pushes a `main` e PRs sem label continuam fail-closed. Detalhes:
-[`ADR-spec-sync-drift.md`](./ADR-spec-sync-drift.md) e, após merge do Phase 2,
-`ADR-phase2-deps-spec-review.md`.
+[`ADR-spec-sync-drift.md`](./ADR-spec-sync-drift.md) e
+[`ADR-phase2-deps-spec-review.md`](./ADR-phase2-deps-spec-review.md).
 
 ## Depois do adopt
 

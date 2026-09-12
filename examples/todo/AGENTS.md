@@ -13,7 +13,7 @@ Ship behavior that is:
 1. Specified in human-approved **Gherkin** (`features/**/*.feature`)
 2. Contracted in human-approved **OpenAPI** (`openapi/openapi.yaml`)
 3. Proven by **two test streams**: unit (Vitest) + acceptance (Cucumber + Playwright)
-4. Shaped by **static gates**: TypeScript, ESLint, Prettier, coverage thresholds
+4. Shaped by **static gates**: TypeScript, ESLint, Prettier, coverage, complexity
 5. Kept honest by **spec-sync** (D1–D8), **no-cheat** (D9), **protect-specs**, and **deps-lock**
 
 You implement. Humans defend the specs and dependency manifests.
@@ -161,6 +161,8 @@ npm run test:unit           # Vitest
 npm run test:unit:coverage  # Vitest + thresholds
 npm run test:contract       # OpenAPI runtime contract checks
 npm run test:e2e            # Cucumber + Playwright (starts server)
+npm run complexity          # domain cyclomatic max 10
+npm run test:mutation       # mutation kill-score gate (in Todo verify)
 npm run protect-specs       # fail if specs changed without a human grant
 npm run deps-lock           # fail if package manifests changed without a grant
 npm run no-cheat            # fail on skip/only, disabled gates, lowered floors
@@ -176,14 +178,16 @@ npm run agent:loop          # re-run verify (max iterations via MAX_ITERATIONS)
 1. Prettier check
 2. ESLint
 3. `tsc --noEmit`
-4. protect-specs
-5. deps-lock
-6. no-cheat
-7. spec-sync
-8. docs (D7)
-9. Unit + coverage thresholds
-10. OpenAPI contract (`check-openapi.ts`)
-11. Cucumber + Playwright E2E
+4. complexity
+5. protect-specs
+6. deps-lock
+7. no-cheat
+8. spec-sync
+9. docs (D7)
+10. Unit + coverage thresholds
+11. mutation
+12. OpenAPI contract (`check-openapi.ts`)
+13. Cucumber + Playwright E2E
 
 Root `npm run verify` runs the template then the example. Install browsers
 with `npm run prepare:browsers` first.
@@ -232,14 +236,11 @@ Agents must pause for human review when:
 - Max agent fix iterations exhausted
 - Spec-review found gaps that need product decisions
 
-## Phase 2 remaining / Phase 3 (not wired)
+## Phase 2 / Phase 3
 
-Do not pretend these exist today:
-
-- Mutation testing (Stryker) / test-ownership freeze
-- Architectural drift (dependency-cruiser: domain must not import infra)
-- Perf / query budgets
-- SBOM automation beyond deps-lock
-
-**Wired in Phase 2 start:** deps-lock + spec-review skill.
+**Wired:** deps-lock + spec-review skill; complexity gate; custom mutation gate
+on Todo verify (see `scripts/mutation.ts`). Template keeps mutation opt-in only.
 Gherkin leakage is **D8** and **is** wired.
+
+**Not wired yet:** official Stryker package / test-ownership freeze;
+dependency-cruiser; perf / query budgets; SBOM beyond deps-lock.
