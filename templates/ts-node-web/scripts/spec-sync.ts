@@ -644,26 +644,19 @@ function checkD6(inventory: Inventory): Finding[] {
       }
     }
     const baseFeatureOps = new Set<string>();
-    // List feature files from base tree via name-only is hard; scan head paths and git-show base counterparts.
-    for (const file of walkFeatureFiles(featuresAbs)) {
-      const rel = posixRel(root, file);
-      const raw = gitShow(cwd, base, rel);
-      if (raw) {
-        for (const id of parseFeatureOperationIds(raw)) {
-          baseFeatureOps.add(id);
-        }
-      }
-    }
-    // Also pick up deleted feature files from the diff under features/
-    for (const file of changed) {
-      if (!file.endsWith(".feature") || !isUnderScopedDir(file, prefix, featuresDirRel)) {
+    const baseFeatureFiles =
+      gitLines(cwd, ["ls-tree", "-r", "--name-only", base, "--", withPrefix(prefix, featuresDirRel)]) ??
+      [];
+    for (const file of baseFeatureFiles) {
+      if (!file.endsWith(".feature")) {
         continue;
       }
       const raw = gitShow(cwd, base, file);
-      if (raw) {
-        for (const id of parseFeatureOperationIds(raw)) {
-          baseFeatureOps.add(id);
-        }
+      if (!raw) {
+        continue;
+      }
+      for (const id of parseFeatureOperationIds(raw)) {
+        baseFeatureOps.add(id);
       }
     }
 
