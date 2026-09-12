@@ -29,19 +29,31 @@ const expiredAllow: AllowlistEntry = {
 describe("D6 scope", () => {
   it("doesNotCountTemplateApiWhenExamplePrefix", () => {
     expect(
-      isUnderScopedDir("templates/ts-node-web/src/api/app.ts", "examples/todo", "src/api"),
+      isUnderScopedDir(
+        "templates/ts-node-web/src/api/app.ts",
+        "examples/todo",
+        "src/api",
+      ),
     ).toBe(false);
   });
 
   it("countsExampleApiUnderPrefix", () => {
-    expect(isUnderScopedDir("examples/todo/src/api/app.ts", "examples/todo", "src/api")).toBe(
-      true,
-    );
+    expect(
+      isUnderScopedDir(
+        "examples/todo/src/api/app.ts",
+        "examples/todo",
+        "src/api",
+      ),
+    ).toBe(true);
   });
 
   it("docsGeneratedNeverLooksLikeApiScope", () => {
     expect(
-      isUnderScopedDir("examples/todo/docs/generated/api.md", "examples/todo", "src/api"),
+      isUnderScopedDir(
+        "examples/todo/docs/generated/api.md",
+        "examples/todo",
+        "src/api",
+      ),
     ).toBe(false);
   });
 });
@@ -76,7 +88,9 @@ describe("D6 route delta", () => {
       baseAllowlist: [],
       severity,
     });
-    expect(findings.some((f) => f.message.includes("POST /api/todos"))).toBe(true);
+    expect(findings.some((f) => f.message.includes("POST /api/todos"))).toBe(
+      true,
+    );
   });
 
   it("failsWhenDeletingOpenApiRouteWithoutRemovingYaml", () => {
@@ -98,8 +112,12 @@ describe("D6 route delta", () => {
       baseAllowlist: [],
       severity,
     });
-    expect(findings.some((f) => f.message.includes("still present in OpenAPI"))).toBe(true);
-    expect(findings.some((f) => f.message.includes("@op:createTodo"))).toBe(true);
+    expect(
+      findings.some((f) => f.message.includes("still present in OpenAPI")),
+    ).toBe(true);
+    expect(findings.some((f) => f.message.includes("@op:createTodo"))).toBe(
+      true,
+    );
   });
 
   it("passesWhenDeletingOpenApiRouteAndRemovingYamlAndOp", () => {
@@ -151,14 +169,18 @@ describe("D6 route delta", () => {
       severity,
       today: "2026-09-10",
     });
-    expect(findings.some((f) => f.message.includes("POST /api/test/reset"))).toBe(true);
+    expect(
+      findings.some((f) => f.message.includes("POST /api/test/reset")),
+    ).toBe(true);
   });
 
   it("docsGeneratedAloneDoesNotSatisfyDelta", () => {
     // Pure delta ignores docs; a new public route still fails even if docs changed elsewhere.
     const findings = evaluateApiRouteDelta({
       baseRoutes: parseRouteKeys(`app.get("/health", h)\n`),
-      headRoutes: parseRouteKeys(`app.get("/health", h)\napp.get("/api/x", x)\n`),
+      headRoutes: parseRouteKeys(
+        `app.get("/health", h)\napp.get("/api/x", x)\n`,
+      ),
       baseOpenApi: new Map([["GET /health", "getHealth"]]),
       headOpenApi: new Map([["GET /health", "getHealth"]]),
       baseFeatureOps: new Set(["getHealth"]),
@@ -167,7 +189,9 @@ describe("D6 route delta", () => {
       severity,
     });
     expect(findings.length).toBeGreaterThan(0);
-    expect(findings.every((f) => !f.message.toLowerCase().includes("docs"))).toBe(true);
+    expect(
+      findings.every((f) => !f.message.toLowerCase().includes("docs")),
+    ).toBe(true);
   });
 });
 
@@ -179,16 +203,32 @@ paths:
     get:
       operationId: getHealth
 `;
-    expect(parseOpenApiRouteKeys(yamlText).get("GET /health")).toBe("getHealth");
-    expect(parseFeatureOperationIds("@op:getHealth\nScenario: hi")).toEqual(new Set(["getHealth"]));
+    expect(parseOpenApiRouteKeys(yamlText).get("GET /health")).toBe(
+      "getHealth",
+    );
+    expect(parseFeatureOperationIds("@op:getHealth\nScenario: hi")).toEqual(
+      new Set(["getHealth"]),
+    );
   });
 
   it("baseExemptRespectsExpiry", () => {
-    expect(baseExempt([harnessAllow], "POST", "/api/test/reset", "openapi", "2026-09-10")).toBe(
-      true,
-    );
-    expect(baseExempt([expiredAllow], "POST", "/api/test/reset", "openapi", "2026-09-10")).toBe(
-      false,
-    );
+    expect(
+      baseExempt(
+        [harnessAllow],
+        "POST",
+        "/api/test/reset",
+        "openapi",
+        "2026-09-10",
+      ),
+    ).toBe(true);
+    expect(
+      baseExempt(
+        [expiredAllow],
+        "POST",
+        "/api/test/reset",
+        "openapi",
+        "2026-09-10",
+      ),
+    ).toBe(false);
   });
 });
