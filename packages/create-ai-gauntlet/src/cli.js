@@ -196,6 +196,7 @@ function buildAdoptConfig(name, skeleton) {
     format: { id: "format", command: "npm", args: ["run", "format"] },
     lint: { id: "lint", command: "npm", args: ["run", "lint"] },
     typecheck: { id: "typecheck", command: "npm", args: ["run", "typecheck"] },
+    complexity: { id: "complexity", command: "npm", args: ["run", "complexity"] },
     "protect-specs": { id: "protect-specs", command: "npm", args: ["run", "protect-specs"] },
     "deps-lock": { id: "deps-lock", command: "npm", args: ["run", "deps-lock"] },
     "no-cheat": { id: "no-cheat", command: "npm", args: ["run", "no-cheat"] },
@@ -212,6 +213,7 @@ function buildAdoptConfig(name, skeleton) {
       defaults.format,
       defaults.lint,
       defaults.typecheck,
+      defaults.complexity,
       defaults["protect-specs"],
       ...(hasDepsLock ? [defaults["deps-lock"]] : []),
       defaults["no-cheat"],
@@ -226,7 +228,8 @@ function buildAdoptConfig(name, skeleton) {
     ensureGate(config.gates, defaults.format);
     ensureGate(config.gates, defaults.lint, "format");
     ensureGate(config.gates, defaults.typecheck, "lint");
-    ensureGate(config.gates, defaults["protect-specs"], "typecheck");
+    ensureGate(config.gates, defaults.complexity, "typecheck");
+    ensureGate(config.gates, defaults["protect-specs"], "complexity");
     if (hasDepsLock) {
       ensureGate(config.gates, defaults["deps-lock"], "protect-specs");
     } else {
@@ -282,6 +285,8 @@ function mergeGitignore(target, skeleton) {
     "spec-sync-report.json",
     "no-cheat-report.json",
     "protect-specs-report.json",
+    "mutation-report.json",
+    "complexity-report.json",
     "deps-lock-report.json",
     ".gauntlet/allow-spec-edit",
     ".gauntlet/allow-deps-edit",
@@ -377,7 +382,7 @@ function adoptProject(dir, { gates } = {}) {
   if (hasDepsLock) {
     console.log("  (includes deps-lock — template ships scripts/deps-lock.ts)");
   } else {
-    console.log("  (deps-lock omitted — not on template yet; see Phase 2 / PR #5)");
+    console.log("  (deps-lock omitted — template has no scripts/deps-lock.ts)");
   }
 
   const pkgPath = join(target, "package.json");
@@ -389,6 +394,8 @@ function adoptProject(dir, { gates } = {}) {
       "format:fix": "prettier --write .",
       lint: "eslint .",
       typecheck: "tsc --noEmit",
+      complexity: "tsx scripts/complexity.ts",
+      "test:mutation": "tsx scripts/mutation.ts",
       "test:unit": pkg.scripts["test:unit"] || "vitest run",
       "test:unit:coverage": pkg.scripts["test:unit:coverage"] || "vitest run --coverage",
       "test:contract": "tsx scripts/check-openapi.ts",
