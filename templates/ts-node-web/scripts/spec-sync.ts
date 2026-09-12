@@ -1,11 +1,5 @@
 import { execFileSync } from "node:child_process";
-import {
-  existsSync,
-  readdirSync,
-  readFileSync,
-  statSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import process from "node:process";
@@ -25,15 +19,7 @@ import {
   routeKey,
 } from "./inventory.js";
 
-export type DriftId =
-  | "D1"
-  | "D2"
-  | "D3"
-  | "D5"
-  | "D6"
-  | "D8"
-  | "D9"
-  | "allowlist";
+export type DriftId = "D1" | "D2" | "D3" | "D5" | "D6" | "D8" | "D9" | "allowlist";
 
 export type Finding = {
   id: DriftId;
@@ -54,8 +40,7 @@ const EXEMPT_SET = new Set<string>(EXEMPT_FROM);
 const CSS_LEAK_RE =
   /(?:^|[\s"'`])(?:div|span|button|input|form|ul|li|a|p|h[1-6]|nav|section|header|footer)\.[\w-]+/;
 const ID_LEAK_RE = /(?:^|[\s"'`])#[A-Za-z][\w-]*/;
-const PATH_LEAK_RE =
-  /(?:^|[\s"'`])\/(?:api|health)(?:\/[A-Za-z0-9._~!$&'()*+,;=:@{}/-]*)?/;
+const PATH_LEAK_RE = /(?:^|[\s"'`])\/(?:api|health)(?:\/[A-Za-z0-9._~!$&'()*+,;=:@{}/-]*)?/;
 
 function todayUtc(): string {
   return new Date().toISOString().slice(0, 10);
@@ -67,19 +52,14 @@ function isIsoDate(value: string): boolean {
   }
   const day = value.slice(0, 10);
   const parsed = Date.parse(`${day}T00:00:00.000Z`);
-  return (
-    !Number.isNaN(parsed) && new Date(parsed).toISOString().slice(0, 10) === day
-  );
+  return !Number.isNaN(parsed) && new Date(parsed).toISOString().slice(0, 10) === day;
 }
 
 function isExpired(entry: AllowlistEntry): boolean {
   return entry.expires.slice(0, 10) < todayUtc();
 }
 
-function asAllowlist(raw: unknown): {
-  entries: AllowlistEntry[];
-  findings: Finding[];
-} {
+function asAllowlist(raw: unknown): { entries: AllowlistEntry[]; findings: Finding[] } {
   const findings: Finding[] = [];
   if (raw === undefined) {
     findings.push({
@@ -110,15 +90,7 @@ function asAllowlist(raw: unknown): {
     }
     const rec = item as Record<string, unknown>;
     const missing: string[] = [];
-    for (const field of [
-      "kind",
-      "method",
-      "path",
-      "reason",
-      "exemptFrom",
-      "owner",
-      "expires",
-    ]) {
+    for (const field of ["kind", "method", "path", "reason", "exemptFrom", "owner", "expires"]) {
       if (rec[field] === undefined || rec[field] === "") {
         missing.push(field);
       }
@@ -163,10 +135,7 @@ function asAllowlist(raw: unknown): {
       });
       return;
     }
-    if (
-      !Array.isArray(rec.exemptFrom) ||
-      rec.exemptFrom.some((v) => typeof v !== "string")
-    ) {
+    if (!Array.isArray(rec.exemptFrom) || rec.exemptFrom.some((v) => typeof v !== "string")) {
       findings.push({
         id: "allowlist",
         severity: "fail",
@@ -254,9 +223,7 @@ function checkD1(inventory: Inventory, allowlist: AllowlistEntry[]): Finding[] {
 function checkD2(inventory: Inventory): Finding[] {
   const findings: Finding[] = [];
   const routeKeys = new Set(
-    inventory.routes.map((route) =>
-      routeKey(route.method, route.normalizedPath),
-    ),
+    inventory.routes.map((route) => routeKey(route.method, route.normalizedPath)),
   );
   for (const op of inventory.operations) {
     const key = routeKey(op.method, op.normalizedPath);
@@ -272,11 +239,8 @@ function checkD2(inventory: Inventory): Finding[] {
 }
 
 function checkD3(inventory: Inventory, allowlist: AllowlistEntry[]): Finding[] {
-  const tagged = new Set(
-    inventory.scenarios.flatMap((scenario) => scenario.operationIds),
-  );
-  const severity: Finding["severity"] =
-    inventory.strictness === "strict" ? "fail" : "warn";
+  const tagged = new Set(inventory.scenarios.flatMap((scenario) => scenario.operationIds));
+  const severity: Finding["severity"] = inventory.strictness === "strict" ? "fail" : "warn";
   const findings: Finding[] = [];
   for (const op of inventory.operations) {
     const operationId = op.operationId;
@@ -311,10 +275,7 @@ function checkD5(inventory: Inventory, allowlist: AllowlistEntry[]): Finding[] {
       continue;
     }
     const listed = allowlist.find(
-      (entry) =>
-        entry.kind === "internal" &&
-        entry.path === mod.path &&
-        !isExpired(entry),
+      (entry) => entry.kind === "internal" && entry.path === mod.path && !isExpired(entry),
     );
     if (listed?.exemptFrom.includes("unit")) {
       continue;
@@ -380,8 +341,7 @@ function gitLines(cwd: string, args: string[]): string[] | undefined {
   }
 }
 
-const ROUTE_RE =
-  /\bapp\.(get|post|put|patch|delete|options|head)\(\s*(['"`])([^'"`]+)\2/gi;
+const ROUTE_RE = /\bapp\.(get|post|put|patch|delete|options|head)\(\s*(['"`])([^'"`]+)\2/gi;
 const METHOD_SET = new Set<string>(HTTP_METHODS);
 
 function posixRel(from: string, to: string): string {
@@ -393,11 +353,7 @@ function repoRoot(cwd: string): string | undefined {
   return lines?.[0];
 }
 
-function gitShow(
-  cwd: string,
-  ref: string,
-  repoRelPath: string,
-): string | undefined {
+function gitShow(cwd: string, ref: string, repoRelPath: string): string | undefined {
   try {
     return execFileSync("git", ["show", `${ref}:${repoRelPath}`], {
       cwd,
@@ -430,14 +386,9 @@ export function parseRouteKeys(source: string): Set<string> {
   return keys;
 }
 
-export function parseOpenApiRouteKeys(
-  raw: string,
-): Map<string, string | undefined> {
+export function parseOpenApiRouteKeys(raw: string): Map<string, string | undefined> {
   const doc = yaml.load(raw) as {
-    paths?: Record<
-      string,
-      Record<string, { operationId?: string } | undefined> | undefined
-    >;
+    paths?: Record<string, Record<string, { operationId?: string } | undefined> | undefined>;
   };
   const out = new Map<string, string | undefined>();
   for (const [path, item] of Object.entries(doc.paths ?? {})) {
@@ -496,11 +447,7 @@ function withPrefix(prefix: string, rel: string): string {
   return prefix ? `${prefix}/${rel}` : rel;
 }
 
-export function isUnderScopedDir(
-  file: string,
-  prefix: string,
-  dirRel: string,
-): boolean {
+export function isUnderScopedDir(file: string, prefix: string, dirRel: string): boolean {
   const base = withPrefix(prefix, dirRel).replace(/\/+$/, "");
   return file === base || file.startsWith(`${base}/`);
 }
@@ -551,11 +498,7 @@ export function evaluateApiRouteDelta(input: ApiDeltaInput): Finding[] {
           message: `D6 deleted route ${key} still present in OpenAPI; remove it in the same diff.`,
         });
       }
-      if (
-        opId &&
-        input.baseFeatureOps.has(opId) &&
-        input.headFeatureOps.has(opId)
-      ) {
+      if (opId && input.baseFeatureOps.has(opId) && input.headFeatureOps.has(opId)) {
         findings.push({
           id: "D6",
           severity: input.severity,
@@ -564,20 +507,8 @@ export function evaluateApiRouteDelta(input: ApiDeltaInput): Finding[] {
       }
       continue;
     }
-    const exemptOpen = baseExempt(
-      input.baseAllowlist,
-      method,
-      path,
-      "openapi",
-      today,
-    );
-    const exemptGherkin = baseExempt(
-      input.baseAllowlist,
-      method,
-      path,
-      "gherkin",
-      today,
-    );
+    const exemptOpen = baseExempt(input.baseAllowlist, method, path, "openapi", today);
+    const exemptGherkin = baseExempt(input.baseAllowlist, method, path, "gherkin", today);
     if (exemptOpen && exemptGherkin) {
       continue;
     }
@@ -611,8 +542,7 @@ function checkD6(inventory: Inventory): Finding[] {
       {
         id: "D6",
         severity: inventory.strictness === "strict" ? "fail" : "warn",
-        message:
-          "D6 git is required to prove src changes have matching specs/tests (fail-closed).",
+        message: "D6 git is required to prove src changes have matching specs/tests (fail-closed).",
       },
     ];
   }
@@ -623,8 +553,7 @@ function checkD6(inventory: Inventory): Finding[] {
       {
         id: "D6",
         severity: inventory.strictness === "strict" ? "fail" : "warn",
-        message:
-          "D6 git is required to prove src changes have matching specs/tests (fail-closed).",
+        message: "D6 git is required to prove src changes have matching specs/tests (fail-closed).",
       },
     ];
   }
@@ -641,8 +570,7 @@ function checkD6(inventory: Inventory): Finding[] {
       {
         id: "D6",
         severity: "info",
-        message:
-          "D6: git is available but no diff vs HEAD/main; nothing to check.",
+        message: "D6: git is available but no diff vs HEAD/main; nothing to check.",
       },
     ];
   }
@@ -659,20 +587,13 @@ function checkD6(inventory: Inventory): Finding[] {
   const featuresDirRel = inventory.config.sdd?.featuresDir ?? "features";
   const configRel = "gauntlet.config.json";
 
-  const severity: Finding["severity"] =
-    inventory.strictness === "strict" ? "fail" : "warn";
+  const severity: Finding["severity"] = inventory.strictness === "strict" ? "fail" : "warn";
   const changed = [...files];
   const findings: Finding[] = [];
 
-  const srcApiChanged = changed.some((file) =>
-    isUnderScopedDir(file, prefix, apiDirRel),
-  );
-  const srcDomainChanged = changed.some((file) =>
-    isUnderScopedDir(file, prefix, domainDirRel),
-  );
-  const unitChanged = changed.some((file) =>
-    isUnderScopedDir(file, prefix, unitDirRel),
-  );
+  const srcApiChanged = changed.some((file) => isUnderScopedDir(file, prefix, apiDirRel));
+  const srcDomainChanged = changed.some((file) => isUnderScopedDir(file, prefix, domainDirRel));
+  const unitChanged = changed.some((file) => isUnderScopedDir(file, prefix, unitDirRel));
 
   if (srcDomainChanged && !unitChanged) {
     findings.push({
@@ -686,15 +607,11 @@ function checkD6(inventory: Inventory): Finding[] {
     const appRepoRel = withPrefix(prefix, appRel);
     const appAbs = resolve(cwd, appRel);
     const baseRef = resolveBaseRef(cwd);
-    const mergeBase = baseRef
-      ? gitLines(cwd, ["merge-base", baseRef, "HEAD"])?.[0]
-      : undefined;
+    const mergeBase = baseRef ? gitLines(cwd, ["merge-base", baseRef, "HEAD"])?.[0] : undefined;
 
     const dirtyVsHead = Boolean(
-      (gitLines(cwd, ["diff", "--name-only", "HEAD", "--", appRel]) ?? [])
-        .length ||
-        (gitLines(cwd, ["diff", "--name-only", "--cached", "--", appRel]) ?? [])
-          .length,
+      (gitLines(cwd, ["diff", "--name-only", "HEAD", "--", appRel]) ?? []).length ||
+        (gitLines(cwd, ["diff", "--name-only", "--cached", "--", appRel]) ?? []).length,
     );
     // Working-tree edits: compare to HEAD. Committed PR edits: compare to merge-base.
     const base = dirtyVsHead ? "HEAD" : (mergeBase ?? "HEAD");
@@ -704,15 +621,13 @@ function checkD6(inventory: Inventory): Finding[] {
       ? readFileSync(appAbs, "utf8")
       : (gitShow(cwd, "HEAD", appRepoRel) ?? "");
 
-    const baseOpenRaw =
-      gitShow(cwd, base, withPrefix(prefix, openapiRel)) ?? "";
+    const baseOpenRaw = gitShow(cwd, base, withPrefix(prefix, openapiRel)) ?? "";
     const headOpenAbs = resolve(cwd, openapiRel);
     const headOpenRaw = existsSync(headOpenAbs)
       ? readFileSync(headOpenAbs, "utf8")
       : (gitShow(cwd, "HEAD", withPrefix(prefix, openapiRel)) ?? "");
 
-    const baseConfigRaw =
-      gitShow(cwd, base, withPrefix(prefix, configRel)) ?? "{}";
+    const baseConfigRaw = gitShow(cwd, base, withPrefix(prefix, configRel)) ?? "{}";
     let baseAllowlist: AllowlistEntry[] = [];
     try {
       const parsed = JSON.parse(baseConfigRaw) as { allowlist?: unknown };
@@ -753,16 +668,11 @@ function checkD6(inventory: Inventory): Finding[] {
 
     const baseRoutes = parseRouteKeys(baseApp);
     const headRoutes = parseRouteKeys(headApp);
-    const baseOpenApi = baseOpenRaw
-      ? parseOpenApiRouteKeys(baseOpenRaw)
-      : new Map();
-    const headOpenApi = headOpenRaw
-      ? parseOpenApiRouteKeys(headOpenRaw)
-      : new Map();
+    const baseOpenApi = baseOpenRaw ? parseOpenApiRouteKeys(baseOpenRaw) : new Map();
+    const headOpenApi = headOpenRaw ? parseOpenApiRouteKeys(headOpenRaw) : new Map();
 
     const appTouched = changed.some(
-      (file) =>
-        file === appRepoRel || file.endsWith(`/${appRel}`) || file === appRel,
+      (file) => file === appRepoRel || file.endsWith(`/${appRel}`) || file === appRel,
     );
 
     if (appTouched || baseRoutes.size > 0 || headRoutes.size > 0) {
@@ -783,31 +693,23 @@ function checkD6(inventory: Inventory): Finding[] {
     // Other files under scoped src/api/ without app.ts touch and without route-key delta:
     // fail-closed unless OpenAPI or Gherkin under this app also changed.
     const routeDeltaEmpty =
-      baseRoutes.size === headRoutes.size &&
-      [...baseRoutes].every((k) => headRoutes.has(k));
+      baseRoutes.size === headRoutes.size && [...baseRoutes].every((k) => headRoutes.has(k));
     const onlyNonAppApi = srcApiChanged && !appTouched && routeDeltaEmpty;
     if (onlyNonAppApi) {
       const openapiDirRel = dirname(openapiRel).split(sep).join("/");
       const openapiTouched = changed.some(
         (file) =>
           file === withPrefix(prefix, openapiRel) ||
-          isUnderScopedDir(
-            file,
-            prefix,
-            openapiDirRel === "." ? "openapi" : openapiDirRel,
-          ),
+          isUnderScopedDir(file, prefix, openapiDirRel === "." ? "openapi" : openapiDirRel),
       );
       const featuresChanged = changed.some(
-        (file) =>
-          file.endsWith(".feature") &&
-          isUnderScopedDir(file, prefix, featuresDirRel),
+        (file) => file.endsWith(".feature") && isUnderScopedDir(file, prefix, featuresDirRel),
       );
       if (!openapiTouched && !featuresChanged) {
         findings.push({
           id: "D6",
           severity,
-          message:
-            "D6 HTTP/src/api changed without OpenAPI or Gherkin in the same diff.",
+          message: "D6 HTTP/src/api changed without OpenAPI or Gherkin in the same diff.",
         });
       }
     }
@@ -825,9 +727,7 @@ function checkD6(inventory: Inventory): Finding[] {
 
 export function runSpecSync(cwd = process.cwd()): SpecSyncResult {
   const inventory = buildInventory(cwd);
-  const { entries, findings: allowlistFindings } = asAllowlist(
-    inventory.config.allowlist,
-  );
+  const { entries, findings: allowlistFindings } = asAllowlist(inventory.config.allowlist);
   const findings: Finding[] = [
     ...allowlistFindings,
     ...checkD1(inventory, entries),
@@ -843,16 +743,9 @@ export function runSpecSync(cwd = process.cwd()): SpecSyncResult {
 }
 
 export function printFindings(result: SpecSyncResult): void {
-  console.info(
-    `spec-sync (${result.strictness}) - ${result.findings.length} finding(s)`,
-  );
+  console.info(`spec-sync (${result.strictness}) - ${result.findings.length} finding(s)`);
   for (const finding of result.findings) {
-    const mark =
-      finding.severity === "fail"
-        ? "x"
-        : finding.severity === "warn"
-          ? "!"
-          : "i";
+    const mark = finding.severity === "fail" ? "x" : finding.severity === "warn" ? "!" : "i";
     const log = finding.severity === "fail" ? console.error : console.info;
     log(`  ${mark} [${finding.id}/${finding.severity}] ${finding.message}`);
   }
@@ -863,30 +756,20 @@ export function printFindings(result: SpecSyncResult): void {
   }
 }
 
-export function writeSpecSyncReport(
-  result: SpecSyncResult,
-  cwd = process.cwd(),
-): void {
+export function writeSpecSyncReport(result: SpecSyncResult, cwd = process.cwd()): void {
   const payload = {
     ok: result.ok,
     strictness: result.strictness,
     generatedAt: new Date().toISOString(),
     findings: result.findings,
-    routes: result.inventory.routes.map((route) =>
-      routeKey(route.method, route.path),
-    ),
-    operationIds: result.inventory.operations
-      .map((op) => op.operationId)
-      .filter(Boolean),
+    routes: result.inventory.routes.map((route) => routeKey(route.method, route.path)),
+    operationIds: result.inventory.operations.map((op) => op.operationId).filter(Boolean),
     scenarios: result.inventory.scenarios.map((scenario: FeatureScenario) => ({
       name: scenario.name,
       tags: scenario.tags,
     })),
   };
-  writeFileSync(
-    resolve(cwd, "spec-sync-report.json"),
-    `${JSON.stringify(payload, null, 2)}\n`,
-  );
+  writeFileSync(resolve(cwd, "spec-sync-report.json"), `${JSON.stringify(payload, null, 2)}\n`);
 }
 
 function isDirectRun(): boolean {
