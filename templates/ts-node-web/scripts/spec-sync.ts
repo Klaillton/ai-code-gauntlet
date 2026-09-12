@@ -581,7 +581,9 @@ function checkD6(inventory: Inventory): Finding[] {
   const domainDirRel = inventory.config.sdd?.domainDir ?? "src/domain";
   const unitDirRel = inventory.config.sdd?.unitDir ?? "tests/unit";
   const openapiRel =
-    inventory.config.sdd?.openapiPath ?? inventory.config.contract?.openapiPath ?? "openapi/openapi.yaml";
+    inventory.config.sdd?.openapiPath ??
+    inventory.config.contract?.openapiPath ??
+    "openapi/openapi.yaml";
   const featuresDirRel = inventory.config.sdd?.featuresDir ?? "features";
   const configRel = "gauntlet.config.json";
 
@@ -605,13 +607,11 @@ function checkD6(inventory: Inventory): Finding[] {
     const appRepoRel = withPrefix(prefix, appRel);
     const appAbs = resolve(cwd, appRel);
     const baseRef = resolveBaseRef(cwd);
-    const mergeBase = baseRef
-      ? gitLines(cwd, ["merge-base", baseRef, "HEAD"])?.[0]
-      : undefined;
+    const mergeBase = baseRef ? gitLines(cwd, ["merge-base", baseRef, "HEAD"])?.[0] : undefined;
 
     const dirtyVsHead = Boolean(
       (gitLines(cwd, ["diff", "--name-only", "HEAD", "--", appRel]) ?? []).length ||
-        (gitLines(cwd, ["diff", "--name-only", "--cached", "--", appRel]) ?? []).length,
+      (gitLines(cwd, ["diff", "--name-only", "--cached", "--", appRel]) ?? []).length,
     );
     // Working-tree edits: compare to HEAD. Committed PR edits: compare to merge-base.
     const base = dirtyVsHead ? "HEAD" : (mergeBase ?? "HEAD");
@@ -645,8 +645,14 @@ function checkD6(inventory: Inventory): Finding[] {
     }
     const baseFeatureOps = new Set<string>();
     const baseFeatureFiles =
-      gitLines(cwd, ["ls-tree", "-r", "--name-only", base, "--", withPrefix(prefix, featuresDirRel)]) ??
-      [];
+      gitLines(cwd, [
+        "ls-tree",
+        "-r",
+        "--name-only",
+        base,
+        "--",
+        withPrefix(prefix, featuresDirRel),
+      ]) ?? [];
     for (const file of baseFeatureFiles) {
       if (!file.endsWith(".feature")) {
         continue;

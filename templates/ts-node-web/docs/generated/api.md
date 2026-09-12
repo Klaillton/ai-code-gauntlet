@@ -17,4 +17,3 @@
 | --- | --- | --- | --- |
 | GET | / | no | static-ui |
 | GET | /health | yes | — |
-| POST | /api/test/reset | no | test-harness |

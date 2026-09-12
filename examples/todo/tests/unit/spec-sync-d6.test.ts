@@ -34,9 +34,7 @@ describe("D6 scope", () => {
   });
 
   it("countsExampleApiUnderPrefix", () => {
-    expect(isUnderScopedDir("examples/todo/src/api/app.ts", "examples/todo", "src/api")).toBe(
-      true,
-    );
+    expect(isUnderScopedDir("examples/todo/src/api/app.ts", "examples/todo", "src/api")).toBe(true);
   });
 
   it("docsGeneratedNeverLooksLikeApiScope", () => {
