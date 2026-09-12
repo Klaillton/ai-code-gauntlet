@@ -13,7 +13,7 @@ dependency-cruiser:
 1. **deps-lock** — hard gate (same family as protect-specs)
 2. **spec-review** — agent skill (process), run before `implement-feature`
 
-Mutation testing and architectural drift remain a later overnight chunk.
+Architectural drift (dependency-cruiser) and official Stryker remain later; custom mutation + complexity shipped in ADR-phase2-mutation-complexity.md.
 
 ## deps-lock
 
@@ -85,11 +85,11 @@ Checklist covers: edges, security/abuse, contract ambiguity, testability
 
 - Dependency edits need an explicit human grant (label or env)
 - New behavior work starts with a documented devil's-advocate review
-- Stryker / complexity / dependency-cruiser stay out of this chunk
+- Official Stryker / dependency-cruiser stay out of this chunk (complexity + custom mutation are a sibling ADR)
 - Does not weaken D1–D9, protect-specs, or coverage floors
 
 ## Out of scope (next overnight)
 
-- Stryker mutation / test-ownership freeze
+- Official Stryker mutation / test-ownership freeze
 - dependency-cruiser (domain must not import infra)
 - Perf budgets / SBOM automation beyond this gate

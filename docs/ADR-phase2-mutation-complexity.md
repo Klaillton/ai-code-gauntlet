@@ -4,7 +4,7 @@
 - **Date:** 2026-09-03
 - **Context:** AI Code Gauntlet kit (`Klaillton/ai-code-gauntlet`)
 - **Related:** [ADR-spec-sync-drift.md](./ADR-spec-sync-drift.md)
-- **Does not include:** deps-lock / spec-review (open PR #5)
+- **Does not include:** deps-lock / spec-review (shipped separately; see ADR-phase2-deps-spec-review.md)
 
 ## Decision
 
@@ -13,12 +13,10 @@ Wire the next Phase 2 honesty controls on `src/domain`:
 1. **Mutation testing** — Stryker-*equivalent* gate (`test:mutation` / `mutation`)
 2. **Complexity budget** — deterministic cyclomatic max per domain function
 
-Official Stryker (`@stryker-mutator/*`) is **not** added as a package in this
-change. This PR is authored via GitHub MCP and cannot run the suite to
-measure a live kill score. A lockfile bump would also collide with open
-PR #5 (`deps-lock`). The runner uses the TypeScript compiler API (already
-a dependency) plus existing Vitest. Operators match Stryker's core set:
-equality, relational, logical, boolean literals, unary-not, numeric +1.
+Official Stryker (`@stryker-mutator/*`) is **not** added as a package.
+The runner uses the TypeScript compiler API (already a dependency) plus
+existing Vitest. Operators match Stryker's core set: equality, relational,
+logical, boolean literals, unary-not, numeric +1.
 
 **TODO:** after CI measures the real kill score, raise the threshold toward
 80%+ and/or adopt official Stryker. Do not lower coverage floors to make
@@ -95,9 +93,8 @@ HTTP paths. No change in this PR.
 - God-functions in `src/domain` fail `complexity` / lint.
 - Template verify stays fast (no mutation gate).
 - Coverage floors in `vitest.config.ts` are unchanged (80/80/70/80).
-- Merge **after** PR #5: rebase this branch onto main, keep both gate
-  sets (`deps-lock` then later `complexity` / `mutation`). This PR does
-  not duplicate deps-lock or spec-review.
+- Keep both gate sets together on main (`deps-lock` plus `complexity` /
+  Todo `mutation`). This ADR does not duplicate deps-lock or spec-review.
 
 ## Residual risks
 
@@ -116,7 +113,7 @@ HTTP paths. No change in this PR.
 ## Out of scope
 
 - Official `@stryker-mutator/core` + lockfile (follow-up; needs
-  `deps-approved` after PR #5)
+  `deps-approved`)
 - dependency-cruiser / architectural drift
 - CRAP-with-coverage (needs coverage combo)
-- deps-lock / spec-review (PR #5)
+- deps-lock / spec-review (see sibling ADR)
