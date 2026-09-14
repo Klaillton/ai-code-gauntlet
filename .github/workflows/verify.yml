@@ -11,6 +11,10 @@ concurrency:
   group: verify-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  actions: write
+
 jobs:
   template:
     name: Template ts-node-web
@@ -20,12 +24,12 @@ jobs:
       run:
         working-directory: templates/ts-node-web
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
       - name: Fetch main for spec diffs
-        run: git fetch --no-tags origin main:refs/remotes/origin/main || git fetch origin main || true
-      - uses: actions/setup-node@v4
+        run: git fetch --no-tags origin main:refs/remotes/origin/main || git fetch origin main
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "22"
           cache: npm
@@ -39,7 +43,7 @@ jobs:
           ALLOW_SPEC_EDIT: ${{ contains(github.event.pull_request.labels.*.name, 'specs-approved') && '1' || '' }}
           ALLOW_DEPS_EDIT: ${{ contains(github.event.pull_request.labels.*.name, 'deps-approved') && '1' || '' }}
       - if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: gauntlet-template
           path: templates/ts-node-web/gauntlet-report.json
@@ -53,12 +57,12 @@ jobs:
       run:
         working-directory: examples/todo
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
       - name: Fetch main for spec diffs
-        run: git fetch --no-tags origin main:refs/remotes/origin/main || git fetch origin main || true
-      - uses: actions/setup-node@v4
+        run: git fetch --no-tags origin main:refs/remotes/origin/main || git fetch origin main
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "22"
           cache: npm
@@ -72,13 +76,13 @@ jobs:
           ALLOW_SPEC_EDIT: ${{ contains(github.event.pull_request.labels.*.name, 'specs-approved') && '1' || '' }}
           ALLOW_DEPS_EDIT: ${{ contains(github.event.pull_request.labels.*.name, 'deps-approved') && '1' || '' }}
       - if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: coverage-todo
           path: examples/todo/coverage/
           if-no-files-found: ignore
       - if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: gauntlet-todo
           path: |
