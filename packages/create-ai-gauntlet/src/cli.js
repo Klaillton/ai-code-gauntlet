@@ -124,7 +124,7 @@ function gateEnabled(id, enabledIds) {
   return expanded.has(id);
 }
 
-const HARDENING_GATE_IDS = ["complexity", "protect-specs", "no-cheat", "spec-sync", "docs"];
+const HARDENING_GATE_IDS = ["complexity", "protect-specs", "secrets-scan", "no-cheat", "spec-sync", "docs"];
 
 function stripEnabledFlags(gates) {
   for (const gate of gates) {
@@ -199,6 +199,7 @@ function buildAdoptConfig(name, skeleton) {
     complexity: { id: "complexity", command: "npm", args: ["run", "complexity"] },
     "protect-specs": { id: "protect-specs", command: "npm", args: ["run", "protect-specs"] },
     "deps-lock": { id: "deps-lock", command: "npm", args: ["run", "deps-lock"] },
+    "secrets-scan": { id: "secrets-scan", command: "npm", args: ["run", "secrets-scan"] },
     "no-cheat": { id: "no-cheat", command: "npm", args: ["run", "no-cheat"] },
     "spec-sync": { id: "spec-sync", command: "npm", args: ["run", "spec-sync"] },
     docs: { id: "docs", command: "npm", args: ["run", "docs:check"] },
@@ -216,6 +217,7 @@ function buildAdoptConfig(name, skeleton) {
       defaults.complexity,
       defaults["protect-specs"],
       ...(hasDepsLock ? [defaults["deps-lock"]] : []),
+      defaults["secrets-scan"],
       defaults["no-cheat"],
       defaults["spec-sync"],
       defaults.docs,
@@ -235,7 +237,8 @@ function buildAdoptConfig(name, skeleton) {
     } else {
       config.gates = config.gates.filter((g) => g.id !== "deps-lock");
     }
-    ensureGate(config.gates, defaults["no-cheat"], hasDepsLock ? "deps-lock" : "protect-specs");
+    ensureGate(config.gates, defaults["secrets-scan"], hasDepsLock ? "deps-lock" : "protect-specs");
+    ensureGate(config.gates, defaults["no-cheat"], "secrets-scan");
     ensureGate(config.gates, defaults["spec-sync"], "no-cheat");
     ensureGate(config.gates, defaults.docs, "spec-sync");
     ensureGate(config.gates, defaults.unit, "docs");
@@ -288,8 +291,10 @@ function mergeGitignore(target, skeleton) {
     "mutation-report.json",
     "complexity-report.json",
     "deps-lock-report.json",
+    "secrets-scan-report.json",
     ".gauntlet/allow-spec-edit",
     ".gauntlet/allow-deps-edit",
+    ".gauntlet/allow-secrets-paths",
   ];
   if (!existsSync(to)) {
     if (existsSync(from)) {
@@ -403,6 +408,7 @@ function adoptProject(dir, { gates } = {}) {
       "spec-sync": "tsx scripts/spec-sync.ts",
       "no-cheat": "tsx scripts/no-cheat.ts",
       "protect-specs": "tsx scripts/protect-specs.ts",
+      "secrets-scan": "tsx scripts/secrets-scan.ts",
       "docs:generate": "tsx scripts/generate-docs.ts",
       "docs:check": "tsx scripts/check-docs-fresh.ts",
       verify: "tsx scripts/verify.ts",

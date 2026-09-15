@@ -131,6 +131,7 @@ Allowlist seed entries expire **2026-12-02** — renew before that date
 - **spec-review** — `.agent/skills/spec-review.md` devil's-advocate checklist before `implement-feature`; feeds human approval / gaps.md
 - **complexity** — cyclomatic max 10 on `src/domain` (`scripts/complexity.ts`); verify gate on template + Todo
 - **mutation (custom)** — `scripts/mutation.ts` on Todo verify after `unit`; template ships the script but omits the gate for speed (`npm run test:mutation` opt-in)
+- **secrets-scan** — credentials / private keys / high-confidence PII; see [ADR-secrets-privacy.md](./ADR-secrets-privacy.md)
 
 **Not yet wired:**
 

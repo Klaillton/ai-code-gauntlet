@@ -42,6 +42,8 @@ Work the list. Mark each item **ok**, **gap**, or **n/a** with a one-line note.
 - [ ] Authn / authz assumptions stated (or explicitly out of scope)
 - [ ] Injection / XSS / path traversal surfaces called out
 - [ ] PII / secrets handling and logging redaction
+- [ ] No real credentials, `.env`, or private keys in specs/examples
+- [ ] Fixture / Gherkin data is synthetic (`Alice`, `+15550100`, `user@example.com`)
 - [ ] Rate limits / abuse (spam create, bulk delete)
 - [ ] Test-only or admin routes are allowlisted with expiry, not product defaults
 

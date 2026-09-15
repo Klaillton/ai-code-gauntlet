@@ -29,11 +29,13 @@ Use when the human asks to implement a feature that already has (or will have) G
    - `npm run test:unit`
    - `npm run test:contract` (if HTTP touched)
    - `npm run test:e2e`
-   - `npm run verify` before claiming done
+   - `npm run verify` before claiming done (includes secrets-scan)
 
 5. **Stop conditions**
    - If Gherkin must change → ask human
    - If OpenAPI breaking change → ask human
+   - If secrets-scan fails → stop and ask human (do not invent credentials,
+     do not `git add -f .env`, do not add allowlist entries)
    - If still red after 5 focused fix cycles → hand back with failing gate output
 
 ## Output to human

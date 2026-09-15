@@ -14,6 +14,8 @@ Do not trust agent intelligence. Surround it with deterministic constraints:
 6. Agent does not rewrite specs to go green
 7. spec-sync inventories routes, OpenAPI, `@op` tags, domain vs unit (D1-D8)
 8. no-cheat fails skip/only, disabled gates, and lowered coverage floors
+9. secrets-scan fails credentials, private keys, and high-confidence PII dumps
+   (no standing `ALLOW_SECRETS`; reports must not echo secret values)
 
 See [ADR-spec-sync-drift.md](./ADR-spec-sync-drift.md).
 
@@ -24,6 +26,7 @@ See [ADR-spec-sync-drift.md](./ADR-spec-sync-drift.md).
 - OpenAPI contract checks + spec-sync inventory
 - no-cheat + protect-specs (hard tools)
 - deps-lock (manifest grant) + spec-review skill
+- secrets-scan (credentials / private keys / conservative PII)
 - Complexity gate on `src/domain` (max 10)
 - Mutation gate on Todo (`scripts/mutation.ts`); template keeps `test:mutation` opt-in only
 - ESLint + Prettier + TypeScript

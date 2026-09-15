@@ -10,6 +10,8 @@ Use when verify/CI is red and the agent must restore the gauntlet.
    - unit/coverage → fix code or add real tests (never delete coverage config)
    - contract → align implementation to OpenAPI (not the reverse, unless human asked)
    - e2e → fix app or step defs; **do not** edit `.feature` without permission
+   - secrets-scan → remove the secret/PII; **do not** add allowlist entries or
+     `git add -f .env`
 3. Apply the smallest fix
 4. Re-run the failed gate, then full `npm run verify`
 5. Repeat up to **5** cycles
