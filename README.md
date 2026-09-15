@@ -9,7 +9,7 @@ This repo is **not** only a Todo app. It is:
 | [`templates/ts-node-web`](./templates/ts-node-web) | **Greenfield skeleton** (health-only, lenient D3) |
 | [`examples/todo`](./examples/todo) | **Full demo** that proves every gate (strict) |
 | [`packages/create-ai-gauntlet`](./packages/create-ai-gauntlet) | CLI: `create` + `adopt` |
-| [`docs/`](./docs) | Premisses, greenfield, adopt, original plan |
+| [`docs/`](./docs) | Premises, greenfield, adopt, original plan |
 | [`docs/ADR-spec-sync-drift.md`](./docs/ADR-spec-sync-drift.md) | Spec-sync drift catalog (D1-D9) |
 | [`docs/ADR-phase2-deps-spec-review.md`](./docs/ADR-phase2-deps-spec-review.md) | Phase 2: deps-lock + spec-review |
 | [`docs/ADR-phase2-mutation-complexity.md`](./docs/ADR-phase2-mutation-complexity.md) | Phase 2: mutation + complexity |
@@ -68,7 +68,7 @@ npm run prepare:browsers
 npm run verify   # template + example; needs Chromium
 ```
 
-## Premisses
+## Premises
 
 See [docs/PREMISES.md](./docs/PREMISES.md) and [docs/original-plan.md](./docs/original-plan.md).
 

@@ -124,7 +124,7 @@ function gateEnabled(id, enabledIds) {
   return expanded.has(id);
 }
 
-const HARDENING_GATE_IDS = ["protect-specs", "no-cheat", "spec-sync", "docs"];
+const HARDENING_GATE_IDS = ["complexity", "protect-specs", "no-cheat", "spec-sync", "docs"];
 
 function stripEnabledFlags(gates) {
   for (const gate of gates) {

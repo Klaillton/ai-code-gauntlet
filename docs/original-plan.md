@@ -1,5 +1,7 @@
 # O “filtro” do Uncle Bob para código gerado por IA
 
+> **Historical research note (Phase-0/1 snapshot).** Live kit status is in [`PREMISES.md`](./PREMISES.md), the Phase-2 ADRs, and each app’s `AGENTS.md` — mutation, complexity, protect-specs, deps-lock, and no-cheat are already wired. Do not treat §§9.8–9.11 “falta …” rows as current roadmap.
+
 Pesquisa sintética das práticas que **Robert C. Martin (Uncle Bob)** propõe/usa para que código de agentes de IA seja considerado válido. Fontes: `empire-2025` (AGENTS.md + tooling), `Acceptance-Pipeline-Specification`, série *Clean AI: Agentic Discipline* (Clean Coders), posts em X (jul/2026), e formalizações da comunidade (DAE / swingerman).
 
 **Tese central:** não confiar na “inteligência” do agente; **cercá-lo de constraints determinísticos** (specs + métricas + testes em múltiplas camadas). O humano deixa de ser revisor linha a linha do código e vira dono do **comportamento esperado** e do **gauntlet de verificação**.
