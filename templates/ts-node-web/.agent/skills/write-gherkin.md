@@ -33,6 +33,7 @@ Feature: <capability>
 - HTTP methods/paths in business scenarios (API-focused scenarios may mention “via the API” but not headers/JSON keys unless essential)
 - Database table/column names
 - “click the blue button in the navbar”
+- Real names + addresses + phones + national IDs (use synthetic data)
 
 ## Handoff
 

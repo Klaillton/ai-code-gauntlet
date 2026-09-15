@@ -16,13 +16,14 @@
 4. `complexity` (enabled) — `npm run complexity`
 5. `protect-specs` (enabled) — `npm run protect-specs`
 6. `deps-lock` (enabled) — `npm run deps-lock`
-7. `no-cheat` (enabled) — `npm run no-cheat`
-8. `spec-sync` (enabled) — `npm run spec-sync`
-9. `docs` (enabled) — `npm run docs:check`
-10. `unit` (enabled) — `npm run test:unit:coverage`
-11. `mutation` (enabled) — `npm run test:mutation`
-12. `contract` (enabled) — `npm run test:contract`
-13. `e2e` (enabled) — `npm run test:e2e`
+7. `secrets-scan` (enabled) — `npm run secrets-scan`
+8. `no-cheat` (enabled) — `npm run no-cheat`
+9. `spec-sync` (enabled) — `npm run spec-sync`
+10. `docs` (enabled) — `npm run docs:check`
+11. `unit` (enabled) — `npm run test:unit:coverage`
+12. `mutation` (enabled) — `npm run test:mutation`
+13. `contract` (enabled) — `npm run test:contract`
+14. `e2e` (enabled) — `npm run test:e2e`
 
 ## Allowlist
 
@@ -38,4 +39,4 @@
 - Allowlist kinds: `test-harness` | `static-ui` | `internal` | `wip-red`
 - Required allowlist fields: kind, method, path, reason, exemptFrom, owner, expires
 - Seed allowlist entries expire **2026-12-02**; renew before that date (expired entries do not exempt)
-- protect-specs and no-cheat are hard tools, not polite requests
+- protect-specs, deps-lock, secrets-scan, and no-cheat are hard tools, not polite requests

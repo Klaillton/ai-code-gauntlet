@@ -50,6 +50,10 @@ export type GauntletConfig = {
     unitDir?: string;
   };
   allowSpecEdit?: boolean;
+  allowDepsEdit?: boolean;
+  secretsScan?: {
+    allowPaths?: string[];
+  };
   agent?: {
     protectedGlobs?: string[];
     maxVerifyCycles?: number;

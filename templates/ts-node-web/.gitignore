@@ -19,5 +19,7 @@ protect-specs-report.json
 mutation-report.json
 complexity-report.json
 deps-lock-report.json
+secrets-scan-report.json
 .gauntlet/allow-spec-edit
 .gauntlet/allow-deps-edit
+.gauntlet/allow-secrets-paths

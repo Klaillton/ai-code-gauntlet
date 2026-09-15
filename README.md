@@ -13,11 +13,13 @@ This repo is **not** only a Todo app. It is:
 | [`docs/ADR-spec-sync-drift.md`](./docs/ADR-spec-sync-drift.md) | Spec-sync drift catalog (D1-D9) |
 | [`docs/ADR-phase2-deps-spec-review.md`](./docs/ADR-phase2-deps-spec-review.md) | Phase 2: deps-lock + spec-review |
 | [`docs/ADR-phase2-mutation-complexity.md`](./docs/ADR-phase2-mutation-complexity.md) | Phase 2: mutation + complexity |
+| [`docs/ADR-secrets-privacy.md`](./docs/ADR-secrets-privacy.md) | secrets-scan: credentials + PII hard gate |
 
 ```
 Gherkin (human-owned)      -> behavior (protect-specs)
 OpenAPI (human-owned)      -> HTTP shape (protect-specs)
 package manifests          -> deps-lock (human grant)
+secrets / PII              -> secrets-scan (fail-closed; no ALLOW_SECRETS)
 Playwright drivers         -> acceptance
 Vitest + coverage          -> unit stream (no-cheat)
 Mutation (src/domain)      -> test honesty (Todo gate; template opt-in)
@@ -75,11 +77,13 @@ See [docs/PREMISES.md](./docs/PREMISES.md) and [docs/original-plan.md](./docs/or
 **You** defend Gherkin + OpenAPI + dependency manifests. **The agent** implements.
 **`verify` / CI** are the filter.
 
-protect-specs, deps-lock, and no-cheat are **hard tools**. Agents cannot edit
-`features/**` or `openapi/openapi.yaml` without a protect-specs grant, and
-cannot edit `package.json` / `package-lock.json` (root, examples, templates)
-without a deps-lock grant (`ALLOW_DEPS_EDIT=1`, `.gauntlet/allow-deps-edit`, or
-PR label `deps-approved`).
+protect-specs, deps-lock, secrets-scan, and no-cheat are **hard tools**. Agents
+cannot edit `features/**` or `openapi/openapi.yaml` without a protect-specs
+grant, cannot edit `package.json` / `package-lock.json` (root, examples,
+templates) without a deps-lock grant (`ALLOW_DEPS_EDIT=1`,
+`.gauntlet/allow-deps-edit`, or PR label `deps-approved`), and cannot land
+credentials / private keys / high-confidence PII dumps (there is **no**
+`ALLOW_SECRETS` standing override).
 
 ## Config
 
@@ -93,6 +97,8 @@ Todo is `strict` (D3 fail). The template is `lenient` (D3 warn).
 
 **Wired now:** deps-lock + spec-review skill. See
 [docs/ADR-phase2-deps-spec-review.md](./docs/ADR-phase2-deps-spec-review.md).
+**secrets-scan** is wired on template + Todo. See
+[docs/ADR-secrets-privacy.md](./docs/ADR-secrets-privacy.md).
 
 **Also wired:** mutation + complexity on `src/domain`. See
 [docs/ADR-phase2-mutation-complexity.md](./docs/ADR-phase2-mutation-complexity.md).
