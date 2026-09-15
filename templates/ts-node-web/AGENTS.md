@@ -3,8 +3,8 @@
 Rules for any AI coding agent working in this repository.
 Discipline lives in **gates and tools**, not in prompt politeness.
 
-**protect-specs**, **deps-lock**, and **no-cheat** are hard tools. They fail `npm run verify`.
-They are not requests.
+**protect-specs**, **deps-lock**, **secrets-scan**, and **no-cheat** are hard tools.
+They fail `npm run verify`. They are not requests.
 
 ## Mission
 
@@ -14,12 +14,13 @@ Ship behavior that is:
 2. Contracted in human-approved **OpenAPI** (`openapi/openapi.yaml`)
 3. Proven by **two test streams**: unit (Vitest) + acceptance (Cucumber + Playwright)
 4. Shaped by **static gates**: TypeScript, ESLint, Prettier, coverage, complexity
-5. Kept honest by **spec-sync** (D1–D8), **no-cheat** (D9), **protect-specs**, and **deps-lock**
+5. Kept honest by **spec-sync** (D1–D8), **no-cheat** (D9), **protect-specs**,
+   **deps-lock**, and **secrets-scan**
 
 You implement. Humans defend the specs.
 
 This template is **lenient**: D3 (operationId without `@op` scenario) **warns**.
-D1, D2, D5, D7, D8, D9, protect-specs, and deps-lock still **fail**.
+D1, D2, D5, D7, D8, D9, protect-specs, deps-lock, and secrets-scan still **fail**.
 D6 warns when git diffs are unmatched (fail-closed in the Todo example).
 Complexity is a verify gate. Mutation is **opt-in** (`npm run test:mutation`);
 the `mutation` gate is omitted here for speed.
@@ -66,6 +67,30 @@ Grants: `ALLOW_DEPS_EDIT=1`, `.gauntlet/allow-deps-edit`, `allowDepsEdit: true`
 (default false), or PR label `deps-approved`. CI exports `ALLOW_DEPS_EDIT=1`
 only when the PR has `deps-approved`.
 
+### Secrets & privacy — secrets-scan
+
+Hard tool. Fails verify. Not a request. There is **no** `ALLOW_SECRETS=1`.
+
+Do not:
+
+- Commit `.env` or credential files (including `git add -f`). Use `.env.example`
+  with placeholders
+- Hardcode API keys, tokens, passwords, or private keys
+- Log or print secret values in agent tool output / finish messages
+- Paste real PII into Gherkin, fixtures, or seed data — use synthetic values
+  (`Alice`, `+15550100`, `user@example.com`)
+- Add `secretsScan.allowPaths` or `.gauntlet/allow-secrets-paths` to silence
+  the gate
+
+Do:
+
+- Read secrets from `process.env` / secret managers
+- Keep examples clearly fake (`sk_test_…` in docs is allowed; `sk_live_…` fails)
+- If the gate fails on a false positive, **stop and ask the human**
+
+Allowlist never waives `.env` / private-key findings. Agents must not invent
+allowlist entries.
+
 ### Cheating — no-cheat / D9
 
 Fails on detect:
@@ -82,7 +107,6 @@ Do not go green by deleting tests. Fix the product or ask the human.
 
 ### Other
 
-- Do not commit secrets or `.env` files with credentials
 - Do not add dependencies unless the human asked **and** granted deps-lock
 - Do not lower coverage floors
 
@@ -117,6 +141,7 @@ files (D8).
 npm run verify              # FULL gauntlet — required before "done"
 npm run protect-specs
 npm run deps-lock
+npm run secrets-scan
 npm run no-cheat
 npm run spec-sync
 npm run complexity          # domain cyclomatic max 10
@@ -127,7 +152,7 @@ npm run prepare:browsers    # Playwright Chromium, once
 ```
 
 `npm run verify` order: format, lint, typecheck, complexity, protect-specs,
-deps-lock, no-cheat, spec-sync, docs, unit+coverage, contract, e2e.
+deps-lock, secrets-scan, no-cheat, spec-sync, docs, unit+coverage, contract, e2e.
 
 ## Coverage
 
@@ -136,9 +161,9 @@ Floors: lines/functions/statements **80%**, branches **70%** on `src/**`.
 
 ## Phase 2 / 3
 
-**Wired:** deps-lock + spec-review; complexity gate (max 10 on `src/domain`). Mutation script exists
-but the gate is **omitted** from template verify for speed. D8 gherkin leak
-is already in spec-sync.
+**Wired:** deps-lock + spec-review; complexity gate (max 10 on `src/domain`);
+**secrets-scan**. Mutation script exists but the gate is **omitted** from
+template verify for speed. D8 gherkin leak is already in spec-sync.
 
 See `docs/ADR-phase2-mutation-complexity.md` and
 `docs/ADR-phase2-deps-spec-review.md` in the kit repo.

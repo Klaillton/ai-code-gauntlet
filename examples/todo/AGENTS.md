@@ -3,8 +3,8 @@
 Rules for any AI coding agent working in this repository.
 Discipline lives in **gates and tools**, not in prompt politeness.
 
-**protect-specs**, **deps-lock**, and **no-cheat** are hard tools. They fail
-`npm run verify`. They are not requests.
+**protect-specs**, **deps-lock**, **secrets-scan**, and **no-cheat** are hard
+tools. They fail `npm run verify`. They are not requests.
 
 ## Mission
 
@@ -14,7 +14,8 @@ Ship behavior that is:
 2. Contracted in human-approved **OpenAPI** (`openapi/openapi.yaml`)
 3. Proven by **two test streams**: unit (Vitest) + acceptance (Cucumber + Playwright)
 4. Shaped by **static gates**: TypeScript, ESLint, Prettier, coverage, complexity
-5. Kept honest by **spec-sync** (D1–D8), **no-cheat** (D9), **protect-specs**, and **deps-lock**
+5. Kept honest by **spec-sync** (D1–D8), **no-cheat** (D9), **protect-specs**,
+   **deps-lock**, and **secrets-scan**
 
 You implement. Humans defend the specs and dependency manifests.
 
@@ -66,6 +67,31 @@ Same git-diff surfaces as protect-specs. Grants:
 
 CI exports `ALLOW_DEPS_EDIT=1` **only if** the PR has label `deps-approved`.
 
+### Secrets & privacy — secrets-scan
+
+Hard tool. Fails verify. Not a request. There is **no** `ALLOW_SECRETS=1`.
+
+Do not:
+
+- Commit `.env` or credential files (including `git add -f`). Use `.env.example`
+  with placeholders
+- Hardcode API keys, tokens, passwords, or private keys in `src/**`, tests,
+  docs, or scripts
+- Log or print secret values in agent tool output / finish messages
+- Paste real PII into Gherkin, fixtures, or seed data — use synthetic values
+  (`Alice`, `+15550100`, `user@example.com`)
+- Add `secretsScan.allowPaths` or `.gauntlet/allow-secrets-paths` to silence
+  the gate
+
+Do:
+
+- Read secrets from `process.env` / secret managers
+- Keep examples clearly fake (`sk_test_…` in docs is allowed; `sk_live_…` fails)
+- If the gate fails on a false positive, **stop and ask the human**
+
+Allowlist never waives `.env` / private-key findings. Agents must not invent
+allowlist entries.
+
 ### Cheating — no-cheat / D9
 
 Fails on detect:
@@ -82,7 +108,6 @@ Do not go green by deleting tests. Fix the product or ask the human.
 
 ### Other
 
-- Do not commit secrets or `.env` files with credentials
 - Do not add dependencies unless the human asked **and** granted deps-lock
 - Do not lower coverage floors
 
@@ -165,6 +190,7 @@ npm run complexity          # domain cyclomatic max 10
 npm run test:mutation       # mutation kill-score gate (in Todo verify)
 npm run protect-specs       # fail if specs changed without a human grant
 npm run deps-lock           # fail if package manifests changed without a grant
+npm run secrets-scan        # fail on credentials, private keys, high-confidence PII
 npm run no-cheat            # fail on skip/only, disabled gates, lowered floors
 npm run spec-sync           # D1–D8 inventory drift
 npm run docs:generate       # write docs/generated/*
@@ -181,13 +207,14 @@ npm run agent:loop          # re-run verify (max iterations via MAX_ITERATIONS)
 4. complexity
 5. protect-specs
 6. deps-lock
-7. no-cheat
-8. spec-sync
-9. docs (D7)
-10. Unit + coverage thresholds
-11. mutation
-12. OpenAPI contract (`check-openapi.ts`)
-13. Cucumber + Playwright E2E
+7. secrets-scan
+8. no-cheat
+9. spec-sync
+10. docs (D7)
+11. Unit + coverage thresholds
+12. mutation
+13. OpenAPI contract (`check-openapi.ts`)
+14. Cucumber + Playwright E2E
 
 Root `npm run verify` runs the template then the example. Install browsers
 with `npm run prepare:browsers` first.
@@ -220,7 +247,7 @@ A change is done only when:
 - [ ] Relevant Gherkin scenarios pass (domain language)
 - [ ] Unit tests cover new domain rules
 - [ ] OpenAPI still validates for touched endpoints
-- [ ] `npm run verify` is green (protect-specs, deps-lock, no-cheat, spec-sync, D7)
+- [ ] `npm run verify` is green (protect-specs, deps-lock, secrets-scan, no-cheat, spec-sync, D7)
 - [ ] No skipped or focused tests introduced
 - [ ] Human granted protect-specs if any `.feature` or OpenAPI change was required
 - [ ] Human granted deps-lock if any package.json / lockfile change was required
@@ -232,6 +259,7 @@ Agents must pause for human review when:
 - Changing acceptance scenarios or OpenAPI (needs a protect-specs grant)
 - Changing dependencies / lockfiles (needs a deps-lock grant)
 - Security, auth, payments, or personal data behavior
+- secrets-scan fails (false positive or real leak — ask; do not allowlist)
 - Flaky E2E that “needs” retries or skipped tests
 - Max agent fix iterations exhausted
 - Spec-review found gaps that need product decisions
@@ -239,8 +267,8 @@ Agents must pause for human review when:
 ## Phase 2 / Phase 3
 
 **Wired:** deps-lock + spec-review skill; complexity gate; custom mutation gate
-on Todo verify (see `scripts/mutation.ts`). Template keeps mutation opt-in only.
-Gherkin leakage is **D8** and **is** wired.
+on Todo verify (see `scripts/mutation.ts`); **secrets-scan**. Template keeps
+mutation opt-in only. Gherkin leakage is **D8** and **is** wired.
 
 **Not wired yet:** official Stryker package / test-ownership freeze;
 dependency-cruiser; perf / query budgets; SBOM beyond deps-lock.
