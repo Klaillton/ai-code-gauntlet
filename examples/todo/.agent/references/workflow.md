@@ -18,7 +18,7 @@ Agent implements (domain → api → ui → step defs)
     ▼
 npm run verify
   format → lint → typecheck → complexity → protect-specs → deps-lock
-  → no-cheat → spec-sync → docs → unit+cov → contract → e2e
+  → no-cheat → spec-sync → docs → unit+cov → mutation → contract → e2e
     │
     ├─ red → fix-until-green (max 5) → verify
     │
