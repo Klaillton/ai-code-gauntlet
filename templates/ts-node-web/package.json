@@ -34,9 +34,8 @@
     "prepare:browsers": "playwright install chromium"
   },
   "dependencies": {
-    "@hono/node-server": "^2.0.10",
-    "ai-code-gauntlet": "file:../..",
-    "hono": "^4.13.5"
+    "@hono/node-server": "^2.1.1",
+    "hono": "^4.13.7"
   },
   "devDependencies": {
     "@cucumber/cucumber": "^13.2.0",
