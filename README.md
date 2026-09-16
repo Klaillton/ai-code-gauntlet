@@ -14,12 +14,14 @@ This repo is **not** only a Todo app. It is:
 | [`docs/ADR-phase2-deps-spec-review.md`](./docs/ADR-phase2-deps-spec-review.md) | Phase 2: deps-lock + spec-review |
 | [`docs/ADR-phase2-mutation-complexity.md`](./docs/ADR-phase2-mutation-complexity.md) | Phase 2: mutation + complexity |
 | [`docs/ADR-secrets-privacy.md`](./docs/ADR-secrets-privacy.md) | secrets-scan: credentials + PII hard gate |
+| [`docs/ADR-arch-bound.md`](./docs/ADR-arch-bound.md) | arch-bound: domain must not import infra |
 
 ```
 Gherkin (human-owned)      -> behavior (protect-specs)
 OpenAPI (human-owned)      -> HTTP shape (protect-specs)
 package manifests          -> deps-lock (human grant)
 secrets / PII              -> secrets-scan (fail-closed; no ALLOW_SECRETS)
+domain isolation           -> arch-bound (no HTTP/UI/fs in src/domain)
 Playwright drivers         -> acceptance
 Vitest + coverage          -> unit stream (no-cheat)
 Mutation (src/domain)      -> test honesty (Todo gate; template opt-in)
@@ -77,7 +79,7 @@ See [docs/PREMISES.md](./docs/PREMISES.md) and [docs/original-plan.md](./docs/or
 **You** defend Gherkin + OpenAPI + dependency manifests. **The agent** implements.
 **`verify` / CI** are the filter.
 
-protect-specs, deps-lock, secrets-scan, and no-cheat are **hard tools**. Agents
+protect-specs, deps-lock, secrets-scan, arch-bound, and no-cheat are **hard tools**. Agents
 cannot edit `features/**` or `openapi/openapi.yaml` without a protect-specs
 grant, cannot edit `package.json` / `package-lock.json` (root, examples,
 templates) without a deps-lock grant (`ALLOW_DEPS_EDIT=1`,
@@ -111,7 +113,7 @@ Todo is `strict` (D3 fail). The template is `lenient` (D3 warn).
 
 Remaining later:
 
-- Architectural drift -> dependency-cruiser (domain must not import infra)
+- Official dependency-cruiser (arch-bound is the zero-dep stand-in)
 - Invisible cost / perf -> benchmark budgets; ORM/SQL later
 - Official Stryker package + raised mutation threshold
 - SBOM / Dependabot beyond the deps-lock human grant

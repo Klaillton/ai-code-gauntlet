@@ -9,7 +9,7 @@ Não exija green total no dia 1. Adote por **camadas** de trabalho humano, mas o
 |--------|--------|--------|
 | 0 | `AGENTS.md` + skills | Sim |
 | 1 | format / lint / typecheck | Ideal |
-| Hardening | protect-specs, secrets-scan, no-cheat, spec-sync, docs, complexity (+ deps-lock se no template; mutation no Todo) | Sim (sempre no config) |
+| Hardening | protect-specs, secrets-scan, arch-bound, no-cheat, spec-sync, docs, complexity (+ deps-lock se no template; mutation no Todo) | Sim (sempre no config) |
 | 2 | unit + coverage | Ideal |
 | 3 | OpenAPI contract | Se houver API |
 | 4 | Gherkin + Playwright E2E | Poucos fluxos críticos |
@@ -36,7 +36,7 @@ node packages/create-ai-gauntlet/bin/create-ai-gauntlet.js adopt . --gates stati
 - Copia `.agent/skills`, `scripts/` completo do template (incluindo
   `protect-specs.ts`, `no-cheat.ts`, `spec-sync.ts`, `complexity.ts`,
   `mutation.ts`, `generate-docs.ts`, `check-docs-fresh.ts`, `inventory.ts`,
-  `verify.ts`, `deps-lock.ts`, `secrets-scan.ts`, …)
+  `verify.ts`, `deps-lock.ts`, `secrets-scan.ts`, `arch-bound.ts`, …)
 - Inclui o gate `deps-lock` quando o template tem `scripts/deps-lock.ts`
 - Escreve `gauntlet.config.json` alinhado a `templates/ts-node-web`:
   - lista completa de gates (sem `enabled: false`), incluindo `complexity`
@@ -45,7 +45,7 @@ node packages/create-ai-gauntlet/bin/create-ai-gauntlet.js adopt . --gates stati
   - allowlist seed do template (ajustar owner/expires no app)
 - Merge **não destrutivo** de scripts no `package.json` (incluindo
   `complexity`, `test:mutation`, `protect-specs`, `no-cheat`, `spec-sync`,
-  `docs:generate`, `docs:check`, `secrets-scan`, e `deps-lock` se aplicável)
+  `docs:generate`, `docs:check`, `secrets-scan`, `arch-bound`, e `deps-lock` se aplicável)
 - Copia baseline `docs/generated/` se faltar (gate `docs` / D7)
 - Merge entradas de `.gitignore` para reports e grants locais
 - Não apaga `src/` nem testes existentes
@@ -58,6 +58,7 @@ Greenfield `create` continua a copiar o template inteiro (já hardenado).
 | Gate | Script | Função |
 |------|--------|--------|
 | `complexity` | `npm run complexity` | Cyclomatic max 10 em `src/domain` |
+| `arch-bound` | `npm run arch-bound` | `src/domain` não importa HTTP/UI/fs |
 | `protect-specs` | `npm run protect-specs` | Diff em features/OpenAPI/`protectedGlobs` exige grant humano |
 | `deps-lock` | `npm run deps-lock` | Diff em `package.json` / lockfile exige grant (só se no template) |
 | `secrets-scan` | `npm run secrets-scan` | Credenciais, PEM, tokens de alta confiança, PII em fixtures — fail-closed; sem `ALLOW_SECRETS` |
@@ -66,8 +67,9 @@ Greenfield `create` continua a copiar o template inteiro (já hardenado).
 | `docs` | `npm run docs:check` | D7: `docs/generated/*` fresco |
 | `mutation` (Todo) | `npm run test:mutation` | Kill-score floor on domain; template is opt-in only |
 
-Ordem típica (template): format → lint → typecheck → complexity → protect-specs →
-[`deps-lock`] → secrets-scan → no-cheat → spec-sync → docs → unit → contract → e2e.
+Ordem típica (template): format → lint → typecheck → complexity → arch-bound →
+protect-specs → [`deps-lock`] → secrets-scan → no-cheat → spec-sync → docs → unit →
+contract → e2e.
 Todo adds `mutation` after `unit`.
 
 ## Grants humanos (não bakear no CI)
@@ -88,7 +90,10 @@ Verify falha se o diff tocar specs protegidos **a menos que** um destes exista:
 3. `allowDepsEdit: true` no config (default **false**)
 4. Label de PR **`deps-approved`**
 
-Pushes a `main` e PRs sem label continuam fail-closed. Detalhes:
+Pushes a `main` e PRs sem label continuam fail-closed no **working tree**.
+Em evento `push` para `main`/`master`, protect-specs e deps-lock **não**
+relitigam `origin/main...HEAD` (o merge já aconteceu). Labels de PR continuam
+valendo só em `pull_request`. Detalhes:
 [`ADR-spec-sync-drift.md`](./ADR-spec-sync-drift.md) e
 [`ADR-phase2-deps-spec-review.md`](./ADR-phase2-deps-spec-review.md).
 

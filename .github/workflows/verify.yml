@@ -40,6 +40,7 @@ jobs:
         env:
           CI: true
           GAUNTLET_E2E: "1"
+          # PR labels only. Push to main skips origin/main...HEAD inside the gates.
           ALLOW_SPEC_EDIT: ${{ contains(github.event.pull_request.labels.*.name, 'specs-approved') && '1' || '' }}
           ALLOW_DEPS_EDIT: ${{ contains(github.event.pull_request.labels.*.name, 'deps-approved') && '1' || '' }}
       - if: always()
@@ -73,6 +74,7 @@ jobs:
         env:
           CI: true
           GAUNTLET_E2E: "1"
+          # PR labels only. Push to main skips origin/main...HEAD inside the gates.
           ALLOW_SPEC_EDIT: ${{ contains(github.event.pull_request.labels.*.name, 'specs-approved') && '1' || '' }}
           ALLOW_DEPS_EDIT: ${{ contains(github.event.pull_request.labels.*.name, 'deps-approved') && '1' || '' }}
       - if: always()

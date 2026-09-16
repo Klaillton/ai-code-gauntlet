@@ -3,8 +3,8 @@
 Rules for any AI coding agent working in this repository.
 Discipline lives in **gates and tools**, not in prompt politeness.
 
-**protect-specs**, **deps-lock**, **secrets-scan**, and **no-cheat** are hard tools.
-They fail `npm run verify`. They are not requests.
+**protect-specs**, **deps-lock**, **secrets-scan**, **arch-bound**, and **no-cheat**
+are hard tools. They fail `npm run verify`. They are not requests.
 
 ## Mission
 
@@ -15,12 +15,12 @@ Ship behavior that is:
 3. Proven by **two test streams**: unit (Vitest) + acceptance (Cucumber + Playwright)
 4. Shaped by **static gates**: TypeScript, ESLint, Prettier, coverage, complexity
 5. Kept honest by **spec-sync** (D1–D8), **no-cheat** (D9), **protect-specs**,
-   **deps-lock**, and **secrets-scan**
+   **deps-lock**, **secrets-scan**, and **arch-bound**
 
 You implement. Humans defend the specs.
 
 This template is **lenient**: D3 (operationId without `@op` scenario) **warns**.
-D1, D2, D5, D7, D8, D9, protect-specs, deps-lock, and secrets-scan still **fail**.
+D1, D2, D5, D7, D8, D9, protect-specs, deps-lock, secrets-scan, and arch-bound still **fail**.
 D6 warns when git diffs are unmatched (fail-closed in the Todo example).
 Complexity is a verify gate. Mutation is **opt-in** (`npm run test:mutation`);
 the `mutation` gate is omitted here for speed.
@@ -91,6 +91,11 @@ Do:
 Allowlist never waives `.env` / private-key findings. Agents must not invent
 allowlist entries.
 
+### Architecture — arch-bound
+
+Hard tool. Fails verify. `src/domain` must not import HTTP, UI, filesystem, or
+test-runner infra (`src/api`, `src/web`, `hono`, `playwright`, `node:fs`, …).
+
 ### Cheating — no-cheat / D9
 
 Fails on detect:
@@ -142,6 +147,7 @@ npm run verify              # FULL gauntlet — required before "done"
 npm run protect-specs
 npm run deps-lock
 npm run secrets-scan
+npm run arch-bound
 npm run no-cheat
 npm run spec-sync
 npm run complexity          # domain cyclomatic max 10
@@ -151,8 +157,9 @@ npm run docs:check
 npm run prepare:browsers    # Playwright Chromium, once
 ```
 
-`npm run verify` order: format, lint, typecheck, complexity, protect-specs,
-deps-lock, secrets-scan, no-cheat, spec-sync, docs, unit+coverage, contract, e2e.
+`npm run verify` order: format, lint, typecheck, complexity, arch-bound,
+protect-specs, deps-lock, secrets-scan, no-cheat, spec-sync, docs, unit+coverage,
+contract, e2e.
 
 ## Coverage
 
@@ -162,8 +169,8 @@ Floors: lines/functions/statements **80%**, branches **70%** on `src/**`.
 ## Phase 2 / 3
 
 **Wired:** deps-lock + spec-review; complexity gate (max 10 on `src/domain`);
-**secrets-scan**. Mutation script exists but the gate is **omitted** from
-template verify for speed. D8 gherkin leak is already in spec-sync.
+**secrets-scan**; **arch-bound**. Mutation script exists but the gate is
+**omitted** from template verify for speed. D8 gherkin leak is already in spec-sync.
 
 See `docs/ADR-phase2-mutation-complexity.md` and
 `docs/ADR-phase2-deps-spec-review.md` in the kit repo.

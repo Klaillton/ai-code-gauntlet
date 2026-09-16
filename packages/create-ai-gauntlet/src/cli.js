@@ -124,7 +124,15 @@ function gateEnabled(id, enabledIds) {
   return expanded.has(id);
 }
 
-const HARDENING_GATE_IDS = ["complexity", "protect-specs", "secrets-scan", "no-cheat", "spec-sync", "docs"];
+const HARDENING_GATE_IDS = [
+  "complexity",
+  "arch-bound",
+  "protect-specs",
+  "secrets-scan",
+  "no-cheat",
+  "spec-sync",
+  "docs",
+];
 
 function stripEnabledFlags(gates) {
   for (const gate of gates) {
@@ -197,6 +205,7 @@ function buildAdoptConfig(name, skeleton) {
     lint: { id: "lint", command: "npm", args: ["run", "lint"] },
     typecheck: { id: "typecheck", command: "npm", args: ["run", "typecheck"] },
     complexity: { id: "complexity", command: "npm", args: ["run", "complexity"] },
+    "arch-bound": { id: "arch-bound", command: "npm", args: ["run", "arch-bound"] },
     "protect-specs": { id: "protect-specs", command: "npm", args: ["run", "protect-specs"] },
     "deps-lock": { id: "deps-lock", command: "npm", args: ["run", "deps-lock"] },
     "secrets-scan": { id: "secrets-scan", command: "npm", args: ["run", "secrets-scan"] },
@@ -215,6 +224,7 @@ function buildAdoptConfig(name, skeleton) {
       defaults.lint,
       defaults.typecheck,
       defaults.complexity,
+      defaults["arch-bound"],
       defaults["protect-specs"],
       ...(hasDepsLock ? [defaults["deps-lock"]] : []),
       defaults["secrets-scan"],
@@ -231,7 +241,8 @@ function buildAdoptConfig(name, skeleton) {
     ensureGate(config.gates, defaults.lint, "format");
     ensureGate(config.gates, defaults.typecheck, "lint");
     ensureGate(config.gates, defaults.complexity, "typecheck");
-    ensureGate(config.gates, defaults["protect-specs"], "complexity");
+    ensureGate(config.gates, defaults["arch-bound"], "complexity");
+    ensureGate(config.gates, defaults["protect-specs"], "arch-bound");
     if (hasDepsLock) {
       ensureGate(config.gates, defaults["deps-lock"], "protect-specs");
     } else {
@@ -290,6 +301,7 @@ function mergeGitignore(target, skeleton) {
     "protect-specs-report.json",
     "mutation-report.json",
     "complexity-report.json",
+    "arch-bound-report.json",
     "deps-lock-report.json",
     "secrets-scan-report.json",
     ".gauntlet/allow-spec-edit",
@@ -400,6 +412,7 @@ function adoptProject(dir, { gates } = {}) {
       lint: "eslint .",
       typecheck: "tsc --noEmit",
       complexity: "tsx scripts/complexity.ts",
+      "arch-bound": "tsx scripts/arch-bound.ts",
       "test:mutation": "tsx scripts/mutation.ts",
       "test:unit": pkg.scripts["test:unit"] || "vitest run",
       "test:unit:coverage": pkg.scripts["test:unit:coverage"] || "vitest run --coverage",

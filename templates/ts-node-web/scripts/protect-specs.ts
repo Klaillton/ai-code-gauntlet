@@ -3,7 +3,7 @@ import { relative, resolve, sep } from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import process from "node:process";
-import { loadConfig } from "./inventory.js";
+import { includeGitBranchDivergence, loadConfig } from "./inventory.js";
 
 export type ProtectFinding = {
   id: "protect-specs";
@@ -123,9 +123,13 @@ export function runProtectSpecs(cwd = process.cwd()): {
   const changed = new Set<string>([
     ...(gitLines(cwd, ["diff", "--name-only", "HEAD"]) ?? []),
     ...(gitLines(cwd, ["diff", "--name-only", "--cached"]) ?? []),
-    ...(gitLines(cwd, ["diff", "--name-only", "origin/main...HEAD"]) ?? []),
-    ...(gitLines(cwd, ["diff", "--name-only", "main...HEAD"]) ?? []),
-    ...prBaseDiffs(cwd),
+    ...(includeGitBranchDivergence()
+      ? [
+          ...(gitLines(cwd, ["diff", "--name-only", "origin/main...HEAD"]) ?? []),
+          ...(gitLines(cwd, ["diff", "--name-only", "main...HEAD"]) ?? []),
+          ...prBaseDiffs(cwd),
+        ]
+      : []),
   ]);
 
   const localChanges: string[] = [];

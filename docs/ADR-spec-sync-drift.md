@@ -44,7 +44,7 @@ Routes that are not product HTTP must be explicitly allowlisted. Required fields
 
 Expired entries do not grant exemption. Unknown kinds fail closed.
 
-Todo seed (owner `klaillton`, expires **`2026-12-02`** — renew before that date):
+Todo seed (owner `klaillton`, expires **`2027-06-02`** — renew before that date):
 
 - `POST /api/test/reset` — `test-harness`, exempt `openapi`+`gherkin`, E2E harness (`GAUNTLET_E2E=1`)
 - `GET /` — `static-ui`, exempt `openapi`, HTML shell
@@ -110,7 +110,7 @@ git cannot prove the diff.
 Generated `gaps.md` does **not** snapshot live D6/D9 text; those findings
 appear in `gauntlet-report.json` and CI logs so D7 stays deterministic.
 
-Allowlist seed entries expire **2026-12-02** — renew before that date
+Allowlist seed entries expire **2027-06-02** — renew before that date
 (expired entries do not exempt).
 
 ## Consequences
@@ -132,11 +132,12 @@ Allowlist seed entries expire **2026-12-02** — renew before that date
 - **complexity** — cyclomatic max 10 on `src/domain` (`scripts/complexity.ts`); verify gate on template + Todo
 - **mutation (custom)** — `scripts/mutation.ts` on Todo verify after `unit`; template ships the script but omits the gate for speed (`npm run test:mutation` opt-in)
 - **secrets-scan** — credentials / private keys / high-confidence PII; see [ADR-secrets-privacy.md](./ADR-secrets-privacy.md)
+- **arch-bound** — `src/domain` must not import HTTP/UI/fs infra; see [ADR-arch-bound.md](./ADR-arch-bound.md)
 
 **Not yet wired:**
 
 1. **Official Stryker / test-ownership freeze** — package-based mutation; freeze ownership beyond the custom runner.
-2. **Architectural drift** — dependency-cruiser: `src/domain` must not import `src/api` / infra.
+2. **Official dependency-cruiser** — arch-bound is the zero-dep stand-in.
 
 ### Phase 3 — cost, supply chain, and ops honesty
 

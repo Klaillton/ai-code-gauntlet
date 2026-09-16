@@ -16,6 +16,7 @@ Do not trust agent intelligence. Surround it with deterministic constraints:
 8. no-cheat fails skip/only, disabled gates, and lowered coverage floors
 9. secrets-scan fails credentials, private keys, and high-confidence PII dumps
    (no standing `ALLOW_SECRETS`; reports must not echo secret values)
+10. arch-bound fails if `src/domain` imports HTTP/UI/fs infra
 
 See [ADR-spec-sync-drift.md](./ADR-spec-sync-drift.md).
 
@@ -27,6 +28,7 @@ See [ADR-spec-sync-drift.md](./ADR-spec-sync-drift.md).
 - no-cheat + protect-specs (hard tools)
 - deps-lock (manifest grant) + spec-review skill
 - secrets-scan (credentials / private keys / conservative PII)
+- arch-bound (`src/domain` must not import HTTP/UI/fs)
 - Complexity gate on `src/domain` (max 10)
 - Mutation gate on Todo (`scripts/mutation.ts`); template keeps `test:mutation` opt-in only
 - ESLint + Prettier + TypeScript
@@ -35,6 +37,7 @@ See [ADR-spec-sync-drift.md](./ADR-spec-sync-drift.md).
 
 ## Phase 2 / 3 (not wired yet)
 
-Official Stryker package, dependency-cruiser, perf budgets, SBOM beyond deps-lock.
+Official Stryker package, dependency-cruiser package (arch-bound is wired),
+perf budgets, SBOM beyond deps-lock.
 
 Gherkin leakage is **D8** and is already wired.
