@@ -13,7 +13,7 @@ node packages/create-ai-gauntlet/bin/create-ai-gauntlet.js create my-app --sampl
 ```
 
 `create` copies `templates/ts-node-web` (or `examples/todo`) wholesale — already
-hardened (complexity, arch-bound, protect-specs, secrets-scan, no-cheat, spec-sync, docs; deps-lock when present).
+hardened (complexity, arch-bound, protect-specs, secrets-scan, no-cheat, spec-sync, docs, crap; deps-lock when present).
 
 ### Brownfield adopt
 
@@ -25,8 +25,8 @@ node packages/create-ai-gauntlet/bin/create-ai-gauntlet.js adopt . --gates stati
 Adopt writes a **fail-closed** `gauntlet.config.json` matching the current
 template gate list (no `enabled: false`). Hardening gates
 (`complexity`, `arch-bound`, `protect-specs`, `secrets-scan`, `no-cheat`,
-`spec-sync`, `docs`, and `deps-lock` if the template ships it) are always
-wired; scripts are copied from the template.
+`spec-sync`, `docs`, `crap`, and `deps-lock` if the template ships it) are
+always wired; scripts are copied from the template.
 `--gates` only guides scaffolding + `ADOPT-STATUS.md` (e.g. whether to seed
 features/e2e/openapi).
 

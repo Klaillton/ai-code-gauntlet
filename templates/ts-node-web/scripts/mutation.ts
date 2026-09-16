@@ -14,9 +14,9 @@ import { loadConfig } from "./inventory.js";
  * collide with open PR #5 (deps-lock). Operators match Stryker's core set
  * (equality, relational, logical, boolean, unary-not, numeric increment).
  *
- * Initial threshold is 60% — TODO: raise after CI measures the real score
- * (target >=80%). Timeout is treated as killed (Stryker-like) to avoid
- * flake-fails; see ADR-phase2-mutation-complexity.md.
+ * Threshold is 80% after CI measured 100% kill (7/7) on Todo domain.
+ * Timeout is treated as killed (Stryker-like) to avoid flake-fails; see
+ * ADR-phase2-mutation-complexity.md.
  *
  * Template verify omits the mutation gate for speed. Run the script opt-in.
  */
@@ -55,7 +55,7 @@ type MutationConfig = {
 };
 
 const DEFAULT_INCLUDE = "src/domain";
-const DEFAULT_THRESHOLD = 60;
+const DEFAULT_THRESHOLD = 80;
 const DEFAULT_TIMEOUT_MS = 90_000;
 
 type PlannedMutant = {

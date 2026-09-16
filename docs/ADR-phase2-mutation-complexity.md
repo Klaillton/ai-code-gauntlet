@@ -18,9 +18,12 @@ The runner uses the TypeScript compiler API (already a dependency) plus
 existing Vitest. Operators match Stryker's core set: equality, relational,
 logical, boolean literals, unary-not, numeric +1.
 
-**TODO:** after CI measures the real kill score, raise the threshold toward
-80%+ and/or adopt official Stryker. Do not lower coverage floors to make
-mutation green.
+**Done (A1, 2026-09-16):** CI `mutation-report.json` on main measured **100%**
+kill (7/7 mutants, 0 timeout). Threshold raised to **80%**. Official Stryker
+remains later. Do not lower coverage floors to make mutation green.
+
+**Done (A3, 2026-09-16):** CRAP ≤ 8 on touched `src/domain` after unit coverage
+(`scripts/crap.ts`). Cyclomatic max 10 remains the cheap pre-unit budget.
 
 Gherkin leakage is **D8** and was already wired in `scripts/spec-sync.ts`
 (`checkD8`). This PR does not change that check.
@@ -36,8 +39,8 @@ default `src/domain`) one site at a time, restores the file, and runs
 - Baseline unit tests must already pass (fail-closed).
 - Kill score = (killed + timeout) / mutantCount. Zero mutants → score 100
   with an info finding (empty/health-only domain).
-- **Initial threshold: 60%** (`mutation.threshold`). Documented starting
-  floor because this change could not measure the current suite via MCP.
+- **Threshold: 80%** (`mutation.threshold`). Raised after CI measured 100%
+  kill on Todo domain (artifact `gauntlet-todo`, 2026-09-16).
 - Timeout (default 90s / `mutation.timeoutMs`) counts as **killed**
   (Stryker-like) so a hung mutant does not flake the gate. Residual risk:
   a truly hung runner looks like a kill.
@@ -78,6 +81,19 @@ someone deleting that rule.
 | `examples/todo` | `npm run complexity` | **yes** — after `typecheck` |
 | `templates/ts-node-web` | `npm run complexity` | **yes** (cheap / not heavy) |
 
+## CRAP
+
+`scripts/crap.ts` after unit coverage. Formula:
+`complexity² × (1 − file line coverage)³ + complexity` per function in
+`src/domain` files present in the git diff (same surfaces as protect-specs,
+including the main-push skip). Fail if any score **> 8**. Missing
+`coverage/coverage-summary.json` fails closed. Empty domain diff is info.
+
+| App | Script | Gate |
+| --- | --- | --- |
+| `examples/todo` | `npm run crap` | **yes** — after `unit`, before `mutation` |
+| `templates/ts-node-web` | `npm run crap` | **yes** — after `unit`, before `contract` |
+
 Config: `complexity.include` (default `src/domain`), `complexity.max`
 (default `10`). Report: `complexity-report.json` (gitignored).
 
@@ -104,8 +120,8 @@ HTTP paths. No change in this PR.
 - **Flaky mutation:** timeout-as-killed can hide a hung runner; Vitest
   worker flakes would count as kills. Re-run `npm run test:mutation`
   locally before blaming product code.
-- **Unmeasured threshold:** 60% is a documented starting floor, not a
-  proven suite score. Raise it once CI prints `mutation-report.json`.
+- **Timeout-as-killed** can hide a hung runner; re-run `npm run test:mutation`
+  locally before blaming product code.
 - **Not official Stryker:** operator coverage is the core set only (no
   string / optional-chaining / statement-removal). Sufficient for this
   domain; revisit when adopting Stryker.

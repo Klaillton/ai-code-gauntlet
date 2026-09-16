@@ -20,6 +20,7 @@
     "test:unit:coverage": "vitest run --coverage",
     "test:mutation": "tsx scripts/mutation.ts",
     "complexity": "tsx scripts/complexity.ts",
+    "crap": "tsx scripts/crap.ts",
     "arch-bound": "tsx scripts/arch-bound.ts",
     "test:contract": "tsx scripts/check-openapi.ts",
     "test:e2e": "tsx scripts/run-e2e.ts",

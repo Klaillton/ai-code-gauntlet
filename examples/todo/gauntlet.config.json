@@ -9,7 +9,7 @@
   },
   "mutation": {
     "include": ["src/domain"],
-    "threshold": 60,
+    "threshold": 80,
     "timeoutMs": 90000
   },
   "gates": [
@@ -25,6 +25,7 @@
     { "id": "spec-sync", "command": "npm", "args": ["run", "spec-sync"] },
     { "id": "docs", "command": "npm", "args": ["run", "docs:check"] },
     { "id": "unit", "command": "npm", "args": ["run", "test:unit:coverage"] },
+    { "id": "crap", "command": "npm", "args": ["run", "crap"] },
     { "id": "mutation", "command": "npm", "args": ["run", "test:mutation"] },
     { "id": "contract", "command": "npm", "args": ["run", "test:contract"] },
     { "id": "e2e", "command": "npm", "args": ["run", "test:e2e"] }

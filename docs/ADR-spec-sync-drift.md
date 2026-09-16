@@ -133,6 +133,7 @@ Allowlist seed entries expire **2027-06-02** — renew before that date
 - **mutation (custom)** — `scripts/mutation.ts` on Todo verify after `unit`; template ships the script but omits the gate for speed (`npm run test:mutation` opt-in)
 - **secrets-scan** — credentials / private keys / high-confidence PII; see [ADR-secrets-privacy.md](./ADR-secrets-privacy.md)
 - **arch-bound** — `src/domain` must not import HTTP/UI/fs infra; see [ADR-arch-bound.md](./ADR-arch-bound.md)
+- **mutation 80%** / **crap ≤ 8** — see [ADR-phase2-mutation-complexity.md](./ADR-phase2-mutation-complexity.md)
 
 **Not yet wired:**
 

@@ -36,7 +36,7 @@ npm install && npm run prepare:browsers && npm run verify
 - OpenAPI `/health` only
 - Domain unit (`src/domain/health.ts`)
 - Cucumber + Playwright harness
-- `gauntlet.config.json` **lenient** plus complexity, arch-bound, deps-lock, secrets-scan, spec-sync, no-cheat, protect-specs, docs
+- `gauntlet.config.json` **lenient** plus complexity, arch-bound, deps-lock, secrets-scan, spec-sync, no-cheat, protect-specs, docs, crap
 - `AGENTS.md` (mutation script present; gate omitted from template verify for speed)
 
 Template D3 warns (lenient). Todo D3 fails (strict).

@@ -64,6 +64,7 @@ function writeReport(config: GauntletConfig, gates: GateResult[], ok: boolean): 
     depsLock: readJson("deps-lock-report.json"),
     secretsScan: readJson("secrets-scan-report.json"),
     archBound: readJson("arch-bound-report.json"),
+    crap: readJson("crap-report.json"),
   };
   writeFileSync(resolve("gauntlet-report.json"), `${JSON.stringify(report, null, 2)}\n`);
 }

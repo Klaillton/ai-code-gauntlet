@@ -151,6 +151,7 @@ npm run arch-bound
 npm run no-cheat
 npm run spec-sync
 npm run complexity          # domain cyclomatic max 10
+npm run crap                # CRAP ≤ 8 on touched src/domain (needs coverage)
 npm run test:mutation       # opt-in; not in template verify
 npm run docs:generate
 npm run docs:check
@@ -159,7 +160,7 @@ npm run prepare:browsers    # Playwright Chromium, once
 
 `npm run verify` order: format, lint, typecheck, complexity, arch-bound,
 protect-specs, deps-lock, secrets-scan, no-cheat, spec-sync, docs, unit+coverage,
-contract, e2e.
+crap, contract, e2e.
 
 ## Coverage
 
@@ -169,8 +170,9 @@ Floors: lines/functions/statements **80%**, branches **70%** on `src/**`.
 ## Phase 2 / 3
 
 **Wired:** deps-lock + spec-review; complexity gate (max 10 on `src/domain`);
-**secrets-scan**; **arch-bound**. Mutation script exists but the gate is
-**omitted** from template verify for speed. D8 gherkin leak is already in spec-sync.
+**secrets-scan**; **arch-bound**; **crap** after unit. Mutation script exists
+but the gate is **omitted** from template verify for speed. D8 gherkin leak
+is already in spec-sync.
 
 See `docs/ADR-phase2-mutation-complexity.md` and
 `docs/ADR-phase2-deps-spec-review.md` in the kit repo.

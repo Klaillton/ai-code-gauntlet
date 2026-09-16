@@ -8,10 +8,8 @@ import { loadConfig } from "./inventory.js";
 /**
  * Deterministic cyclomatic-complexity budget for src/domain.
  *
- * Uncle Bob's CRAP <= 8 needs coverage in the formula
- * (complexity^2 * (1-coverage)^3 + complexity). Without a coverage combo
- * this MVP fails any domain function whose cyclomatic complexity exceeds
- * max 10 (eslint-compatible decision-point count).
+ * Cyclomatic max 10 is the cheap pre-unit budget. Uncle Bob CRAP ≤ 8 is
+ * `scripts/crap.ts` after coverage (complexity^2 * (1-coverage)^3 + complexity).
  */
 
 export type FunctionComplexity = {
@@ -133,7 +131,7 @@ function functionName(node: ts.FunctionLikeDeclaration, sourceFile: ts.SourceFil
   return "(anonymous)";
 }
 
-function collectFunctions(sourceFile: ts.SourceFile, rel: string): FunctionComplexity[] {
+export function collectFunctions(sourceFile: ts.SourceFile, rel: string): FunctionComplexity[] {
   const found: FunctionComplexity[] = [];
   const visit = (node: ts.Node): void => {
     if (isFunctionLike(node) && node.body) {

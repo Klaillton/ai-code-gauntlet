@@ -22,9 +22,10 @@
 10. `spec-sync` (enabled) — `npm run spec-sync`
 11. `docs` (enabled) — `npm run docs:check`
 12. `unit` (enabled) — `npm run test:unit:coverage`
-13. `mutation` (enabled) — `npm run test:mutation`
-14. `contract` (enabled) — `npm run test:contract`
-15. `e2e` (enabled) — `npm run test:e2e`
+13. `crap` (enabled) — `npm run crap`
+14. `mutation` (enabled) — `npm run test:mutation`
+15. `contract` (enabled) — `npm run test:contract`
+16. `e2e` (enabled) — `npm run test:e2e`
 
 ## Allowlist
 
@@ -40,4 +41,4 @@
 - Allowlist kinds: `test-harness` | `static-ui` | `internal` | `wip-red`
 - Required allowlist fields: kind, method, path, reason, exemptFrom, owner, expires
 - Seed allowlist entries expire **2027-06-02**; renew before that date (expired entries do not exempt)
-- protect-specs, deps-lock, secrets-scan, arch-bound, and no-cheat are hard tools, not polite requests
+- protect-specs, deps-lock, secrets-scan, arch-bound, crap, and no-cheat are hard tools, not polite requests

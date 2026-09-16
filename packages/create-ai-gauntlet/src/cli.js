@@ -213,6 +213,7 @@ function buildAdoptConfig(name, skeleton) {
     "spec-sync": { id: "spec-sync", command: "npm", args: ["run", "spec-sync"] },
     docs: { id: "docs", command: "npm", args: ["run", "docs:check"] },
     unit: { id: "unit", command: "npm", args: ["run", "test:unit:coverage"] },
+    crap: { id: "crap", command: "npm", args: ["run", "crap"] },
     contract: { id: "contract", command: "npm", args: ["run", "test:contract"] },
     e2e: { id: "e2e", command: "npm", args: ["run", "test:e2e"] },
   };
@@ -232,6 +233,7 @@ function buildAdoptConfig(name, skeleton) {
       defaults["spec-sync"],
       defaults.docs,
       defaults.unit,
+      defaults.crap,
       defaults.contract,
       defaults.e2e,
     ];
@@ -253,7 +255,8 @@ function buildAdoptConfig(name, skeleton) {
     ensureGate(config.gates, defaults["spec-sync"], "no-cheat");
     ensureGate(config.gates, defaults.docs, "spec-sync");
     ensureGate(config.gates, defaults.unit, "docs");
-    ensureGate(config.gates, defaults.contract, "unit");
+    ensureGate(config.gates, defaults.crap, "unit");
+    ensureGate(config.gates, defaults.contract, "crap");
     ensureGate(config.gates, defaults.e2e, "contract");
   }
 
@@ -302,6 +305,7 @@ function mergeGitignore(target, skeleton) {
     "mutation-report.json",
     "complexity-report.json",
     "arch-bound-report.json",
+    "crap-report.json",
     "deps-lock-report.json",
     "secrets-scan-report.json",
     ".gauntlet/allow-spec-edit",
@@ -413,6 +417,7 @@ function adoptProject(dir, { gates } = {}) {
       typecheck: "tsc --noEmit",
       complexity: "tsx scripts/complexity.ts",
       "arch-bound": "tsx scripts/arch-bound.ts",
+      crap: "tsx scripts/crap.ts",
       "test:mutation": "tsx scripts/mutation.ts",
       "test:unit": pkg.scripts["test:unit"] || "vitest run",
       "test:unit:coverage": pkg.scripts["test:unit:coverage"] || "vitest run --coverage",
