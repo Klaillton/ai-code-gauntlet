@@ -45,7 +45,7 @@ node packages/create-ai-gauntlet/bin/create-ai-gauntlet.js adopt . --gates stati
   - allowlist seed do template (ajustar owner/expires no app)
 - Merge **não destrutivo** de scripts no `package.json` (incluindo
   `complexity`, `test:mutation`, `protect-specs`, `no-cheat`, `spec-sync`,
-  `docs:generate`, `docs:check`, `secrets-scan`, `arch-bound`, e `deps-lock` se aplicável)
+  `docs:generate`, `docs:check`, `secrets-scan`, `arch-bound`, `crap`, e `deps-lock` se aplicável)
 - Copia baseline `docs/generated/` se faltar (gate `docs` / D7)
 - Merge entradas de `.gitignore` para reports e grants locais
 - Não apaga `src/` nem testes existentes
@@ -58,6 +58,7 @@ Greenfield `create` continua a copiar o template inteiro (já hardenado).
 | Gate | Script | Função |
 |------|--------|--------|
 | `complexity` | `npm run complexity` | Cyclomatic max 10 em `src/domain` |
+| `crap` | `npm run crap` | CRAP ≤ 8 em `src/domain` tocado (depois de unit+coverage) |
 | `arch-bound` | `npm run arch-bound` | `src/domain` não importa HTTP/UI/fs |
 | `protect-specs` | `npm run protect-specs` | Diff em features/OpenAPI/`protectedGlobs` exige grant humano |
 | `deps-lock` | `npm run deps-lock` | Diff em `package.json` / lockfile exige grant (só se no template) |
@@ -69,7 +70,7 @@ Greenfield `create` continua a copiar o template inteiro (já hardenado).
 
 Ordem típica (template): format → lint → typecheck → complexity → arch-bound →
 protect-specs → [`deps-lock`] → secrets-scan → no-cheat → spec-sync → docs → unit →
-contract → e2e.
+crap → contract → e2e.
 Todo adds `mutation` after `unit`.
 
 ## Grants humanos (não bakear no CI)

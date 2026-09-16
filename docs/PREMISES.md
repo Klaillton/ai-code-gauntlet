@@ -30,7 +30,8 @@ See [ADR-spec-sync-drift.md](./ADR-spec-sync-drift.md).
 - secrets-scan (credentials / private keys / conservative PII)
 - arch-bound (`src/domain` must not import HTTP/UI/fs)
 - Complexity gate on `src/domain` (max 10)
-- Mutation gate on Todo (`scripts/mutation.ts`); template keeps `test:mutation` opt-in only
+- CRAP ≤ 8 on touched `src/domain` after unit coverage
+- Mutation gate on Todo (`scripts/mutation.ts`, 80% kill); template keeps `test:mutation` opt-in only
 - ESLint + Prettier + TypeScript
 - AGENTS.md + skills
 - CI = the same gates

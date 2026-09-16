@@ -148,7 +148,7 @@ ${
 - Allowlist kinds: \`test-harness\` | \`static-ui\` | \`internal\` | \`wip-red\`
 - Required allowlist fields: kind, method, path, reason, exemptFrom, owner, expires
 ${expiryLine}
-- protect-specs, deps-lock, secrets-scan, arch-bound, and no-cheat are hard tools, not polite requests
+- protect-specs, deps-lock, secrets-scan, arch-bound, crap, and no-cheat are hard tools, not polite requests
 `;
 }
 
