@@ -108,6 +108,15 @@ export function posixRel(from: string, to: string): string {
   return relative(from, to).split(sep).join("/");
 }
 
+/** Push CI on main already merged the PR; do not re-litigate origin/main...HEAD. */
+export function includeGitBranchDivergence(env: NodeJS.ProcessEnv = process.env): boolean {
+  if (env.GITHUB_EVENT_NAME !== "push") {
+    return true;
+  }
+  const ref = env.GITHUB_REF ?? "";
+  return ref !== "refs/heads/main" && ref !== "refs/heads/master";
+}
+
 export function normalizePath(path: string): string {
   return path.replace(/:([A-Za-z_][A-Za-z0-9_]*)/g, "{$1}");
 }

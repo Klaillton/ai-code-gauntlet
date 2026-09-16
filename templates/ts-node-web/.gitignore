@@ -18,6 +18,7 @@ no-cheat-report.json
 protect-specs-report.json
 mutation-report.json
 complexity-report.json
+arch-bound-report.json
 deps-lock-report.json
 secrets-scan-report.json
 .gauntlet/allow-spec-edit

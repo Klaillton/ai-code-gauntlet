@@ -3,8 +3,8 @@
 Rules for any AI coding agent working in this repository.
 Discipline lives in **gates and tools**, not in prompt politeness.
 
-**protect-specs**, **deps-lock**, **secrets-scan**, and **no-cheat** are hard
-tools. They fail `npm run verify`. They are not requests.
+**protect-specs**, **deps-lock**, **secrets-scan**, **arch-bound**, and
+**no-cheat** are hard tools. They fail `npm run verify`. They are not requests.
 
 ## Mission
 
@@ -15,7 +15,7 @@ Ship behavior that is:
 3. Proven by **two test streams**: unit (Vitest) + acceptance (Cucumber + Playwright)
 4. Shaped by **static gates**: TypeScript, ESLint, Prettier, coverage, complexity
 5. Kept honest by **spec-sync** (D1–D8), **no-cheat** (D9), **protect-specs**,
-   **deps-lock**, and **secrets-scan**
+   **deps-lock**, **secrets-scan**, and **arch-bound**
 
 You implement. Humans defend the specs and dependency manifests.
 
@@ -91,6 +91,13 @@ Do:
 
 Allowlist never waives `.env` / private-key findings. Agents must not invent
 allowlist entries.
+
+### Architecture — arch-bound
+
+Hard tool. Fails verify. `src/domain` must not import HTTP, UI, filesystem, or
+test-runner infra (`src/api`, `src/web`, `hono`, `playwright`, `node:fs`, …).
+
+Keep domain pure. Adapters live outside `src/domain`.
 
 ### Cheating — no-cheat / D9
 
@@ -187,6 +194,7 @@ npm run test:unit:coverage  # Vitest + thresholds
 npm run test:contract       # OpenAPI runtime contract checks
 npm run test:e2e            # Cucumber + Playwright (starts server)
 npm run complexity          # domain cyclomatic max 10
+npm run arch-bound          # domain must not import HTTP/UI/fs infra
 npm run test:mutation       # mutation kill-score gate (in Todo verify)
 npm run protect-specs       # fail if specs changed without a human grant
 npm run deps-lock           # fail if package manifests changed without a grant
@@ -205,16 +213,17 @@ npm run agent:loop          # re-run verify (max iterations via MAX_ITERATIONS)
 2. ESLint
 3. `tsc --noEmit`
 4. complexity
-5. protect-specs
-6. deps-lock
-7. secrets-scan
-8. no-cheat
-9. spec-sync
-10. docs (D7)
-11. Unit + coverage thresholds
-12. mutation
-13. OpenAPI contract (`check-openapi.ts`)
-14. Cucumber + Playwright E2E
+5. arch-bound
+6. protect-specs
+7. deps-lock
+8. secrets-scan
+9. no-cheat
+10. spec-sync
+11. docs (D7)
+12. Unit + coverage thresholds
+13. mutation
+14. OpenAPI contract (`check-openapi.ts`)
+15. Cucumber + Playwright E2E
 
 Root `npm run verify` runs the template then the example. Install browsers
 with `npm run prepare:browsers` first.
@@ -247,7 +256,7 @@ A change is done only when:
 - [ ] Relevant Gherkin scenarios pass (domain language)
 - [ ] Unit tests cover new domain rules
 - [ ] OpenAPI still validates for touched endpoints
-- [ ] `npm run verify` is green (protect-specs, deps-lock, secrets-scan, no-cheat, spec-sync, D7)
+- [ ] `npm run verify` is green (protect-specs, deps-lock, secrets-scan, arch-bound, no-cheat, spec-sync, D7)
 - [ ] No skipped or focused tests introduced
 - [ ] Human granted protect-specs if any `.feature` or OpenAPI change was required
 - [ ] Human granted deps-lock if any package.json / lockfile change was required
@@ -267,8 +276,9 @@ Agents must pause for human review when:
 ## Phase 2 / Phase 3
 
 **Wired:** deps-lock + spec-review skill; complexity gate; custom mutation gate
-on Todo verify (see `scripts/mutation.ts`); **secrets-scan**. Template keeps
-mutation opt-in only. Gherkin leakage is **D8** and **is** wired.
+on Todo verify (see `scripts/mutation.ts`); **secrets-scan**; **arch-bound**.
+Template keeps mutation opt-in only. Gherkin leakage is **D8** and **is** wired.
 
 **Not wired yet:** official Stryker package / test-ownership freeze;
-dependency-cruiser; perf / query budgets; SBOM beyond deps-lock.
+dependency-cruiser package (arch-bound is the zero-dep stand-in); perf / query
+budgets; SBOM beyond deps-lock.

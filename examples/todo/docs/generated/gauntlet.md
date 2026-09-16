@@ -14,23 +14,24 @@
 2. `lint` (enabled) — `npm run lint`
 3. `typecheck` (enabled) — `npm run typecheck`
 4. `complexity` (enabled) — `npm run complexity`
-5. `protect-specs` (enabled) — `npm run protect-specs`
-6. `deps-lock` (enabled) — `npm run deps-lock`
-7. `secrets-scan` (enabled) — `npm run secrets-scan`
-8. `no-cheat` (enabled) — `npm run no-cheat`
-9. `spec-sync` (enabled) — `npm run spec-sync`
-10. `docs` (enabled) — `npm run docs:check`
-11. `unit` (enabled) — `npm run test:unit:coverage`
-12. `mutation` (enabled) — `npm run test:mutation`
-13. `contract` (enabled) — `npm run test:contract`
-14. `e2e` (enabled) — `npm run test:e2e`
+5. `arch-bound` (enabled) — `npm run arch-bound`
+6. `protect-specs` (enabled) — `npm run protect-specs`
+7. `deps-lock` (enabled) — `npm run deps-lock`
+8. `secrets-scan` (enabled) — `npm run secrets-scan`
+9. `no-cheat` (enabled) — `npm run no-cheat`
+10. `spec-sync` (enabled) — `npm run spec-sync`
+11. `docs` (enabled) — `npm run docs:check`
+12. `unit` (enabled) — `npm run test:unit:coverage`
+13. `mutation` (enabled) — `npm run test:mutation`
+14. `contract` (enabled) — `npm run test:contract`
+15. `e2e` (enabled) — `npm run test:e2e`
 
 ## Allowlist
 
 | method | path | kind | exemptFrom | owner | expires |
 | --- | --- | --- | --- | --- | --- |
-| POST | /api/test/reset | test-harness | openapi, gherkin | klaillton | 2026-12-02 |
-| GET | / | static-ui | openapi | klaillton | 2026-12-02 |
+| POST | /api/test/reset | test-harness | openapi, gherkin | klaillton | 2027-06-02 |
+| GET | / | static-ui | openapi | klaillton | 2027-06-02 |
 
 ## Policy
 
@@ -38,5 +39,5 @@
 - Link operations to scenarios with `@op:<operationId>`
 - Allowlist kinds: `test-harness` | `static-ui` | `internal` | `wip-red`
 - Required allowlist fields: kind, method, path, reason, exemptFrom, owner, expires
-- Seed allowlist entries expire **2026-12-02**; renew before that date (expired entries do not exempt)
-- protect-specs, deps-lock, secrets-scan, and no-cheat are hard tools, not polite requests
+- Seed allowlist entries expire **2027-06-02**; renew before that date (expired entries do not exempt)
+- protect-specs, deps-lock, secrets-scan, arch-bound, and no-cheat are hard tools, not polite requests

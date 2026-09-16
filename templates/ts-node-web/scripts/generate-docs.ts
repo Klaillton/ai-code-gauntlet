@@ -114,6 +114,13 @@ function renderGauntlet(inventory: Inventory): string {
     cell(entry.owner),
     entry.expires,
   ]);
+  const expiries = [
+    ...new Set((inventory.config.allowlist ?? []).map((entry) => entry.expires).filter(Boolean)),
+  ].sort();
+  const expiryLine =
+    expiries.length > 0
+      ? `- Seed allowlist entries expire **${expiries[0]}**; renew before that date (expired entries do not exempt)`
+      : "- No allowlist seed dates; expired entries do not exempt";
 
   return `${HEADER}
 
@@ -140,8 +147,8 @@ ${
 - Link operations to scenarios with \`@op:<operationId>\`
 - Allowlist kinds: \`test-harness\` | \`static-ui\` | \`internal\` | \`wip-red\`
 - Required allowlist fields: kind, method, path, reason, exemptFrom, owner, expires
-- Seed allowlist entries expire **2026-12-02**; renew before that date (expired entries do not exempt)
-- protect-specs, deps-lock, secrets-scan, and no-cheat are hard tools, not polite requests
+${expiryLine}
+- protect-specs, deps-lock, secrets-scan, arch-bound, and no-cheat are hard tools, not polite requests
 `;
 }
 

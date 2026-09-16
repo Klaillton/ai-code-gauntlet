@@ -12,6 +12,7 @@
     { "id": "lint", "command": "npm", "args": ["run", "lint"] },
     { "id": "typecheck", "command": "npm", "args": ["run", "typecheck"] },
     { "id": "complexity", "command": "npm", "args": ["run", "complexity"] },
+    { "id": "arch-bound", "command": "npm", "args": ["run", "arch-bound"] },
     { "id": "protect-specs", "command": "npm", "args": ["run", "protect-specs"] },
     { "id": "deps-lock", "command": "npm", "args": ["run", "deps-lock"] },
     { "id": "secrets-scan", "command": "npm", "args": ["run", "secrets-scan"] },
@@ -30,7 +31,7 @@
       "reason": "HTML shell",
       "exemptFrom": ["openapi"],
       "owner": "klaillton",
-      "expires": "2026-12-02"
+      "expires": "2027-06-02"
     }
   ],
   "contract": {
