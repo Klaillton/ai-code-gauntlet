@@ -74,8 +74,11 @@ Greenfield `create` continua a copiar o template inteiro (já hardenado).
 
 Ordem típica (template): format → lint → typecheck → complexity → arch-bound →
 protect-specs → [`deps-lock`] → secrets-scan → no-cheat → spec-sync → docs → unit →
-crap → contract → e2e.
-Todo adds `mutation` after `unit`.
+crap → mutation → contract → e2e → gherkin-mutation.
+
+**D10:** mudança em Gherkin/OpenAPI no diff exige `docs/generated` no mesmo
+diff (`docs:generate`). Reabrir spec fechada: grant protect-specs + skill
+`reopen-spec`.
 
 ## Grants humanos (não bakear no CI)
 

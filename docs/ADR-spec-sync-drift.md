@@ -61,12 +61,13 @@ Todo seed (owner `klaillton`, expires **`2027-06-02`** — renew before that dat
 | **D7** | Committed `docs/generated/*` does not match a fresh generate | fail |
 | **D8** | `.feature` steps leak CSS, `data-testid`, or raw HTTP paths | fail |
 | **D9** | skip/only/pending, disabled gates, lowered coverage floors | fail |
+| **D10** | Gherkin/OpenAPI in the git diff without `docs/generated` in the same diff | fail (info if no SDD change) |
 | **protect-specs** | git diff touches features/OpenAPI/`protectedGlobs` without a human grant | fail (info if git unavailable) |
 
 Scripts:
 
 - `scripts/inventory.ts` — routes, OpenAPI via `js-yaml`, feature tags, domain/unit
-- `scripts/spec-sync.ts` — D1-D6, D8; exit 1 on fails
+- `scripts/spec-sync.ts` — D1-D6, D8, D10; exit 1 on fails
 - `scripts/no-cheat.ts` — D9; does **not** scan `scripts/` (self-match)
 - `scripts/protect-specs.ts` — spec-edit grant; `GITHUB_BASE_REF` in CI
 - `scripts/deps-lock.ts` — package manifest grant (see ADR-phase2-deps-spec-review.md)

@@ -26,6 +26,8 @@ jobs:
         with:
           node-version: "22"
       - run: node packages/gauntlet-gates/check.mjs
+      - run: node packages/gauntlet-skills/check.mjs
+      - run: node --test packages/create-ai-gauntlet/src/cli.test.js
 
   sbom:
     name: SBOM
@@ -52,6 +54,47 @@ jobs:
           name: sbom
           path: sbom/
           if-no-files-found: error
+
+  audit:
+    name: npm audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            templates/ts-node-web/package-lock.json
+            examples/todo/package-lock.json
+      - run: npm --prefix templates/ts-node-web ci
+      - run: npm --prefix examples/todo ci
+      - run: npm --prefix templates/ts-node-web audit --audit-level=critical
+      - run: npm --prefix examples/todo audit --audit-level=critical
+
+  smoke-create:
+    name: Smoke create + verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+      - name: Scaffold a fresh app from the template
+        run: node packages/create-ai-gauntlet/bin/create-ai-gauntlet.js create "$RUNNER_TEMP/gauntlet-smoke"
+      - name: Install, browsers, verify
+        working-directory: ${{ runner.temp }}/gauntlet-smoke
+        env:
+          CI: true
+          GAUNTLET_E2E: "1"
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          npm run verify
 
   gitleaks:
     name: gitleaks (history extra)

@@ -28,8 +28,9 @@ secrets / PII              -> secrets-scan (fail-closed; no ALLOW_SECRETS)
 domain isolation           -> arch-bound (no HTTP/UI/fs in src/domain)
 Playwright drivers         -> acceptance
 Vitest + coverage          -> unit stream (no-cheat)
-Mutation (src/domain)      -> test honesty 80% kill (Todo gate; template opt-in)
-Gherkin examples           -> gherkin-mutation (Todo after e2e; template opt-in)
+Mutation (src/domain)      -> test honesty 80% kill (template + Todo; timeouts ≠ kills)
+Gherkin examples           -> gherkin-mutation after e2e (template + Todo)
+SDD + docs                 -> D7 freshness; D10 same-diff docs/generated when SDD changes
 Complexity (src/domain)    -> cyclomatic max 10
 CRAP (touched domain)      -> complexity × coverage ≤ 8 after unit
 spec-sync inventory        -> D1-D8 drift (D8 = gherkin leak)
@@ -111,8 +112,8 @@ Todo is `strict` (D3 fail). The template is `lenient` (D3 warn).
 **Also wired:** mutation + complexity on `src/domain`. See
 [docs/ADR-phase2-mutation-complexity.md](./docs/ADR-phase2-mutation-complexity.md).
 
-- Mutation: Stryker-equivalent, **80%** kill-score floor (CI measured 100% on
-  Todo domain). Todo has the `mutation` gate; template has `test:mutation` only.
+- Mutation: Stryker-equivalent, **80%** kill-score floor. **Template and Todo**
+  both run the gate (empty domain → 100%). Timeouts are not kills.
 - Complexity: cyclomatic **max 10** per domain function. **CRAP ≤ 8** on
   touched domain after unit. Domain coverage floors **90/90/70/90**.
 - Gherkin leakage is **D8** (already in spec-sync; confirmed, not changed).

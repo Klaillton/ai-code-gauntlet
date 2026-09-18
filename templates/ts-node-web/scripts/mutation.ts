@@ -296,7 +296,11 @@ function isTimeoutError(error: unknown): boolean {
 
 function runVitest(cwd: string, timeoutMs: number): MutantStatus {
   try {
-    execFileSync("npx", ["vitest", "run"], {
+    const vitestCli = join(cwd, "node_modules", "vitest", "vitest.mjs");
+    if (!existsSync(vitestCli)) {
+      return "error";
+    }
+    execFileSync(process.execPath, [vitestCli, "run"], {
       cwd,
       timeout: timeoutMs,
       encoding: "utf8",
@@ -416,7 +420,7 @@ export function runMutation(cwd = process.cwd()): MutationReport {
     restoreAll(originals);
   }
 
-  const killed = mutants.filter((m) => m.status === "killed" || m.status === "timeout").length;
+  const killed = mutants.filter((m) => m.status === "killed").length;
   const survived = mutants.filter((m) => m.status === "survived").length;
   const timeout = mutants.filter((m) => m.status === "timeout").length;
   const error = mutants.filter((m) => m.status === "error").length;
@@ -430,9 +434,12 @@ export function runMutation(cwd = process.cwd()): MutationReport {
   if (score < threshold) {
     findings.push(`Kill score ${score}% is below threshold ${threshold}%.`);
   }
+  if (timeout > 0) {
+    findings.push(`${timeout} mutant(s) timed out — timeouts are not kills (fail-closed).`);
+  }
 
   const report: MutationReport = {
-    ok: score >= threshold && error === 0,
+    ok: score >= threshold && error === 0 && timeout === 0,
     generatedAt: new Date().toISOString(),
     include: includeRel,
     mutantCount,

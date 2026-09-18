@@ -23,14 +23,16 @@
 11. `docs` (enabled) — `npm run docs:check`
 12. `unit` (enabled) — `npm run test:unit:coverage`
 13. `crap` (enabled) — `npm run crap`
-14. `contract` (enabled) — `npm run test:contract`
-15. `e2e` (enabled) — `npm run test:e2e`
+14. `mutation` (enabled) — `npm run test:mutation`
+15. `contract` (enabled) — `npm run test:contract`
+16. `e2e` (enabled) — `npm run test:e2e`
+17. `gherkin-mutation` (enabled) — `npm run gherkin-mutation`
 
 ## Allowlist
 
 | method | path | kind | exemptFrom | owner | expires |
 | --- | --- | --- | --- | --- | --- |
-| GET | / | static-ui | openapi | klaillton | 2027-06-02 |
+| GET | / | static-ui | openapi | app-owner | 2027-06-02 |
 
 ## Policy
 

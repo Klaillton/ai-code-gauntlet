@@ -32,6 +32,8 @@ Use when the human asks to implement a feature that already has (or will have) G
    - `npm run verify` before claiming done (includes secrets-scan)
 
 5. **Stop conditions**
+   - If Gherkin or OpenAPI must change → **reopen-spec** (do not edit SDD
+     without a protect-specs grant; then `docs:generate` for D7+D10)
    - If Gherkin must change → ask human
    - If OpenAPI breaking change → ask human
    - If secrets-scan fails → stop and ask human (do not invent credentials,

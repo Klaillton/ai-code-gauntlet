@@ -4,7 +4,26 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = resolve(__dirname, "..");
-const REPO_ROOT = resolve(PKG_ROOT, "../..");
+
+/** Monorepo clone, or a packed CLI that still ships templates/ + packages/gauntlet-gates. */
+export function findKitRoot(from = PKG_ROOT) {
+  const candidates = [resolve(from, "../.."), resolve(from, ".."), from, join(from, "kit")];
+  for (const candidate of candidates) {
+    if (
+      existsSync(join(candidate, "templates", "ts-node-web")) &&
+      existsSync(join(candidate, "packages", "gauntlet-gates", "src"))
+    ) {
+      return candidate;
+    }
+  }
+  throw new Error(
+    "AI Code Gauntlet kit root not found (need templates/ts-node-web and packages/gauntlet-gates). Run from the kit clone.",
+  );
+}
+
+function kitRoot() {
+  return findKitRoot();
+}
 
 function printHelp() {
   console.log(`create-ai-gauntlet — greenfield create + brownfield adopt
@@ -27,20 +46,46 @@ Notes:
 }
 
 function templatePath(sample) {
+  const root = kitRoot();
   if (sample === "todo") {
-    return join(REPO_ROOT, "examples", "todo");
+    return join(root, "examples", "todo");
   }
-  return join(REPO_ROOT, "templates", "ts-node-web");
+  return join(root, "templates", "ts-node-web");
 }
 
 function gatesSrc() {
-  return join(REPO_ROOT, "packages", "gauntlet-gates", "src");
+  return join(kitRoot(), "packages", "gauntlet-gates", "src");
+}
+
+function skillsSrc() {
+  const packaged = join(kitRoot(), "packages", "gauntlet-skills");
+  if (existsSync(packaged)) {
+    return packaged;
+  }
+  return join(templatePath(null), ".agent", "skills");
+}
+
+export const CREATE_SKIP = [
+  "node_modules",
+  "coverage",
+  "dist",
+  "playwright-report",
+  "test-results",
+  ".git",
+  ".cucumber-js",
+];
+
+function skipCreateEntry(name) {
+  if (CREATE_SKIP.includes(name)) {
+    return true;
+  }
+  return name.endsWith("-report.json");
 }
 
 function copyDir(src, dest, { skip = [] } = {}) {
   mkdirSync(dest, { recursive: true });
   for (const entry of readdirSync(src)) {
-    if (skip.includes(entry)) continue;
+    if (skip.includes(entry) || skipCreateEntry(entry)) continue;
     const from = join(src, entry);
     const to = join(dest, entry);
     const st = statSync(from);
@@ -62,9 +107,7 @@ function createProject(dir, { sample } = {}) {
     throw new Error(`Template not found: ${src}`);
   }
   mkdirSync(target, { recursive: true });
-  copyDir(src, target, {
-    skip: ["node_modules", "coverage", "dist", "playwright-report", "test-results", ".git"],
-  });
+  copyDir(src, target, { skip: CREATE_SKIP });
 
   if (sample !== "todo") {
     const pkgPath = join(target, "package.json");
@@ -218,8 +261,14 @@ function buildAdoptConfig(name, skeleton) {
     docs: { id: "docs", command: "npm", args: ["run", "docs:check"] },
     unit: { id: "unit", command: "npm", args: ["run", "test:unit:coverage"] },
     crap: { id: "crap", command: "npm", args: ["run", "crap"] },
+    mutation: { id: "mutation", command: "npm", args: ["run", "test:mutation"] },
     contract: { id: "contract", command: "npm", args: ["run", "test:contract"] },
     e2e: { id: "e2e", command: "npm", args: ["run", "test:e2e"] },
+    "gherkin-mutation": {
+      id: "gherkin-mutation",
+      command: "npm",
+      args: ["run", "gherkin-mutation"],
+    },
   };
 
   // If template had no/empty gates, seed the full current list
@@ -238,8 +287,10 @@ function buildAdoptConfig(name, skeleton) {
       defaults.docs,
       defaults.unit,
       defaults.crap,
+      defaults.mutation,
       defaults.contract,
       defaults.e2e,
+      defaults["gherkin-mutation"],
     ];
   } else {
     // Ensure baseline + hardening gates exist; preserve template order/extras
@@ -260,8 +311,10 @@ function buildAdoptConfig(name, skeleton) {
     ensureGate(config.gates, defaults.docs, "spec-sync");
     ensureGate(config.gates, defaults.unit, "docs");
     ensureGate(config.gates, defaults.crap, "unit");
-    ensureGate(config.gates, defaults.contract, "crap");
+    ensureGate(config.gates, defaults.mutation, "crap");
+    ensureGate(config.gates, defaults.contract, "mutation");
     ensureGate(config.gates, defaults.e2e, "contract");
+    ensureGate(config.gates, defaults["gherkin-mutation"], "e2e");
   }
 
   if (hasDepsLock && config.allowDepsEdit === undefined) {
@@ -363,6 +416,13 @@ function adoptProject(dir, { gates } = {}) {
     } else {
       console.log(`keep existing ${rel}`);
     }
+  }
+
+  const skillsFrom = skillsSrc();
+  const skillsTo = join(target, ".agent", "skills");
+  if (existsSync(skillsFrom)) {
+    copyDir(skillsFrom, skillsTo, { skip: [] });
+    console.log("+ .agent/skills/ (canonical)");
   }
 
   const docsGenFrom = join(skeleton, "docs");

@@ -1,6 +1,7 @@
 # Melhorias do AI Code Gauntlet
 
-Documento vivo do roadmap. Origem: sessão 2026-09-15. Atualizado 2026-09-18 (faixa D).
+Documento vivo do roadmap. Origem: sessão 2026-09-15. Atualizado 2026-09-18
+(kit genérico: template + create/adopt, não um app).
 
 O kit prova a tese: disciplina em **gates fail-closed**, não em prompt. Não
 empilhar tudo de uma vez — cada item é um PR independente.
@@ -120,7 +121,8 @@ A3 CRAP on touched domain    feito
 B1 dedupe scripts            feito
 B3 coverage 90 no domain     feito
 B4 SBOM CI job               feito
-B2 Java adapter              adiado (larfin/Spring)
-C  secrets follow-ups        feito (gitleaks CI extra; sem inflar regex)
-D  Gherkin mutation / swarm  D1–D4 feitos; Stryker + IR adiados
+B2 Java adapter              fora de escopo deste kit (outro repo via adopt)
+C  secrets follow-ups        feito
+D  Gherkin mutation          D1–D4 feitos; Stryker + IR não são o kit
+Kit gaps                     honesty no template, D10 docs, smoke create, skills canônicas
 ```
