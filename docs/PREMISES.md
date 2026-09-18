@@ -38,10 +38,13 @@ See [ADR-spec-sync-drift.md](./ADR-spec-sync-drift.md).
 - AGENTS.md + skills
 - CI = the same gates
 
-## Phase 2 / 3 (not wired yet)
+## Phase 2 / 3
 
-Official Stryker package, dependency-cruiser package (arch-bound is wired),
-perf budgets. SBOM and gitleaks are **CI extra jobs**, not local verify gates.
-Java adapter is Camada 0 only until a Spring consumer.
+Phase 2 honesty gates are **wired** on the template (the product) and Todo.
+Phase 3 supply-chain extras (SBOM, gitleaks) are **CI jobs**, not local verify.
+
+Not kit gates: official Stryker (custom runner), official dependency-cruiser
+(arch-bound), perf/ORM budgets (need a real workload in the consuming app).
+Another stack (Java/Spring) is `adopt` in **that** repo, not this kit.
 
 Gherkin leakage is **D8** and is already wired.

@@ -181,5 +181,7 @@ Floors: lines/functions/statements **90%**, branches **70%** on `src/domain`.
 See `docs/ADR-phase2-mutation-complexity.md` and
 `docs/ADR-phase2-deps-spec-review.md` in the kit repo.
 
-Not wired yet: official Stryker, dependency-cruiser, perf budgets, SBOM
-beyond deps-lock.
+**Phase 3 CI extras (not local verify):** SBOM, gitleaks.
+
+**Not a kit gate:** official Stryker (custom runner), official
+dependency-cruiser (arch-bound), perf/ORM budgets (need a workload).

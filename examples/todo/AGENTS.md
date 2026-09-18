@@ -286,11 +286,12 @@ Agents must pause for human review when:
 
 ## Phase 2 / Phase 3
 
-**Wired:** deps-lock + spec-review skill; complexity gate; custom mutation gate
-on Todo verify (80% kill); **gherkin-mutation** after e2e; **crap** after unit;
-**secrets-scan**; **arch-bound**. Template keeps mutation / gherkin-mutation
-opt-in only. Gherkin leakage is **D8** and **is** wired.
+**Phase 2 is wired on the kit** (template + Todo): deps-lock, spec-review,
+complexity, mutation (80%, timeouts are not kills), gherkin-mutation, crap,
+secrets-scan, arch-bound, D8, D10. See kit `docs/plan.md`.
 
-**Not wired yet:** official Stryker package / test-ownership freeze;
-dependency-cruiser package (arch-bound is the zero-dep stand-in); perf / query
-budgets; SBOM beyond deps-lock.
+**Phase 3 extras in CI (not local verify):** SBOM CycloneDX, gitleaks history.
+
+**Not a kit gate (substitutes we already have, or not generic):** official
+Stryker (custom runner is the gate), official dependency-cruiser (arch-bound),
+perf/ORM budgets (need a workload), test-ownership freeze.

@@ -131,21 +131,21 @@ Allowlist seed entries expire **2027-06-02** — renew before that date
 - **deps-lock** — human grant required for `package.json` / `package-lock.json` edits (root, examples/*, templates/*); CI grant via label `deps-approved` → `ALLOW_DEPS_EDIT=1`
 - **spec-review** — `.agent/skills/spec-review.md` devil's-advocate checklist before `implement-feature`; feeds human approval / gaps.md
 - **complexity** — cyclomatic max 10 on `src/domain` (`scripts/complexity.ts`); verify gate on template + Todo
-- **mutation (custom)** — `scripts/mutation.ts` on Todo verify after `unit`; template ships the script but omits the gate for speed (`npm run test:mutation` opt-in)
+- **mutation (custom)** — `scripts/mutation.ts` on **template + Todo** verify (80%; timeouts are not kills)
 - **secrets-scan** — credentials / private keys / high-confidence PII; see [ADR-secrets-privacy.md](./ADR-secrets-privacy.md)
 - **arch-bound** — `src/domain` must not import HTTP/UI/fs infra; see [ADR-arch-bound.md](./ADR-arch-bound.md)
 - **mutation 80%** / **crap ≤ 8** — see [ADR-phase2-mutation-complexity.md](./ADR-phase2-mutation-complexity.md)
 - **canonical gates** — [ADR-gates-source.md](./ADR-gates-source.md); domain coverage 90/90/70/90
 - **gherkin-mutation** / differential unit mutation — [ADR-gherkin-mutation.md](./ADR-gherkin-mutation.md)
 
-**Not yet wired:**
+**Not kit gates (conscious substitutes):**
 
-1. **Official Stryker / test-ownership freeze** — package-based mutation; freeze ownership beyond the custom runner.
+1. **Official Stryker / test-ownership freeze** — custom runner is the mutation gate.
 2. **Official dependency-cruiser** — arch-bound is the zero-dep stand-in.
 
 ### Phase 3 — cost, supply chain, and ops honesty
 
-3. **Invisible cost / performance** — benchmark budgets; later ORM/SQL checks.
-4. **Supply chain beyond deps-lock** — SBOM; Dependabot/Snyk (deps-lock human grant is already Phase 2).
+3. **Invisible cost / performance** — optional in the **consuming app** when it has a workload; not a default on the health skeleton.
+4. **Supply chain** — **wired as CI extras:** SBOM CycloneDX job, gitleaks history, Dependabot. Not local verify gates.
 
 Gherkin leakage is D8 and **is** wired. Phase 2/3 must not weaken D1-D9 or lower coverage floors.
