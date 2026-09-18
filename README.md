@@ -118,14 +118,13 @@ Todo is `strict` (D3 fail). The template is `lenient` (D3 warn).
   touched domain after unit. Domain coverage floors **90/90/70/90**.
 - Gherkin leakage is **D8** (already in spec-sync; confirmed, not changed).
 
-Remaining later:
+Remaining (not default kit gates):
 
-- Official dependency-cruiser (arch-bound is the zero-dep stand-in)
-- Invisible cost / perf -> benchmark budgets; ORM/SQL later
-- Official Stryker package
-- Java/Spring adapter (Camada 0 only until a consumer)
-- Regex inflation in secrets-scan (concat / JWT / entropy) — gitleaks covers
-  history in CI instead
+- Official dependency-cruiser (arch-bound is the stand-in)
+- Perf/ORM budgets in the **consuming** app, when it has a workload
+- Official Stryker (custom runner is the gate)
+- Another stack via `adopt` in that repo
+- Regex inflation in secrets-scan — gitleaks covers history in CI instead
 
 ## License
 
