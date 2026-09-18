@@ -16,6 +16,72 @@ permissions:
   actions: write
 
 jobs:
+  gates-sync:
+    name: Gate scripts in sync
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+      - run: node packages/gauntlet-gates/check.mjs
+
+  sbom:
+    name: SBOM
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            templates/ts-node-web/package-lock.json
+            examples/todo/package-lock.json
+      - run: npm --prefix templates/ts-node-web ci
+      - run: npm --prefix examples/todo ci
+      - name: Generate CycloneDX SBOMs
+        run: |
+          mkdir -p sbom
+          npm --prefix templates/ts-node-web sbom --sbom-format cyclonedx > sbom/template-cyclonedx.json
+          npm --prefix examples/todo sbom --sbom-format cyclonedx > sbom/todo-cyclonedx.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sbom
+          path: sbom/
+          if-no-files-found: error
+
+  gitleaks:
+    name: gitleaks (history extra)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks 8.30.1
+        run: |
+          set -euo pipefail
+          VER=8.30.1
+          curl -sSfL -o checksums.txt \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${VER}/gitleaks_${VER}_checksums.txt"
+          curl -sSfL -o "gitleaks_${VER}_linux_x64.tar.gz" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${VER}/gitleaks_${VER}_linux_x64.tar.gz"
+          grep "gitleaks_${VER}_linux_x64.tar.gz$" checksums.txt | sha256sum -c
+          tar -xzf "gitleaks_${VER}_linux_x64.tar.gz" gitleaks
+          sudo install -m 0755 gitleaks /usr/local/bin/gitleaks
+          gitleaks version
+      - name: Detect secrets in git history
+        run: gitleaks detect --source . --verbose --redact --exit-code 1 --report-path gitleaks-report.json --report-format json
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: gitleaks
+          path: gitleaks-report.json
+          if-no-files-found: ignore
+
   template:
     name: Template ts-node-web
     runs-on: ubuntu-latest

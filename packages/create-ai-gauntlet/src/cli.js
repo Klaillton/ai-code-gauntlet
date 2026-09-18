@@ -33,6 +33,10 @@ function templatePath(sample) {
   return join(REPO_ROOT, "templates", "ts-node-web");
 }
 
+function gatesSrc() {
+  return join(REPO_ROOT, "packages", "gauntlet-gates", "src");
+}
+
 function copyDir(src, dest, { skip = [] } = {}) {
   mkdirSync(dest, { recursive: true });
   for (const entry of readdirSync(src)) {
@@ -161,7 +165,7 @@ function ensureGate(gates, gate, afterId) {
  */
 function buildAdoptConfig(name, skeleton) {
   const templateCfgPath = join(skeleton, "gauntlet.config.json");
-  const hasDepsLock = existsSync(join(skeleton, "scripts", "deps-lock.ts"));
+  const hasDepsLock = existsSync(join(gatesSrc(), "deps-lock.ts"));
 
   let config;
   if (existsSync(templateCfgPath)) {
@@ -341,13 +345,17 @@ function adoptProject(dir, { gates } = {}) {
   const enabled = defaultGates(gates);
   const skeleton = templatePath(null);
 
-  for (const rel of [".agent", "scripts", "AGENTS.md"]) {
-    const from = join(skeleton, rel);
+  const scriptsFrom = existsSync(gatesSrc()) ? gatesSrc() : join(skeleton, "scripts");
+  for (const [rel, from] of [
+    [".agent", join(skeleton, ".agent")],
+    ["scripts", scriptsFrom],
+    ["AGENTS.md", join(skeleton, "AGENTS.md")],
+  ]) {
     const to = join(target, rel);
     if (!existsSync(from)) continue;
     if (statSync(from).isDirectory()) {
       copyDir(from, to, { skip: [] });
-      console.log(`+ ${rel}/ (from template)`);
+      console.log(`+ ${rel}/`);
     } else if (!existsSync(to)) {
       cpSync(from, to);
       console.log(`+ ${rel}`);

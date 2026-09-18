@@ -99,6 +99,8 @@ describe("path classifiers", () => {
     expect(isForbiddenEnvPath(".env")).toBe(true);
     expect(isForbiddenEnvPath(".env.local")).toBe(true);
     expect(isForbiddenEnvPath("config.env")).toBe(true);
+    expect(isForbiddenEnvPath(".netrc")).toBe(true);
+    expect(isForbiddenEnvPath("_netrc")).toBe(true);
     expect(isForbiddenEnvPath(".env.example")).toBe(false);
     expect(isForbiddenEnvPath("foo.env.example")).toBe(false);
     expect(isForbiddenEnvPath(".env.sample")).toBe(false);

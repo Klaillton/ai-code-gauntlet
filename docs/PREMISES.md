@@ -39,6 +39,7 @@ See [ADR-spec-sync-drift.md](./ADR-spec-sync-drift.md).
 ## Phase 2 / 3 (not wired yet)
 
 Official Stryker package, dependency-cruiser package (arch-bound is wired),
-perf budgets, SBOM beyond deps-lock.
+perf budgets. SBOM and gitleaks are **CI extra jobs**, not local verify gates.
+Java adapter is Camada 0 only until a Spring consumer.
 
 Gherkin leakage is **D8** and is already wired.

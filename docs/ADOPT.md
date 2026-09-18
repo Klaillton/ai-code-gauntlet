@@ -33,10 +33,12 @@ node packages/create-ai-gauntlet/bin/create-ai-gauntlet.js adopt . --gates stati
 
 ## O que o adopt faz
 
-- Copia `.agent/skills`, `scripts/` completo do template (incluindo
-  `protect-specs.ts`, `no-cheat.ts`, `spec-sync.ts`, `complexity.ts`,
-  `mutation.ts`, `generate-docs.ts`, `check-docs-fresh.ts`, `inventory.ts`,
-  `verify.ts`, `deps-lock.ts`, `secrets-scan.ts`, `arch-bound.ts`, …)
+- Copia `.agent/skills` do template e `scripts/` de
+  `packages/gauntlet-gates/src` (incluindo
+  scripts canônicos — `protect-specs.ts`,
+  `no-cheat.ts`, `spec-sync.ts`, `complexity.ts`, `mutation.ts`,
+  `generate-docs.ts`, `check-docs-fresh.ts`, `inventory.ts`, `verify.ts`,
+  `deps-lock.ts`, `secrets-scan.ts`, `arch-bound.ts`, `crap.ts`, …)
 - Inclui o gate `deps-lock` quando o template tem `scripts/deps-lock.ts`
 - Escreve `gauntlet.config.json` alinhado a `templates/ts-node-web`:
   - lista completa de gates (sem `enabled: false`), incluindo `complexity`

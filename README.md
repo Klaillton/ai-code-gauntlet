@@ -9,6 +9,8 @@ This repo is **not** only a Todo app. It is:
 | [`templates/ts-node-web`](./templates/ts-node-web) | **Greenfield skeleton** (health-only, lenient D3) |
 | [`examples/todo`](./examples/todo) | **Full demo** that proves every gate (strict) |
 | [`packages/create-ai-gauntlet`](./packages/create-ai-gauntlet) | CLI: `create` + `adopt` |
+| [`packages/gauntlet-gates`](./packages/gauntlet-gates) | Canonical verify scripts (`gates:sync` / `gates:check`) |
+| [`docs/ADR-gates-source.md`](./docs/ADR-gates-source.md) | B1: one copy of gate scripts |
 | [`docs/`](./docs) | Premises, greenfield, adopt, original plan, [roadmap](./docs/plan.md) |
 | [`docs/ADR-spec-sync-drift.md`](./docs/ADR-spec-sync-drift.md) | Spec-sync drift catalog (D1-D9) |
 | [`docs/ADR-phase2-deps-spec-review.md`](./docs/ADR-phase2-deps-spec-review.md) | Phase 2: deps-lock + spec-review |
@@ -108,16 +110,18 @@ Todo is `strict` (D3 fail). The template is `lenient` (D3 warn).
 
 - Mutation: Stryker-equivalent, **80%** kill-score floor (CI measured 100% on
   Todo domain). Todo has the `mutation` gate; template has `test:mutation` only.
-- Complexity: cyclomatic **max 10** per domain function (CRAP ≤8 needs coverage
-  combo — later). Both apps have the `complexity` gate.
+- Complexity: cyclomatic **max 10** per domain function. **CRAP ≤ 8** on
+  touched domain after unit. Domain coverage floors **90/90/70/90**.
 - Gherkin leakage is **D8** (already in spec-sync; confirmed, not changed).
 
 Remaining later:
 
 - Official dependency-cruiser (arch-bound is the zero-dep stand-in)
 - Invisible cost / perf -> benchmark budgets; ORM/SQL later
-- Official Stryker package + raised mutation threshold
-- SBOM / Dependabot beyond the deps-lock human grant
+- Official Stryker package
+- Java/Spring adapter (Camada 0 only until a consumer)
+- Regex inflation in secrets-scan (concat / JWT / entropy) — gitleaks covers
+  history in CI instead
 
 ## License
 

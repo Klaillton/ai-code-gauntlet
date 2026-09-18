@@ -108,7 +108,8 @@ HTTP paths. No change in this PR.
 - Weak domain tests fail `mutation` on Todo (survivors listed in the report).
 - God-functions in `src/domain` fail `complexity` / lint.
 - Template verify stays fast (no mutation gate).
-- Coverage floors in `vitest.config.ts` are unchanged (80/80/70/80).
+- Coverage floors in `vitest.config.ts` are **90/90/70/90** on `src/domain`
+  (B3). Do not lower them.
 - Keep both gate sets together on main (`deps-lock` plus `complexity` /
   Todo `mutation`). This ADR does not duplicate deps-lock or spec-review.
 

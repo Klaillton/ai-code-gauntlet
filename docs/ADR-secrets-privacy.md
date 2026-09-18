@@ -126,14 +126,21 @@ Never waives rules `forbidden-path`, `private-key`, `private-key-file`.
 - AGENTS hard section; spec-review / implement-feature / write-gherkin /
   fix-until-green updated
 
-## Known limitations (out of scope)
+## Known limitations (still out of the local gate)
 
 - Obfuscation (`"AKIA" + "…"`, hex dumps, unicode tricks)
-- Git history (only current tree / index / untracked-not-ignored)
 - Generic high-entropy strings / JWTs (too noisy)
-- gitleaks binary as a substitute (optional later CI extra; agents must run
-  verify locally with zero extra installs)
-- SBOM / Dependabot (deps-lock)
+- Local verify does **not** scan git history (current tree / index /
+  untracked-not-ignored only)
+
+## C follow-up (2026-09-18)
+
+- **gitleaks** is an **additional CI job** (`gitleaks detect` on full history,
+  report redacted). It does **not** replace `secrets-scan`; agents still run
+  verify with zero extra installs.
+- Forbidden paths also include `.netrc` / `_netrc`.
+- `*.yml` / `*.properties` were already in the content scan of tracked files.
+  Java-specific globs wait for a Spring adopt.
 
 ## Consequences
 

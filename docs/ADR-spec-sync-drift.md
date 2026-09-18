@@ -134,6 +134,7 @@ Allowlist seed entries expire **2027-06-02** — renew before that date
 - **secrets-scan** — credentials / private keys / high-confidence PII; see [ADR-secrets-privacy.md](./ADR-secrets-privacy.md)
 - **arch-bound** — `src/domain` must not import HTTP/UI/fs infra; see [ADR-arch-bound.md](./ADR-arch-bound.md)
 - **mutation 80%** / **crap ≤ 8** — see [ADR-phase2-mutation-complexity.md](./ADR-phase2-mutation-complexity.md)
+- **canonical gates** — [ADR-gates-source.md](./ADR-gates-source.md); domain coverage 90/90/70/90
 
 **Not yet wired:**
 

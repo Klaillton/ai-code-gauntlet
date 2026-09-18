@@ -56,7 +56,10 @@ export function isProtectedDepPath(repoRelPath: string): boolean {
   if (parts.length === 1) {
     return true;
   }
-  if (parts.length === 3 && (parts[0] === "examples" || parts[0] === "templates")) {
+  if (
+    parts.length === 3 &&
+    (parts[0] === "examples" || parts[0] === "templates" || parts[0] === "packages")
+  ) {
     return true;
   }
   return false;
@@ -138,7 +141,7 @@ export function runDepsLock(cwd = process.cwd()): {
       id: "deps-lock",
       severity: "info",
       message:
-        "deps-lock: no package.json / package-lock.json changes in the git diff (root, examples/*, templates/*).",
+        "deps-lock: no package.json / package-lock.json changes in the git diff (root, examples/*, templates/*, packages/*).",
     });
     writeReport(cwd, true, findings);
     return { ok: true, findings };

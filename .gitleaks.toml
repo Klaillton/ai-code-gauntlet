@@ -1,0 +1,19 @@
+# Extra CI scanner (history + default gitleaks rules).
+# Does not replace local `npm run secrets-scan` (zero extra installs for agents).
+title = "ai-code-gauntlet"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Reports, locks, and generated coverage — not secret sources"
+paths = [
+  '''(^|/)node_modules/''',
+  '''(^|/)coverage/''',
+  '''(^|/)dist/''',
+  '''(^|/)playwright-report/''',
+  '''(^|/)test-results/''',
+  '''package-lock\.json$''',
+  '''-report\.json$''',
+  '''gitleaks-report\.json$''',
+]
