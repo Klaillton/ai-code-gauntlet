@@ -1,15 +1,44 @@
 /**
  * Simple red→green loop runner for AI agents.
- * Runs `npm run verify` up to MAX_ITERATIONS times.
+ * Runs `npm run verify` up to a configured max iterations.
+ * Uses gauntlet.config.json agent.maxVerifyCycles (default 5); MAX_ITERATIONS env overrides when set.
  * Exits 0 on first full green; exits 1 if still red after max attempts.
  *
  * Agents should implement fixes between iterations (this script only re-runs verify).
  * For fully autonomous loops, wrap with your agent harness calling this after each edit.
  */
+import { readFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import process from "node:process";
 
-const maxIterations = Number(process.env.MAX_ITERATIONS ?? 5);
+function readConfiguredMax(): number | undefined {
+  try {
+    const raw = readFileSync("gauntlet.config.json", "utf8");
+    const n = (JSON.parse(raw) as { agent?: { maxVerifyCycles?: unknown } }).agent
+      ?.maxVerifyCycles;
+    if (typeof n === "number" && Number.isInteger(n) && n >= 1) return n;
+  } catch {
+    /* missing/invalid config → fall through */
+  }
+  return undefined;
+}
+
+function resolveMaxIterations(): number {
+  const fromEnv = process.env.MAX_ITERATIONS;
+  if (fromEnv !== undefined) {
+    const n = Number(fromEnv);
+    if (!Number.isInteger(n) || n < 1) {
+      console.error(
+        `Invalid MAX_ITERATIONS=${JSON.stringify(fromEnv)}; need integer >= 1`,
+      );
+      process.exit(1);
+    }
+    return n;
+  }
+  return readConfiguredMax() ?? 5;
+}
+
+const maxIterations = resolveMaxIterations();
 
 function runVerify(): Promise<number> {
   return new Promise((resolve) => {
