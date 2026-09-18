@@ -177,7 +177,7 @@ export function isForbiddenEnvPath(rel: string): boolean {
   if (isEnvExampleName(base)) {
     return false;
   }
-  if (base === ".env" || base === ".envrc") {
+  if (base === ".env" || base === ".envrc" || base === ".netrc" || base === "_netrc") {
     return true;
   }
   if (base.startsWith(".env.")) {

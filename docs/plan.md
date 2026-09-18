@@ -1,6 +1,6 @@
 # Melhorias do AI Code Gauntlet
 
-Documento vivo do roadmap. Origem: sessão 2026-09-15. Atualizado 2026-09-16.
+Documento vivo do roadmap. Origem: sessão 2026-09-15. Atualizado 2026-09-18 (faixa C).
 
 O kit prova a tese: disciplina em **gates fail-closed**, não em prompt. Não
 empilhar tudo de uma vez — cada item é um PR independente.
@@ -44,32 +44,45 @@ git diff. Sem diff: info. Sem `coverage-summary.json`: fail.
 
 ## Faixa B — kit engineering
 
+| Id | Item | Status |
+|----|------|--------|
+| B1 | Fonte única `packages/gauntlet-gates` + sync/check | **Feito** |
+| B3 | Coverage 90 no domain | **Feito** |
+| B4 | SBOM CycloneDX job no CI | **Feito** |
+| B2 | Adapter Maven / Java | **Adiado** — só se larfin/Spring for o próximo consumidor |
+
 ### B1. Uma cópia dos scripts de gate
 
-Todo e template duplicam `scripts/*`. Pacote interno `packages/gauntlet-gates`
-(ou `file:` na raiz). Sem runtime dep externo.
+`packages/gauntlet-gates/src` é a fonte. `npm run gates:sync` copia para Todo e
+template; `gates:check` falha em drift (root verify + CI). Adopt copia do
+pacote. Sem `file:` dep (quebraria `create` fora do clone). Ver
+[ADR-gates-source.md](./ADR-gates-source.md).
 
 ### B2. Adapter Maven / Java
 
-ADOPT.md: Camada 0 já existe. Template `java-spring` mínimo só se larfin/Spring
-for o próximo consumidor.
+Camada 0 (premissas) já existe. Template `java-spring` **não** neste corte.
 
 ### B3. Coverage floors
 
-Hoje 80/80/70/80 em `src/**` (api/web/server excluídos). Subir **só domain**
-para 90 depois de A1.
+`src/domain`: lines/functions/statements **90%**, branches **70%**.
 
 ### B4. SBOM
 
-Dependabot já existe. `npm sbom` / CycloneDX como **job CI extra**, não gate
-local.
+Job CI `sbom` gera CycloneDX para template e Todo e sobe artifact. **Não** é
+gate local.
 
 ---
 
 ## Faixa C — secrets-scan follow-ups
 
-Não inflar o regex agora. gitleaks adicional no CI só se ruído real. Globs
-`*.yml` / `*.properties` quando houver adopt Java.
+| Id | Item | Status |
+|----|------|--------|
+| C1 | gitleaks job no CI (histórico; report redacted) | **Feito** |
+| C2 | `.netrc` / `_netrc` forbidden-path | **Feito** |
+| C3 | Inflar regex (concat, JWT, entropy) | **Não** — ruído |
+| C4 | Globs Java `*.yml` / `*.properties` | Já cobertos no scan de tracked files; extra Java espera B2 |
+
+gitleaks **não** substitui `secrets-scan` local. Config: `.gitleaks.toml`.
 
 ---
 
@@ -96,9 +109,10 @@ A5 CI grants on main push    feito (#21)
 A2 arch-bound                feito (#21)
 A1 mutation threshold        feito (80%)
 A3 CRAP on touched domain    feito
-B1 dedupe scripts
-B3 coverage 90 no domain
-B2 Java adapter              só se larfin/Spring
-C  secrets follow-ups        só se ruído
+B1 dedupe scripts            feito
+B3 coverage 90 no domain     feito
+B4 SBOM CI job               feito
+B2 Java adapter              adiado (larfin/Spring)
+C  secrets follow-ups        feito (gitleaks CI extra; sem inflar regex)
 D  Gherkin mutation / swarm  depois da faixa A
 ```

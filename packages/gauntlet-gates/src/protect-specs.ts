@@ -1,17 +1,19 @@
-import { basename, resolve, sep } from "node:path";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { relative, resolve, sep } from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import process from "node:process";
 import { includeGitBranchDivergence, loadConfig } from "./inventory.js";
 
-export type DepsFinding = {
-  id: "deps-lock";
+export type ProtectFinding = {
+  id: "protect-specs";
   severity: "fail" | "warn" | "info";
   message: string;
 };
 
-type ConfigWithDeps = ReturnType<typeof loadConfig> & { allowDepsEdit?: boolean };
+function posixRel(from: string, to: string): string {
+  return relative(from, to).split(sep).join("/");
+}
 
 function prBaseDiffs(cwd: string): string[] {
   const base = process.env.GITHUB_BASE_REF;
@@ -45,38 +47,39 @@ function repoRoot(cwd: string): string | undefined {
   return lines?.[0];
 }
 
-/** package.json / package-lock.json at kit root, examples/*, templates/*, or app root. */
-export function isProtectedDepPath(repoRelPath: string): boolean {
-  const normalized = repoRelPath.split(sep).join("/");
-  const name = basename(normalized);
-  if (name !== "package.json" && name !== "package-lock.json") {
-    return false;
+function matchGlob(rel: string, glob: string): boolean {
+  const normalized = rel.split(sep).join("/");
+  const pattern = glob.split(sep).join("/");
+  if (pattern.endsWith("/**/*.feature")) {
+    const prefix = pattern.slice(0, -"/**/*.feature".length);
+    const head = prefix === "" ? "features/" : prefix + "/";
+    return normalized.startsWith(head) && normalized.endsWith(".feature");
   }
-  const parts = normalized.split("/").filter((part) => part.length > 0);
-  if (parts.length === 1) {
-    return true;
+  if (pattern.includes("**")) {
+    const [head, tail] = pattern.split("**");
+    const prefix = (head ?? "").replace(/\/$/, "");
+    const suffix = (tail ?? "").replace(/^\//, "");
+    const headOk =
+      prefix.length === 0 || normalized.startsWith(prefix + "/") || normalized === prefix;
+    const tailOk =
+      suffix.length === 0 || normalized.endsWith(suffix) || normalized.includes("/" + suffix);
+    return headOk && tailOk;
   }
-  if (
-    parts.length === 3 &&
-    (parts[0] === "examples" || parts[0] === "templates" || parts[0] === "packages")
-  ) {
-    return true;
-  }
-  return false;
+  return normalized === pattern || normalized.endsWith("/" + pattern);
 }
 
-function depsEditAllowed(
+function specEditAllowed(
   cwd: string,
-  allowDepsEdit: boolean,
+  allowSpecEdit: boolean,
 ): { allowed: boolean; reason: string } {
-  if (process.env.ALLOW_DEPS_EDIT === "1") {
-    return { allowed: true, reason: "ALLOW_DEPS_EDIT=1" };
+  if (process.env.ALLOW_SPEC_EDIT === "1") {
+    return { allowed: true, reason: "ALLOW_SPEC_EDIT=1" };
   }
-  if (existsSync(resolve(cwd, ".gauntlet/allow-deps-edit"))) {
-    return { allowed: true, reason: ".gauntlet/allow-deps-edit" };
+  if (existsSync(resolve(cwd, ".gauntlet/allow-spec-edit"))) {
+    return { allowed: true, reason: ".gauntlet/allow-spec-edit" };
   }
-  if (allowDepsEdit) {
-    return { allowed: true, reason: "gauntlet.config.json allowDepsEdit=true" };
+  if (allowSpecEdit) {
+    return { allowed: true, reason: "gauntlet.config.json allowSpecEdit=true" };
   }
   const eventPath = process.env.GITHUB_EVENT_PATH;
   if (eventPath && existsSync(eventPath)) {
@@ -85,36 +88,38 @@ function depsEditAllowed(
         pull_request?: { labels?: { name?: string }[] };
       };
       const labels = event.pull_request?.labels ?? [];
-      if (labels.some((label) => label.name === "deps-approved")) {
-        return { allowed: true, reason: "GitHub label deps-approved" };
+      if (labels.some((label) => label.name === "specs-approved")) {
+        return { allowed: true, reason: "GitHub label specs-approved" };
       }
     } catch {
       // event payload unreadable; fall through
     }
   }
-  return { allowed: false, reason: "no human deps-edit grant" };
+  return { allowed: false, reason: "no human spec-edit grant" };
 }
 
-export function runDepsLock(cwd = process.cwd()): {
+export function runProtectSpecs(cwd = process.cwd()): {
   ok: boolean;
-  findings: DepsFinding[];
+  findings: ProtectFinding[];
 } {
-  const config = loadConfig(cwd) as ConfigWithDeps;
-  const grant = depsEditAllowed(cwd, config.allowDepsEdit === true);
-  const findings: DepsFinding[] = [];
+  const config = loadConfig(cwd);
+  const globs = config.agent?.protectedGlobs ?? ["features/**/*.feature", "openapi/openapi.yaml"];
+  const grant = specEditAllowed(cwd, config.allowSpecEdit === true);
+  const findings: ProtectFinding[] = [];
 
   const root = repoRoot(cwd);
   if (!root) {
     findings.push({
-      id: "deps-lock",
+      id: "protect-specs",
       severity: "info",
       message:
-        "deps-lock: git unavailable; agents must not edit package.json / package-lock.json without ALLOW_DEPS_EDIT=1.",
+        "protect-specs: git unavailable; agents must not edit features/ or openapi/ without ALLOW_SPEC_EDIT=1.",
     });
     writeReport(cwd, true, findings);
     return { ok: true, findings };
   }
 
+  const prefix = posixRel(root, cwd);
   const changed = new Set<string>([
     ...(gitLines(cwd, ["diff", "--name-only", "HEAD"]) ?? []),
     ...(gitLines(cwd, ["diff", "--name-only", "--cached"]) ?? []),
@@ -127,21 +132,23 @@ export function runDepsLock(cwd = process.cwd()): {
       : []),
   ]);
 
-  const depChanges: string[] = [];
+  const localChanges: string[] = [];
   for (const file of changed) {
     const normalized = file.split(sep).join("/");
-    if (isProtectedDepPath(normalized)) {
-      depChanges.push(normalized);
+    const stripped =
+      prefix.length > 0 && normalized.startsWith(prefix + "/")
+        ? normalized.slice(prefix.length + 1)
+        : normalized;
+    if (globs.some((glob) => matchGlob(stripped, glob) || matchGlob(normalized, glob))) {
+      localChanges.push(normalized);
     }
   }
-  depChanges.sort((a, b) => a.localeCompare(b));
 
-  if (depChanges.length === 0) {
+  if (localChanges.length === 0) {
     findings.push({
-      id: "deps-lock",
+      id: "protect-specs",
       severity: "info",
-      message:
-        "deps-lock: no package.json / package-lock.json changes in the git diff (root, examples/*, templates/*, packages/*).",
+      message: "protect-specs: no protected spec files in the git diff.",
     });
     writeReport(cwd, true, findings);
     return { ok: true, findings };
@@ -149,29 +156,29 @@ export function runDepsLock(cwd = process.cwd()): {
 
   if (grant.allowed) {
     findings.push({
-      id: "deps-lock",
+      id: "protect-specs",
       severity: "info",
-      message: `deps-lock: dependency edits granted via ${grant.reason}: ${depChanges.join(", ")}`,
+      message: `protect-specs: spec edits granted via ${grant.reason}: ${localChanges.join(", ")}`,
     });
     writeReport(cwd, true, findings);
     return { ok: true, findings };
   }
 
   findings.push({
-    id: "deps-lock",
+    id: "protect-specs",
     severity: "fail",
     message:
-      "deps-lock blocked package.json / package-lock.json edits without human grant: " +
-      depChanges.join(", ") +
-      ". Set ALLOW_DEPS_EDIT=1, add .gauntlet/allow-deps-edit, set allowDepsEdit: true in gauntlet.config.json, or label deps-approved.",
+      "protect-specs blocked spec edits without human grant: " +
+      localChanges.join(", ") +
+      ". Set ALLOW_SPEC_EDIT=1, add .gauntlet/allow-spec-edit, or label specs-approved.",
   });
   writeReport(cwd, false, findings);
   return { ok: false, findings };
 }
 
-function writeReport(cwd: string, ok: boolean, findings: DepsFinding[]): void {
+function writeReport(cwd: string, ok: boolean, findings: ProtectFinding[]): void {
   writeFileSync(
-    resolve(cwd, "deps-lock-report.json"),
+    resolve(cwd, "protect-specs-report.json"),
     `${JSON.stringify({ ok, generatedAt: new Date().toISOString(), findings }, null, 2)}\n`,
   );
 }
@@ -185,19 +192,19 @@ function isDirectRun(): boolean {
 }
 
 function main(): void {
-  const result = runDepsLock();
-  console.info(`deps-lock — ${result.findings.length} finding(s)`);
+  const result = runProtectSpecs();
+  console.info(`protect-specs — ${result.findings.length} finding(s)`);
   for (const finding of result.findings) {
     const mark = finding.severity === "fail" ? "x" : "i";
     const log = finding.severity === "fail" ? console.error : console.info;
     log(`  ${mark} [${finding.id}/${finding.severity}] ${finding.message}`);
   }
   if (!result.ok) {
-    console.error("deps-lock failed.");
+    console.error("protect-specs failed.");
     process.exitCode = 1;
     return;
   }
-  console.info("deps-lock passed.");
+  console.info("protect-specs passed.");
 }
 
 if (isDirectRun()) {

@@ -14,8 +14,9 @@ import { loadConfig } from "./inventory.js";
  * collide with open PR #5 (deps-lock). Operators match Stryker's core set
  * (equality, relational, logical, boolean, unary-not, numeric increment).
  *
- * Threshold is 80% after CI measured 100% kill (7/7) on Todo domain.
- * Timeout is treated as killed (Stryker-like) to avoid flake-fails; see
+ * Threshold is 80% after CI measured 100% kill (7/7) on Todo domain
+ * (gauntlet-todo artifact, verify run on main 2026-09-16). Timeout is
+ * treated as killed (Stryker-like) to avoid flake-fails; see
  * ADR-phase2-mutation-complexity.md.
  *
  * Template verify omits the mutation gate for speed. Run the script opt-in.

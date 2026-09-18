@@ -73,8 +73,8 @@ Hard tool. Fails verify. Not a request. There is **no** `ALLOW_SECRETS=1`.
 
 Do not:
 
-- Commit `.env` or credential files (including `git add -f`). Use `.env.example`
-  with placeholders
+- Commit `.env`, `.netrc`, or credential files (including `git add -f`). Use
+  `.env.example` with placeholders
 - Hardcode API keys, tokens, passwords, or private keys
 - Log or print secret values in agent tool output / finish messages
 - Paste real PII into Gherkin, fixtures, or seed data — use synthetic values
@@ -165,7 +165,7 @@ crap, contract, e2e.
 ## Coverage
 
 Do not lower thresholds in `vitest.config.ts`.
-Floors: lines/functions/statements **80%**, branches **70%** on `src/**`.
+Floors: lines/functions/statements **90%**, branches **70%** on `src/domain`.
 
 ## Phase 2 / 3
 

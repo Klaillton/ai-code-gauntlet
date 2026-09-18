@@ -1,0 +1,8 @@
+{
+  "name": "@ai-code-gauntlet/gates",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Canonical gauntlet gate scripts. Sync into examples/todo and templates/ts-node-web.",
+  "type": "module",
+  "license": "MIT"
+}
