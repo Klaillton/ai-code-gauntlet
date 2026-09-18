@@ -110,23 +110,17 @@ function createProject(dir, { sample } = {}) {
   copyDir(src, target, { skip: CREATE_SKIP });
 
   if (sample !== "todo") {
-    const pkgPath = join(target, "package.json");
     const pkgName = pkgNameFromDir(dir);
-    if (existsSync(pkgPath)) {
-      const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
-      pkg.name = pkgName;
-      writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
-    }
-    const cfgPath = join(target, "gauntlet.config.json");
-    if (existsSync(cfgPath)) {
-      const cfg = JSON.parse(readFileSync(cfgPath, "utf8"));
-      cfg.name = pkgName;
-      for (const gate of cfg.gates || []) {
-        if (Object.prototype.hasOwnProperty.call(gate, "enabled")) {
-          delete gate.enabled;
-        }
+    for (const rel of ["package.json", "gauntlet.config.json"]) {
+      const full = join(target, rel);
+      if (!existsSync(full)) {
+        continue;
       }
-      writeFileSync(cfgPath, `${JSON.stringify(cfg, null, 2)}\n`);
+      const raw = readFileSync(full, "utf8");
+      writeFileSync(
+        full,
+        raw.replace(/("name"\s*:\s*)"[^"]*"/, `$1${JSON.stringify(pkgName)}`),
+      );
     }
   }
 

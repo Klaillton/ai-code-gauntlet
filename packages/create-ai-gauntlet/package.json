@@ -1,6 +1,6 @@
 {
   "name": "create-ai-gauntlet",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Scaffold or adopt the AI Code Gauntlet into TypeScript apps",
   "type": "module",
   "bin": {
@@ -9,8 +9,14 @@
   "files": [
     "bin",
     "src",
-    "README.md"
+    "README.md",
+    "kit"
   ],
+  "scripts": {
+    "pack:kit": "node pack-kit.mjs",
+    "prepack": "node pack-kit.mjs",
+    "test": "node --test src/cli.test.js"
+  },
   "engines": {
     "node": ">=20"
   },

@@ -153,7 +153,9 @@ ${expiryLine}
 }
 
 function renderGaps(findings: Finding[]): string {
-  const durable = findings.filter((finding) => finding.id !== "D6" && finding.id !== "D9");
+  const durable = findings.filter(
+    (finding) => finding.id !== "D6" && finding.id !== "D9" && finding.id !== "D10",
+  );
   const blocking = durable.filter((finding) => finding.severity === "fail");
   const warnings = durable.filter((finding) => finding.severity === "warn");
   const notes = durable.filter((finding) => finding.severity === "info");
@@ -167,7 +169,7 @@ function renderGaps(findings: Finding[]): string {
 
 # Spec-sync gaps (generated)
 
-Live D6 (git differential) and D9 (no-cheat) appear in \`gauntlet-report.json\` / CI logs, not in this committed file.
+Live D6 / D10 (git differential) and D9 (no-cheat) appear in \`gauntlet-report.json\` / CI logs, not in this committed file.
 
 ## Blocking
 
@@ -181,7 +183,7 @@ ${list(warnings)}
 
 ${list(notes)}
 
-D6 (git differential) and D9 (no-cheat coverage baseline) are evaluated at
+D6 / D10 (git differential) and D9 (no-cheat coverage baseline) are evaluated at
 verify time and are not snapshotted here, so D7 stays deterministic.
 `;
 }
