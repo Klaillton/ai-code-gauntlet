@@ -84,8 +84,16 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "22"
-      - name: Scaffold a fresh app from the template
-        run: node packages/create-ai-gauntlet/bin/create-ai-gauntlet.js create "$RUNNER_TEMP/gauntlet-smoke"
+      - name: Pack create-ai-gauntlet (bundles kit/)
+        working-directory: packages/create-ai-gauntlet
+        run: npm pack
+      - name: Scaffold from the packed tarball
+        run: |
+          TARBALL=$(ls packages/create-ai-gauntlet/create-ai-gauntlet-*.tgz | head -n 1)
+          mkdir -p "$RUNNER_TEMP/from-pack"
+          cd "$RUNNER_TEMP/from-pack"
+          npm install "$GITHUB_WORKSPACE/$TARBALL"
+          npx create-ai-gauntlet create "$RUNNER_TEMP/gauntlet-smoke"
       - name: Install, browsers, verify
         working-directory: ${{ runner.temp }}/gauntlet-smoke
         env:

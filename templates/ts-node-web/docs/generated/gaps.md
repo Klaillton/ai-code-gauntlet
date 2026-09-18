@@ -5,7 +5,7 @@
 
 # Spec-sync gaps (generated)
 
-Live D6 (git differential) and D9 (no-cheat) appear in `gauntlet-report.json` / CI logs, not in this committed file.
+Live D6 / D10 (git differential) and D9 (no-cheat) appear in `gauntlet-report.json` / CI logs, not in this committed file.
 
 ## Blocking
 
@@ -17,7 +17,7 @@ _None._
 
 ## Notes
 
-- **D10:** D10: no Gherkin/OpenAPI in the diff; generated docs not required.
+_None._
 
-D6 (git differential) and D9 (no-cheat coverage baseline) are evaluated at
+D6 / D10 (git differential) and D9 (no-cheat coverage baseline) are evaluated at
 verify time and are not snapshotted here, so D7 stays deterministic.

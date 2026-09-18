@@ -33,6 +33,15 @@ features/e2e/openapi).
 See [`docs/ADOPT.md`](../../docs/ADOPT.md) for grants (`specs-approved`,
 `deps-approved`, `ALLOW_*`).
 
-## Note
+## Pack / npx
 
-This CLI resolves templates relative to the **repository root** (`templates/`, `examples/`). Run it from a clone of the kit, or install after publishing when templates are bundled.
+`npm pack` (and `prepack`) copies `templates/`, `packages/gauntlet-gates`,
+`packages/gauntlet-skills`, and `examples/todo` into `kit/` inside this
+package. After publish:
+
+```bash
+npx create-ai-gauntlet create my-app
+npx create-ai-gauntlet adopt .
+```
+
+From a clone, `findKitRoot()` still uses the repo layout (no `kit/` needed).

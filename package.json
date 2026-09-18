@@ -14,6 +14,7 @@
     "skills:sync": "node packages/gauntlet-skills/sync.mjs",
     "skills:check": "node packages/gauntlet-skills/check.mjs",
     "test:cli": "node --test packages/create-ai-gauntlet/src/cli.test.js",
+    "pack:cli": "node packages/create-ai-gauntlet/pack-kit.mjs",
     "verify:template": "npm --prefix templates/ts-node-web run verify",
     "verify:example": "npm --prefix examples/todo run verify",
     "verify": "npm run gates:check && npm run skills:check && npm run test:cli && npm run verify:template && npm run verify:example",
