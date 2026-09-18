@@ -40,7 +40,8 @@ const DEFAULT_FORBID_MODULES = new Set([
   "child_process",
 ]);
 
-const INFRA_PREFIXES = ["src/api/", "src/web/"];
+/** Infra roots under src/ (exact dir or any path under them). */
+const INFRA_ROOTS = ["src/api", "src/web"] as const;
 
 function walkTs(dir: string): string[] {
   if (!existsSync(dir)) {
@@ -58,17 +59,47 @@ function walkTs(dir: string): string[] {
   return out.sort((a, b) => a.localeCompare(b));
 }
 
-function isInfraRel(rel: string): boolean {
-  const normalized = rel.split(sep).join("/");
-  if (normalized === "src/server.ts" || normalized.startsWith("src/server.")) {
+/**
+ * True when a resolved posix path (relative to cwd) points at infra.
+ * Catches directory imports like `../api` → `src/api` (no trailing slash/ext),
+ * as well as `src/api/...`, `src/web/...`, and `src/server(.ts|.*)`.
+ */
+export function isInfraRel(rel: string): boolean {
+  const normalized = rel.split(sep).join("/").replace(/\/+$/, "");
+  const bare = normalized.replace(/\.(js|ts|mjs|cjs|jsx|tsx)$/, "");
+
+  if (
+    bare === "src/server" ||
+    normalized === "src/server.ts" ||
+    normalized.startsWith("src/server.")
+  ) {
     return true;
   }
-  return INFRA_PREFIXES.some((prefix) => normalized.startsWith(prefix));
+
+  return INFRA_ROOTS.some(
+    (root) =>
+      bare === root ||
+      normalized === root ||
+      bare.startsWith(`${root}/`) ||
+      normalized.startsWith(`${root}/`),
+  );
 }
 
+/**
+ * Forbidden bare modules + their subpaths (`fs/promises`, `node:fs/promises`).
+ * Near-miss packages like `fs-extra` / `fs-extra/esm` must NOT match `fs`.
+ */
 export function isForbiddenModule(specifier: string, extra: string[] = []): boolean {
   const forbid = new Set([...DEFAULT_FORBID_MODULES, ...extra]);
-  return forbid.has(specifier);
+  if (forbid.has(specifier)) {
+    return true;
+  }
+  for (const mod of forbid) {
+    if (specifier.startsWith(`${mod}/`)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export function collectImportSpecifiers(source: string, fileName = "file.ts"): string[] {
@@ -110,10 +141,9 @@ export function collectImportSpecifiers(source: string, fileName = "file.ts"): s
 }
 
 function specifierLine(source: string, specifier: string): number {
-  const idx =
-    source.indexOf(`"${specifier}"`) >= 0
-      ? source.indexOf(`"${specifier}"`)
-      : source.indexOf(`'${specifier}'`);
+  const dq = `"${specifier}"`;
+  const sq = `'${specifier}'`;
+  const idx = source.includes(dq) ? source.indexOf(dq) : source.indexOf(sq);
   if (idx < 0) {
     return 1;
   }
