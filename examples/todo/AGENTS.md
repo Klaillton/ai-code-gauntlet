@@ -197,6 +197,7 @@ npm run complexity          # domain cyclomatic max 10
 npm run arch-bound          # domain must not import HTTP/UI/fs infra
 npm run crap                # CRAP ≤ 8 on touched src/domain (needs coverage)
 npm run test:mutation       # mutation kill-score ≥ 80% (in Todo verify)
+npm run gherkin-mutation    # mutate Gherkin examples; e2e must still fail them
 npm run protect-specs       # fail if specs changed without a human grant
 npm run deps-lock           # fail if package manifests changed without a grant
 npm run secrets-scan        # fail on credentials, private keys, high-confidence PII
@@ -226,6 +227,7 @@ npm run agent:loop          # re-run verify (max iterations via MAX_ITERATIONS)
 14. mutation
 15. OpenAPI contract (`check-openapi.ts`)
 16. Cucumber + Playwright E2E
+17. gherkin-mutation
 
 Root `npm run verify` runs the template then the example. Install browsers
 with `npm run prepare:browsers` first.
@@ -258,7 +260,7 @@ A change is done only when:
 - [ ] Relevant Gherkin scenarios pass (domain language)
 - [ ] Unit tests cover new domain rules
 - [ ] OpenAPI still validates for touched endpoints
-- [ ] `npm run verify` is green (protect-specs, deps-lock, secrets-scan, arch-bound, crap, no-cheat, spec-sync, D7)
+- [ ] `npm run verify` is green (protect-specs, deps-lock, secrets-scan, arch-bound, crap, gherkin-mutation, no-cheat, spec-sync, D7)
 - [ ] No skipped or focused tests introduced
 - [ ] Human granted protect-specs if any `.feature` or OpenAPI change was required
 - [ ] Human granted deps-lock if any package.json / lockfile change was required
@@ -278,8 +280,9 @@ Agents must pause for human review when:
 ## Phase 2 / Phase 3
 
 **Wired:** deps-lock + spec-review skill; complexity gate; custom mutation gate
-on Todo verify (80% kill); **crap** after unit; **secrets-scan**; **arch-bound**.
-Template keeps mutation opt-in only. Gherkin leakage is **D8** and **is** wired.
+on Todo verify (80% kill); **gherkin-mutation** after e2e; **crap** after unit;
+**secrets-scan**; **arch-bound**. Template keeps mutation / gherkin-mutation
+opt-in only. Gherkin leakage is **D8** and **is** wired.
 
 **Not wired yet:** official Stryker package / test-ownership freeze;
 dependency-cruiser package (arch-bound is the zero-dep stand-in); perf / query

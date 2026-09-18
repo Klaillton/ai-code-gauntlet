@@ -1,6 +1,6 @@
 # Melhorias do AI Code Gauntlet
 
-Documento vivo do roadmap. Origem: sessão 2026-09-15. Atualizado 2026-09-18 (faixa C).
+Documento vivo do roadmap. Origem: sessão 2026-09-15. Atualizado 2026-09-18 (faixa D).
 
 O kit prova a tese: disciplina em **gates fail-closed**, não em prompt. Não
 empilhar tudo de uma vez — cada item é um PR independente.
@@ -86,10 +86,18 @@ gitleaks **não** substitui `secrets-scan` local. Config: `.gitleaks.toml`.
 
 ---
 
-## Faixa D — Uncle Bob adiado de propósito
+## Faixa D — Uncle Bob (honestidade de aceitação)
 
-Gherkin-level mutation, differential mutation, Stryker oficial, QA procedures,
-six-pack, Acceptance IR. Só depois de A1–A3.
+| Id | Item | Status |
+|----|------|--------|
+| D1 | Mutation diferencial (só domain do PR) | **Feito** |
+| D2 | Gherkin-mutation no Todo após e2e | **Feito** |
+| D3 | Skill `qa-procedures` (spot-check humano) | **Feito** |
+| D4 | Playbook six-pack (`docs/six-pack.md`) | **Feito** (não é swarm) |
+| D5 | Stryker oficial | **Adiado** — runner custom em 80%/100% kill |
+| D6 | Acceptance IR / gerador de step defs | **Adiado** — espera segundo domínio |
+
+Ver [ADR-gherkin-mutation.md](./ADR-gherkin-mutation.md).
 
 ---
 
@@ -114,5 +122,5 @@ B3 coverage 90 no domain     feito
 B4 SBOM CI job               feito
 B2 Java adapter              adiado (larfin/Spring)
 C  secrets follow-ups        feito (gitleaks CI extra; sem inflar regex)
-D  Gherkin mutation / swarm  depois da faixa A
+D  Gherkin mutation / swarm  D1–D4 feitos; Stryker + IR adiados
 ```

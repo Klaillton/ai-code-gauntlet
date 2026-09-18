@@ -26,6 +26,7 @@
 14. `mutation` (enabled) — `npm run test:mutation`
 15. `contract` (enabled) — `npm run test:contract`
 16. `e2e` (enabled) — `npm run test:e2e`
+17. `gherkin-mutation` (enabled) — `npm run gherkin-mutation`
 
 ## Allowlist
 

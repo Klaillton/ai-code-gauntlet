@@ -28,7 +28,8 @@
     { "id": "crap", "command": "npm", "args": ["run", "crap"] },
     { "id": "mutation", "command": "npm", "args": ["run", "test:mutation"] },
     { "id": "contract", "command": "npm", "args": ["run", "test:contract"] },
-    { "id": "e2e", "command": "npm", "args": ["run", "test:e2e"] }
+    { "id": "e2e", "command": "npm", "args": ["run", "test:e2e"] },
+    { "id": "gherkin-mutation", "command": "npm", "args": ["run", "gherkin-mutation"] }
   ],
   "allowlist": [
     {

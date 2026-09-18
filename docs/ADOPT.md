@@ -38,7 +38,8 @@ node packages/create-ai-gauntlet/bin/create-ai-gauntlet.js adopt . --gates stati
   scripts canônicos — `protect-specs.ts`,
   `no-cheat.ts`, `spec-sync.ts`, `complexity.ts`, `mutation.ts`,
   `generate-docs.ts`, `check-docs-fresh.ts`, `inventory.ts`, `verify.ts`,
-  `deps-lock.ts`, `secrets-scan.ts`, `arch-bound.ts`, `crap.ts`, …)
+  `deps-lock.ts`, `secrets-scan.ts`, `arch-bound.ts`, `crap.ts`,
+  `gherkin-mutation.ts`, …)
 - Inclui o gate `deps-lock` quando o template tem `scripts/deps-lock.ts`
 - Escreve `gauntlet.config.json` alinhado a `templates/ts-node-web`:
   - lista completa de gates (sem `enabled: false`), incluindo `complexity`
@@ -47,7 +48,8 @@ node packages/create-ai-gauntlet/bin/create-ai-gauntlet.js adopt . --gates stati
   - allowlist seed do template (ajustar owner/expires no app)
 - Merge **não destrutivo** de scripts no `package.json` (incluindo
   `complexity`, `test:mutation`, `protect-specs`, `no-cheat`, `spec-sync`,
-  `docs:generate`, `docs:check`, `secrets-scan`, `arch-bound`, `crap`, e `deps-lock` se aplicável)
+  `docs:generate`, `docs:check`, `secrets-scan`, `arch-bound`, `crap`,
+  `gherkin-mutation`, e `deps-lock` se aplicável)
 - Copia baseline `docs/generated/` se faltar (gate `docs` / D7)
 - Merge entradas de `.gitignore` para reports e grants locais
 - Não apaga `src/` nem testes existentes

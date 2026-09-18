@@ -153,6 +153,7 @@ npm run spec-sync
 npm run complexity          # domain cyclomatic max 10
 npm run crap                # CRAP ≤ 8 on touched src/domain (needs coverage)
 npm run test:mutation       # opt-in; not in template verify
+npm run gherkin-mutation    # opt-in; not in template verify
 npm run docs:generate
 npm run docs:check
 npm run prepare:browsers    # Playwright Chromium, once
