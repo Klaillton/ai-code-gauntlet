@@ -116,7 +116,11 @@ function isTimeoutError(error: unknown): boolean {
 
 function runE2e(cwd: string, timeoutMs: number): MutantStatus {
   try {
-    execFileSync("npx", ["tsx", "scripts/run-e2e.ts"], {
+    const tsxCli = join(cwd, "node_modules", "tsx", "dist", "cli.mjs");
+    if (!existsSync(tsxCli)) {
+      return "error";
+    }
+    execFileSync(process.execPath, [tsxCli, "scripts/run-e2e.ts"], {
       cwd,
       timeout: timeoutMs,
       encoding: "utf8",
@@ -239,7 +243,7 @@ export function runGherkinMutation(cwd = process.cwd()): {
     }
   }
 
-  const killed = mutants.filter((m) => m.status === "killed" || m.status === "timeout").length;
+  const killed = mutants.filter((m) => m.status === "killed").length;
   const survived = mutants.filter((m) => m.status === "survived").length;
   const timeout = mutants.filter((m) => m.status === "timeout").length;
   const error = mutants.filter((m) => m.status === "error").length;
@@ -251,8 +255,11 @@ export function runGherkinMutation(cwd = process.cwd()): {
   if (score < threshold) {
     findings.push(`Gherkin kill score ${score}% is below threshold ${threshold}%.`);
   }
+  if (timeout > 0) {
+    findings.push(`${timeout} Gherkin mutant(s) timed out — timeouts are not kills (fail-closed).`);
+  }
 
-  const ok = score >= threshold && error === 0;
+  const ok = score >= threshold && error === 0 && timeout === 0;
   const report = {
     ok,
     generatedAt: new Date().toISOString(),

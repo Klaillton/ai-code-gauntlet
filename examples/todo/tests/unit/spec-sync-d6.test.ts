@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { AllowlistEntry } from "../../scripts/inventory.js";
 import {
   baseExempt,
+  checkD10FromChanged,
   evaluateApiRouteDelta,
   isUnderScopedDir,
   parseFeatureOperationIds,
@@ -188,5 +189,39 @@ paths:
     expect(baseExempt([expiredAllow], "POST", "/api/test/reset", "openapi", "2026-09-10")).toBe(
       false,
     );
+  });
+});
+
+describe("D10 SDD requires generated docs", () => {
+  const prefix = "examples/todo";
+
+  it("shouldFailWhenFeatureChangesWithoutGeneratedDocs", () => {
+    const findings = checkD10FromChanged(
+      ["examples/todo/features/todos.feature"],
+      prefix,
+      "features",
+      "openapi/openapi.yaml",
+    );
+    expect(findings.some((f) => f.id === "D10" && f.severity === "fail")).toBe(true);
+  });
+
+  it("shouldPassWhenFeatureAndGeneratedDocsChangeTogether", () => {
+    const findings = checkD10FromChanged(
+      ["examples/todo/features/todos.feature", "examples/todo/docs/generated/gauntlet.md"],
+      prefix,
+      "features",
+      "openapi/openapi.yaml",
+    );
+    expect(findings.some((f) => f.severity === "fail")).toBe(false);
+  });
+
+  it("shouldIgnoreCodeOnlyDiffs", () => {
+    const findings = checkD10FromChanged(
+      ["examples/todo/src/domain/todo.ts"],
+      prefix,
+      "features",
+      "openapi/openapi.yaml",
+    );
+    expect(findings.every((f) => f.severity !== "fail")).toBe(true);
   });
 });

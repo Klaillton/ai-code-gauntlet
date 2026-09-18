@@ -17,7 +17,7 @@ _None._
 
 ## Notes
 
-_None._
+- **D10:** D10: no Gherkin/OpenAPI in the diff; generated docs not required.
 
 D6 (git differential) and D9 (no-cheat coverage baseline) are evaluated at
 verify time and are not snapshotted here, so D7 stays deterministic.

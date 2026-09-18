@@ -6,6 +6,10 @@ Discipline lives in **gates and tools**, not in prompt politeness.
 **protect-specs**, **deps-lock**, **secrets-scan**, **arch-bound**, and **no-cheat**
 are hard tools. They fail `npm run verify`. They are not requests.
 
+If a **closed** Gherkin/OpenAPI is wrong: stop, ask, protect-specs grant,
+edit SDD, `npm run docs:generate`, commit `docs/generated` in the same change
+(**D10**). Skill: `reopen-spec`.
+
 ## Mission
 
 Ship behavior that is:
@@ -14,7 +18,7 @@ Ship behavior that is:
 2. Contracted in human-approved **OpenAPI** (`openapi/openapi.yaml`)
 3. Proven by **two test streams**: unit (Vitest) + acceptance (Cucumber + Playwright)
 4. Shaped by **static gates**: TypeScript, ESLint, Prettier, coverage, complexity
-5. Kept honest by **spec-sync** (D1–D8), **no-cheat** (D9), **protect-specs**,
+5. Kept honest by **spec-sync** (D1–D8, **D10**), **no-cheat** (D9), **protect-specs**,
    **deps-lock**, **secrets-scan**, and **arch-bound**
 
 You implement. Humans defend the specs.
@@ -22,8 +26,8 @@ You implement. Humans defend the specs.
 This template is **lenient**: D3 (operationId without `@op` scenario) **warns**.
 D1, D2, D5, D7, D8, D9, protect-specs, deps-lock, secrets-scan, and arch-bound still **fail**.
 D6 warns when git diffs are unmatched (fail-closed in the Todo example).
-Complexity is a verify gate. Mutation is **opt-in** (`npm run test:mutation`);
-the `mutation` gate is omitted here for speed.
+Complexity, mutation, and gherkin-mutation are verify gates. Zero domain
+mutants scores 100 (empty/health skeleton).
 
 ## Hard prohibitions (enforced)
 
@@ -152,8 +156,8 @@ npm run no-cheat
 npm run spec-sync
 npm run complexity          # domain cyclomatic max 10
 npm run crap                # CRAP ≤ 8 on touched src/domain (needs coverage)
-npm run test:mutation       # opt-in; not in template verify
-npm run gherkin-mutation    # opt-in; not in template verify
+npm run test:mutation       # domain kill-score ≥ 80%
+npm run gherkin-mutation    # after e2e; example theater fails
 npm run docs:generate
 npm run docs:check
 npm run prepare:browsers    # Playwright Chromium, once
@@ -161,7 +165,7 @@ npm run prepare:browsers    # Playwright Chromium, once
 
 `npm run verify` order: format, lint, typecheck, complexity, arch-bound,
 protect-specs, deps-lock, secrets-scan, no-cheat, spec-sync, docs, unit+coverage,
-crap, contract, e2e.
+crap, mutation, contract, e2e, gherkin-mutation.
 
 ## Coverage
 
@@ -170,10 +174,9 @@ Floors: lines/functions/statements **90%**, branches **70%** on `src/domain`.
 
 ## Phase 2 / 3
 
-**Wired:** deps-lock + spec-review; complexity gate (max 10 on `src/domain`);
-**secrets-scan**; **arch-bound**; **crap** after unit. Mutation script exists
-but the gate is **omitted** from template verify for speed. D8 gherkin leak
-is already in spec-sync.
+**Wired:** deps-lock + spec-review; complexity; mutation; gherkin-mutation;
+**secrets-scan**; **arch-bound**; **crap**; **D10** (SDD change requires
+`docs/generated` in the same diff). D8 gherkin leak is already in spec-sync.
 
 See `docs/ADR-phase2-mutation-complexity.md` and
 `docs/ADR-phase2-deps-spec-review.md` in the kit repo.

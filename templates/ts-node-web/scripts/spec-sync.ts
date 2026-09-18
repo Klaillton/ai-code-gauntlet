@@ -15,11 +15,12 @@ import {
   type Inventory,
   type Strictness,
   buildInventory,
+  includeGitBranchDivergence,
   normalizeMethod,
   routeKey,
 } from "./inventory.js";
 
-export type DriftId = "D1" | "D2" | "D3" | "D5" | "D6" | "D8" | "D9" | "allowlist";
+export type DriftId = "D1" | "D2" | "D3" | "D5" | "D6" | "D8" | "D9" | "D10" | "allowlist";
 
 export type Finding = {
   id: DriftId;
@@ -447,6 +448,107 @@ function withPrefix(prefix: string, rel: string): string {
   return prefix ? `${prefix}/${rel}` : rel;
 }
 
+function collectChangedFiles(cwd: string): string[] {
+  const names = [
+    ...(gitLines(cwd, ["diff", "--name-only", "HEAD"]) ?? []),
+    ...(gitLines(cwd, ["diff", "--name-only", "--cached"]) ?? []),
+  ];
+  if (includeGitBranchDivergence()) {
+    names.push(
+      ...(gitLines(cwd, ["diff", "--name-only", "origin/main...HEAD"]) ?? []),
+      ...(gitLines(cwd, ["diff", "--name-only", "main...HEAD"]) ?? []),
+    );
+  }
+  return [...new Set(names.map((file) => file.split(sep).join("/")).filter(Boolean))];
+}
+
+/**
+ * D10: if Gherkin or OpenAPI changed, docs/generated must change in the same
+ * diff (documentation along the SDD). Reopening a closed spec without regen
+ * fails. Empty diff is info.
+ */
+export function checkD10FromChanged(
+  changed: string[],
+  prefix: string,
+  featuresDirRel: string,
+  openapiRel: string,
+  docsGenRel = "docs/generated",
+): Finding[] {
+  if (changed.length === 0) {
+    return [
+      {
+        id: "D10",
+        severity: "info",
+        message: "D10: no git diff; nothing to check for SDD/docs pairing.",
+      },
+    ];
+  }
+  const sddChanged = changed.some(
+    (file) =>
+      isUnderScopedDir(file, prefix, featuresDirRel) ||
+      file === withPrefix(prefix, openapiRel) ||
+      isUnderScopedDir(file, prefix, dirname(openapiRel).split(sep).join("/")),
+  );
+  if (!sddChanged) {
+    return [
+      {
+        id: "D10",
+        severity: "info",
+        message: "D10: no Gherkin/OpenAPI in the diff; generated docs not required.",
+      },
+    ];
+  }
+  const docsChanged = changed.some((file) => isUnderScopedDir(file, prefix, docsGenRel));
+  if (!docsChanged) {
+    return [
+      {
+        id: "D10",
+        severity: "fail",
+        message:
+          "D10 SDD (Gherkin/OpenAPI) changed without docs/generated in the same diff. " +
+          "Reopening a closed spec requires `npm run docs:generate` and committing the docs.",
+      },
+    ];
+  }
+  return [
+    {
+      id: "D10",
+      severity: "info",
+      message: "D10: SDD change includes docs/generated in the same diff.",
+    },
+  ];
+}
+
+function checkD10(inventory: Inventory): Finding[] {
+  const cwd = inventory.cwd;
+  if (!gitLines(cwd, ["rev-parse", "--is-inside-work-tree"])) {
+    return [
+      {
+        id: "D10",
+        severity: inventory.strictness === "strict" ? "fail" : "warn",
+        message: "D10 git is required to prove SDD changes update generated docs.",
+      },
+    ];
+  }
+  const root = repoRoot(cwd);
+  if (!root) {
+    return [
+      {
+        id: "D10",
+        severity: inventory.strictness === "strict" ? "fail" : "warn",
+        message: "D10 git is required to prove SDD changes update generated docs.",
+      },
+    ];
+  }
+  const prefix = scopedPrefix(root, cwd);
+  const openapiRel =
+    inventory.config.sdd?.openapiPath ??
+    inventory.config.contract?.openapiPath ??
+    "openapi/openapi.yaml";
+  const featuresDirRel = inventory.config.sdd?.featuresDir ?? "features";
+  return checkD10FromChanged(collectChangedFiles(cwd), prefix, featuresDirRel, openapiRel);
+}
+
 export function isUnderScopedDir(file: string, prefix: string, dirRel: string): boolean {
   const base = withPrefix(prefix, dirRel).replace(/\/+$/, "");
   return file === base || file.startsWith(`${base}/`);
@@ -558,12 +660,7 @@ function checkD6(inventory: Inventory): Finding[] {
     ];
   }
 
-  const files = new Set<string>([
-    ...(gitLines(cwd, ["diff", "--name-only", "HEAD"]) ?? []),
-    ...(gitLines(cwd, ["diff", "--name-only", "--cached"]) ?? []),
-    ...(gitLines(cwd, ["diff", "--name-only", "origin/main...HEAD"]) ?? []),
-    ...(gitLines(cwd, ["diff", "--name-only", "main...HEAD"]) ?? []),
-  ]);
+  const files = new Set<string>(collectChangedFiles(cwd));
 
   if (files.size === 0) {
     return [
@@ -736,6 +833,7 @@ export function runSpecSync(cwd = process.cwd()): SpecSyncResult {
     ...checkD5(inventory, entries),
     ...checkD8(inventory),
     ...checkD6(inventory),
+    ...checkD10(inventory),
   ];
 
   const ok = findings.every((finding) => finding.severity !== "fail");

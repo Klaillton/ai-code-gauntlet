@@ -37,7 +37,7 @@ npm install && npm run prepare:browsers && npm run verify
 - Domain unit (`src/domain/health.ts`)
 - Cucumber + Playwright harness
 - `gauntlet.config.json` **lenient** plus complexity, arch-bound, deps-lock, secrets-scan, spec-sync, no-cheat, protect-specs, docs, crap
-- `AGENTS.md` (mutation script present; gate omitted from template verify for speed)
+- `AGENTS.md` (mutation + gherkin-mutation are verify gates; empty domain scores 100)
 
 Template D3 warns (lenient). Todo D3 fails (strict).
 Business domain lives in `examples/todo` only.

@@ -6,6 +6,13 @@ Discipline lives in **gates and tools**, not in prompt politeness.
 **protect-specs**, **deps-lock**, **secrets-scan**, **arch-bound**, and
 **no-cheat** are hard tools. They fail `npm run verify`. They are not requests.
 
+### Reopening a closed spec (SDD)
+
+If a gate or the human shows a **closed** Gherkin/OpenAPI is wrong: stop,
+ask, get a protect-specs grant, edit the SDD, run `npm run docs:generate`,
+commit `docs/generated` **in the same change** (**D10**), then implement.
+See skill `reopen-spec`. Do not patch production to match a stale spec.
+
 ## Mission
 
 Ship behavior that is:
@@ -14,7 +21,7 @@ Ship behavior that is:
 2. Contracted in human-approved **OpenAPI** (`openapi/openapi.yaml`)
 3. Proven by **two test streams**: unit (Vitest) + acceptance (Cucumber + Playwright)
 4. Shaped by **static gates**: TypeScript, ESLint, Prettier, coverage, complexity
-5. Kept honest by **spec-sync** (D1–D8), **no-cheat** (D9), **protect-specs**,
+5. Kept honest by **spec-sync** (D1–D8, **D10**), **no-cheat** (D9), **protect-specs**,
    **deps-lock**, **secrets-scan**, and **arch-bound**
 
 You implement. Humans defend the specs and dependency manifests.

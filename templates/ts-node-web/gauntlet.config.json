@@ -7,6 +7,11 @@
     "include": ["src/domain"],
     "max": 10
   },
+  "mutation": {
+    "include": ["src/domain"],
+    "threshold": 80,
+    "timeoutMs": 90000
+  },
   "gates": [
     { "id": "format", "command": "npm", "args": ["run", "format"] },
     { "id": "lint", "command": "npm", "args": ["run", "lint"] },
@@ -21,8 +26,10 @@
     { "id": "docs", "command": "npm", "args": ["run", "docs:check"] },
     { "id": "unit", "command": "npm", "args": ["run", "test:unit:coverage"] },
     { "id": "crap", "command": "npm", "args": ["run", "crap"] },
+    { "id": "mutation", "command": "npm", "args": ["run", "test:mutation"] },
     { "id": "contract", "command": "npm", "args": ["run", "test:contract"] },
-    { "id": "e2e", "command": "npm", "args": ["run", "test:e2e"] }
+    { "id": "e2e", "command": "npm", "args": ["run", "test:e2e"] },
+    { "id": "gherkin-mutation", "command": "npm", "args": ["run", "gherkin-mutation"] }
   ],
   "allowlist": [
     {
@@ -31,7 +38,7 @@
       "path": "/",
       "reason": "HTML shell",
       "exemptFrom": ["openapi"],
-      "owner": "klaillton",
+      "owner": "app-owner",
       "expires": "2027-06-02"
     }
   ],

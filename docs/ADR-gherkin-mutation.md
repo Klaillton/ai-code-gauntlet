@@ -19,7 +19,8 @@ integers in `features/**/*.feature`. If cucumber still passes, the scenario did
 not pin that value.
 
 - Kill score floor **80%**, cap **12** sites, timeout 120s per run.
-- Todo verify: **after e2e**. Template: script opt-in only (same as unit mutation).
+- Template and Todo verify: **after e2e**. Empty/health domain scores 100 on
+  unit mutation when there are no sites.
 - Findings do not echo the mutated example text in the console summary beyond
   operator + location (the JSON report keeps original/replacement like unit
   mutation).

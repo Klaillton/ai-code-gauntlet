@@ -31,8 +31,9 @@ See [ADR-spec-sync-drift.md](./ADR-spec-sync-drift.md).
 - arch-bound (`src/domain` must not import HTTP/UI/fs)
 - Complexity gate on `src/domain` (max 10)
 - CRAP ≤ 8 on touched `src/domain` after unit coverage
-- Mutation gate on Todo (`scripts/mutation.ts`, 80% kill, differential on PRs);
-  gherkin-mutation after e2e on Todo; template keeps both opt-in
+- Mutation + gherkin-mutation on the **template** (the kit product) and Todo;
+  differential on PRs; timeouts are not kills
+- **D10**: Gherkin/OpenAPI in a diff requires `docs/generated` in the same diff
 - ESLint + Prettier + TypeScript
 - AGENTS.md + skills
 - CI = the same gates
