@@ -4,7 +4,7 @@ import { join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import process from "node:process";
 import ts from "typescript";
-import { loadConfig } from "./inventory.js";
+import { includeGitBranchDivergence, loadConfig } from "./inventory.js";
 
 /**
  * Stryker-equivalent mutation gate for src/domain.
@@ -68,6 +68,85 @@ type PlannedMutant = {
 
 function posixRel(from: string, to: string): string {
   return relative(from, to).split(sep).join("/");
+}
+
+function gitLines(cwd: string, args: string[]): string[] | undefined {
+  try {
+    const out = execFileSync("git", args, {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    return out
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+  } catch {
+    return undefined;
+  }
+}
+
+function prBaseDiffs(cwd: string): string[] {
+  const base = process.env.GITHUB_BASE_REF;
+  if (!base) {
+    return [];
+  }
+  return [
+    ...(gitLines(cwd, ["diff", "--name-only", `origin/${base}...HEAD`]) ?? []),
+    ...(gitLines(cwd, ["diff", "--name-only", `${base}...HEAD`]) ?? []),
+  ];
+}
+
+/**
+ * Main-push or no git changes → full include set (fail-closed).
+ * PR with changes but none under include → skip (empty).
+ * PR with include hits → only those files.
+ */
+export function selectMutationFiles(
+  allAbs: string[],
+  cwd: string,
+  includeChangedRels: string[],
+  diverge: boolean,
+  anyGitChange: boolean,
+): string[] {
+  if (!diverge || !anyGitChange) {
+    return allAbs;
+  }
+  if (includeChangedRels.length === 0) {
+    return [];
+  }
+  const wanted = new Set(includeChangedRels.map((rel) => rel.split(sep).join("/")));
+  const selected = allAbs.filter((abs) => wanted.has(posixRel(cwd, abs)));
+  return selected.length > 0 ? selected : [];
+}
+
+export function listGitChangedRels(cwd: string): string[] {
+  const root = gitLines(cwd, ["rev-parse", "--show-toplevel"])?.[0];
+  if (!root) {
+    return [];
+  }
+  const prefix = posixRel(root, cwd);
+  const names = new Set<string>([
+    ...(gitLines(cwd, ["diff", "--name-only", "HEAD"]) ?? []),
+    ...(gitLines(cwd, ["diff", "--name-only", "--cached"]) ?? []),
+    ...(includeGitBranchDivergence()
+      ? [
+          ...(gitLines(cwd, ["diff", "--name-only", "origin/main...HEAD"]) ?? []),
+          ...(gitLines(cwd, ["diff", "--name-only", "main...HEAD"]) ?? []),
+          ...prBaseDiffs(cwd),
+        ]
+      : []),
+  ]);
+  const rels: string[] = [];
+  for (const file of names) {
+    const normalized = file.split(sep).join("/");
+    const stripped =
+      prefix.length > 0 && normalized.startsWith(`${prefix}/`)
+        ? normalized.slice(prefix.length + 1)
+        : normalized;
+    rels.push(stripped);
+  }
+  return rels;
 }
 
 function walkTs(dir: string): string[] {
@@ -258,7 +337,19 @@ export function runMutation(cwd = process.cwd()): MutationReport {
   const includeDir = resolve(cwd, includeRel);
   const findings: string[] = [];
 
-  const files = walkTs(includeDir);
+  const allFiles = walkTs(includeDir);
+  const allChanged = listGitChangedRels(cwd);
+  const includePrefix = includeRel.split(sep).join("/").replace(/\/$/, "");
+  const includeChanged = allChanged.filter(
+    (rel) => rel === includePrefix || rel.startsWith(`${includePrefix}/`),
+  );
+  const files = selectMutationFiles(
+    allFiles,
+    cwd,
+    includeChanged,
+    includeGitBranchDivergence(),
+    allChanged.length > 0,
+  );
   const originals = new Map<string, string>();
   for (const file of files) {
     originals.set(file, readFileSync(file, "utf8"));
@@ -337,9 +428,7 @@ export function runMutation(cwd = process.cwd()): MutationReport {
     );
   }
   if (score < threshold) {
-    findings.push(
-      `Kill score ${score}% is below threshold ${threshold}%. TODO: raise after measuring.`,
-    );
+    findings.push(`Kill score ${score}% is below threshold ${threshold}%.`);
   }
 
   const report: MutationReport = {

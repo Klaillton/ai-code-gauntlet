@@ -17,6 +17,7 @@ spec-sync-report.json
 no-cheat-report.json
 protect-specs-report.json
 mutation-report.json
+gherkin-mutation-report.json
 complexity-report.json
 arch-bound-report.json
 crap-report.json

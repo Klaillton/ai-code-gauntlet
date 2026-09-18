@@ -19,6 +19,7 @@
     "test:unit:watch": "vitest",
     "test:unit:coverage": "vitest run --coverage",
     "test:mutation": "tsx scripts/mutation.ts",
+    "gherkin-mutation": "tsx scripts/gherkin-mutation.ts",
     "complexity": "tsx scripts/complexity.ts",
     "crap": "tsx scripts/crap.ts",
     "arch-bound": "tsx scripts/arch-bound.ts",

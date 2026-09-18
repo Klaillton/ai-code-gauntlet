@@ -17,6 +17,8 @@ This repo is **not** only a Todo app. It is:
 | [`docs/ADR-phase2-mutation-complexity.md`](./docs/ADR-phase2-mutation-complexity.md) | Phase 2: mutation + complexity |
 | [`docs/ADR-secrets-privacy.md`](./docs/ADR-secrets-privacy.md) | secrets-scan: credentials + PII hard gate |
 | [`docs/ADR-arch-bound.md`](./docs/ADR-arch-bound.md) | arch-bound: domain must not import infra |
+| [`docs/ADR-gherkin-mutation.md`](./docs/ADR-gherkin-mutation.md) | Gherkin mutation + differential unit mutation |
+| [`docs/six-pack.md`](./docs/six-pack.md) | Role playbook (not a swarm) |
 
 ```
 Gherkin (human-owned)      -> behavior (protect-specs)
@@ -27,6 +29,7 @@ domain isolation           -> arch-bound (no HTTP/UI/fs in src/domain)
 Playwright drivers         -> acceptance
 Vitest + coverage          -> unit stream (no-cheat)
 Mutation (src/domain)      -> test honesty 80% kill (Todo gate; template opt-in)
+Gherkin examples           -> gherkin-mutation (Todo after e2e; template opt-in)
 Complexity (src/domain)    -> cyclomatic max 10
 CRAP (touched domain)      -> complexity × coverage ≤ 8 after unit
 spec-sync inventory        -> D1-D8 drift (D8 = gherkin leak)
