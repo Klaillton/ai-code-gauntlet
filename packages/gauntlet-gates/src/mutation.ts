@@ -9,17 +9,15 @@ import { includeGitBranchDivergence, loadConfig } from "./inventory.js";
 /**
  * Stryker-equivalent mutation gate for src/domain.
  *
- * Official Stryker was not added as a package: this change is authored via
- * GitHub MCP (cannot measure a live kill score), and a lockfile bump would
- * collide with open PR #5 (deps-lock). Operators match Stryker's core set
- * (equality, relational, logical, boolean, unary-not, numeric increment).
+ * Operators match Stryker's core set (equality, relational, logical,
+ * boolean, unary-not, numeric increment). Official Stryker is not a
+ * package dependency — this gate stays zero-lockfile-bump.
  *
- * Threshold is 80% after CI measured 100% kill (7/7) on Todo domain
- * (gauntlet-todo artifact, verify run on main 2026-09-16). Timeout is
- * treated as killed (Stryker-like) to avoid flake-fails; see
- * ADR-phase2-mutation-complexity.md.
+ * Default threshold is 80% (CI measured 100% kill on Todo domain,
+ * 2026-09-16). Timeout counts as killed (Stryker-like) to avoid
+ * flake-fails; see ADR-phase2-mutation-complexity.md.
  *
- * Template verify omits the mutation gate for speed. Run the script opt-in.
+ * Wired in both example and template verify (gauntlet.config.json).
  */
 
 export type MutantStatus = "killed" | "survived" | "timeout" | "error";
