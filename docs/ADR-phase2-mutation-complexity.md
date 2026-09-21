@@ -37,14 +37,12 @@ default `src/domain`) one site at a time, restores the file, and runs
 `npx vitest run` (no coverage, so floors stay untouched).
 
 - Baseline unit tests must already pass (fail-closed).
-- Kill score = (killed + timeout) / mutantCount. Zero mutants → score 100
-  with an info finding (empty/health-only domain).
+- Kill score = killed / mutantCount.
 - **CHANGE-2:** empty mutants/sites **fail** (or `mutation.skipReason` + `expires`); never score 100% on empty.
 - **Threshold: 80%** (`mutation.threshold`). Raised after CI measured 100%
   kill on Todo domain (artifact `gauntlet-todo`, 2026-09-16).
-- Timeout (default 90s / `mutation.timeoutMs`) counts as **killed**
-  (Stryker-like) so a hung mutant does not flake the gate. Residual risk:
-  a truly hung runner looks like a kill.
+- Timeout (default 90s / `mutation.timeoutMs`) is **not** a kill: any
+  timeout or error mutant fails the gate.
 - Report: `mutation-report.json` (gitignored); folded into
   `gauntlet-report.json`.
 
@@ -66,10 +64,10 @@ declaration under `src/domain` (if / loop / case / catch / `?:` / `&&` /
 `||` / `??`; nested functions scored separately). Fail if any function
 exceeds **max 10**.
 
-Uncle Bob CRAP ≤ 8 is `complexity^2 * (1-coverage)^3 + complexity`. That
-needs a coverage combo this MVP does not compute. Cyclomatic **max 10**
-is the deterministic stand-in; document CRAP as a later raise, not a
-silent skip.
+Uncle Bob CRAP ≤ 8 is wired separately (`scripts/crap.ts` after unit
+coverage; see **CRAP** below). Cyclomatic **max 10** remains the cheap
+pre-unit budget; further CRAP-with-coverage tuning / official Stryker is
+later, not a silent skip of the existing CRAP gate.
 
 ESLint `complexity: ["error", { max: 10 }]` is also on `src/domain/**/*.ts`
 so editors fail the same budget. The dedicated gate does not depend on
@@ -93,7 +91,7 @@ including the main-push skip). Fail if any score **> 8**. Missing
 | App                     | Script         | Gate                                      |
 | ----------------------- | -------------- | ----------------------------------------- |
 | `examples/todo`         | `npm run crap` | **yes** — after `unit`, before `mutation` |
-| `templates/ts-node-web` | `npm run crap` | **yes** — after `unit`, before `contract` |
+| `templates/ts-node-web` | `npm run crap` | **yes** — after `unit`, before `mutation` |
 
 Config: `complexity.include` (default `src/domain`), `complexity.max`
 (default `10`). Report: `complexity-report.json` (gitignored).
@@ -119,11 +117,9 @@ HTTP paths. No change in this PR.
 - **CI time:** each mutant is a full Vitest process. Todo domain is small
   today (single-digit mutants). Growth in `src/domain` will stretch the
   example-todo job; timeout raised to 30 minutes as headroom.
-- **Flaky mutation:** timeout-as-killed can hide a hung runner; Vitest
-  worker flakes would count as kills. Re-run `npm run test:mutation`
-  locally before blaming product code.
-- **Timeout-as-killed** can hide a hung runner; re-run `npm run test:mutation`
-  locally before blaming product code.
+- **Flaky mutation:** timeouts and errors fail the gate (not kills), so a
+  slow runner or Vitest worker flake shows up as a red gate. Re-run
+  `npm run test:mutation` locally before blaming product code.
 - **Not official Stryker:** operator coverage is the core set only (no
   string / optional-chaining / statement-removal). Sufficient for this
   domain; revisit when adopting Stryker.
@@ -133,5 +129,5 @@ HTTP paths. No change in this PR.
 - Official `@stryker-mutator/core` + lockfile (follow-up; needs
   `deps-approved`)
 - dependency-cruiser / architectural drift
-- CRAP-with-coverage (needs coverage combo)
+- Further CRAP tuning / official Stryker (CRAP gate already exists)
 - deps-lock / spec-review (see sibling ADR)
