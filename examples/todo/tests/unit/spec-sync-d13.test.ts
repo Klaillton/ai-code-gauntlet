@@ -11,24 +11,33 @@ function op(
 ): OpenApiOperation {
   const normalizedPath = partial.normalizedPath ?? partial.path;
   return {
-    operationId: partial.operationId,
     method: partial.method,
     path: partial.path,
     normalizedPath,
+    operationId: partial.operationId,
   };
 }
 
 function caseEntry(
   partial: Partial<ContractCase> & Pick<ContractCase, "method" | "path">,
 ): ContractCase {
-  return {
-    label: partial.label,
+  const out: ContractCase = {
     method: partial.method,
     path: partial.path,
-    schemaPath: partial.schemaPath,
-    schemaMethod: partial.schemaMethod,
-    expectedStatus: partial.expectedStatus,
   };
+  if (partial.label !== undefined) {
+    out.label = partial.label;
+  }
+  if (partial.schemaPath !== undefined) {
+    out.schemaPath = partial.schemaPath;
+  }
+  if (partial.schemaMethod !== undefined) {
+    out.schemaMethod = partial.schemaMethod;
+  }
+  if (partial.expectedStatus !== undefined) {
+    out.expectedStatus = partial.expectedStatus;
+  }
+  return out;
 }
 
 const health = op({ method: "get", path: "/health", operationId: "getHealth" });

@@ -490,14 +490,21 @@ function parseCaseAllowlist(raw: unknown): {
       });
       return;
     }
-    entries.push({
-      operationId,
-      method,
-      path,
+    const entry: ContractCaseAllowlistEntry = {
       reason: rec.reason,
       owner: rec.owner,
       expires: rec.expires,
-    });
+    };
+    if (operationId !== undefined) {
+      entry.operationId = operationId;
+    }
+    if (method !== undefined) {
+      entry.method = method;
+    }
+    if (path !== undefined) {
+      entry.path = path;
+    }
+    entries.push(entry);
   });
   return { entries, findings };
 }
