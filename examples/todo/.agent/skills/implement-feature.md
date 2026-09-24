@@ -55,6 +55,14 @@ New ADRs go in `docs/adr/` from `TEMPLATE.md`. Do not delete superseded ADRs —
 
 Keep `docs/sdd/Security.md` and `Observability.md` present (heading + ≥1 requirement). Do not delete them while SDD is active. Skip only with human `sdd: false`.
 
+## CHANGE-3 spec↔code
+
+Implementation PRs must also touch Gherkin/OpenAPI/holes-review (or human SPEC_SYNC_APPROVED).
+
+## CHANGE-2 empty mutation
+
+Do not rely on empty mutation scoring 100%. Empty surface fails unless skipReason+expires.
+
 ## Contract cases (D13)
 
 Every OpenAPI op needs ≥1 `gauntlet.config.json` → `contract.cases` entry. Invalid

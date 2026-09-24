@@ -25,5 +25,6 @@ deps-lock-report.json
 holes-review-report.json
 adr-lint-report.json
 sdd-presence-report.json
+spec-code-report.json
 secrets-scan-report.json
 .gauntlet/allow-secrets-paths

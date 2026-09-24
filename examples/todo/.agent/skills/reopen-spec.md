@@ -21,6 +21,8 @@ These already fail `npm run verify` when a closed phase is wrong:
 | **D13**                                   | OpenAPI op has zero `contract.cases` (or invalid case)     |
 | **D14**                                   | `docs/adr/**` missing template sections or ADR deleted     |
 | **D15**                                   | missing/empty `docs/sdd/Security.md` or `Observability.md` |
+| **CHANGE-2**                              | mutation/gherkin empty surface scored 100%                 |
+| **CHANGE-3**                              | `src/**` without protected spec in same PR                 |
 | D7                                        | Generated docs stale vs current inventory                  |
 
 ## Correct

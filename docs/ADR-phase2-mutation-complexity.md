@@ -10,7 +10,7 @@
 
 Wire the next Phase 2 honesty controls on `src/domain`:
 
-1. **Mutation testing** — Stryker-*equivalent* gate (`test:mutation` / `mutation`)
+1. **Mutation testing** — Stryker-_equivalent_ gate (`test:mutation` / `mutation`)
 2. **Complexity budget** — deterministic cyclomatic max per domain function
 
 Official Stryker (`@stryker-mutator/*`) is **not** added as a package.
@@ -39,6 +39,7 @@ default `src/domain`) one site at a time, restores the file, and runs
 - Baseline unit tests must already pass (fail-closed).
 - Kill score = (killed + timeout) / mutantCount. Zero mutants → score 100
   with an info finding (empty/health-only domain).
+- **CHANGE-2:** empty mutants/sites **fail** (or `mutation.skipReason` + `expires`); never score 100% on empty.
 - **Threshold: 80%** (`mutation.threshold`). Raised after CI measured 100%
   kill on Todo domain (artifact `gauntlet-todo`, 2026-09-16).
 - Timeout (default 90s / `mutation.timeoutMs`) counts as **killed**
@@ -49,10 +50,10 @@ default `src/domain`) one site at a time, restores the file, and runs
 
 ### Wiring
 
-| App | Script | Gate |
-| --- | --- | --- |
-| `examples/todo` | `npm run test:mutation` | **yes** — after `unit`, before `contract` |
-| `templates/ts-node-web` | `npm run test:mutation` | **omitted** from verify (speed; opt-in) |
+| App                     | Script                  | Gate                                                  |
+| ----------------------- | ----------------------- | ----------------------------------------------------- |
+| `examples/todo`         | `npm run test:mutation` | **yes** — after `unit`, before `contract`             |
+| `templates/ts-node-web` | `npm run test:mutation` | **yes** — after `unit`/`crap` (CHANGE-2 empty ≠ 100%) |
 
 Do **not** disable the Todo gate with `enabled: false` (no-cheat / D9).
 
@@ -76,9 +77,9 @@ someone deleting that rule.
 
 ### Wiring
 
-| App | Script | Gate |
-| --- | --- | --- |
-| `examples/todo` | `npm run complexity` | **yes** — after `typecheck` |
+| App                     | Script               | Gate                        |
+| ----------------------- | -------------------- | --------------------------- |
+| `examples/todo`         | `npm run complexity` | **yes** — after `typecheck` |
 | `templates/ts-node-web` | `npm run complexity` | **yes** (cheap / not heavy) |
 
 ## CRAP
@@ -89,9 +90,9 @@ someone deleting that rule.
 including the main-push skip). Fail if any score **> 8**. Missing
 `coverage/coverage-summary.json` fails closed. Empty domain diff is info.
 
-| App | Script | Gate |
-| --- | --- | --- |
-| `examples/todo` | `npm run crap` | **yes** — after `unit`, before `mutation` |
+| App                     | Script         | Gate                                      |
+| ----------------------- | -------------- | ----------------------------------------- |
+| `examples/todo`         | `npm run crap` | **yes** — after `unit`, before `mutation` |
 | `templates/ts-node-web` | `npm run crap` | **yes** — after `unit`, before `contract` |
 
 Config: `complexity.include` (default `src/domain`), `complexity.max`
@@ -107,7 +108,7 @@ HTTP paths. No change in this PR.
 
 - Weak domain tests fail `mutation` on Todo (survivors listed in the report).
 - God-functions in `src/domain` fail `complexity` / lint.
-- Template verify stays fast (no mutation gate).
+- Template mutation is wired; empty surface fails unless skipReason+expires (CHANGE-2).
 - Coverage floors in `vitest.config.ts` are **90/90/70/90** on `src/domain`
   (B3). Do not lower them.
 - Keep both gate sets together on main (`deps-lock` plus `complexity` /

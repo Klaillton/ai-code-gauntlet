@@ -5,15 +5,15 @@
 Não exija green total no dia 1. Adote por **camadas** de trabalho humano, mas o
 **config gerado é fail-closed**: `verify` não aceita `enabled: false` (D9 / verify).
 
-| Camada    | O quê                                                                                                                                                                                 | Dia 1?                 |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
-| 0         | `AGENTS.md` + skills                                                                                                                                                                  | Sim                    |
-| 1         | format / lint / typecheck                                                                                                                                                             | Ideal                  |
-| Hardening | protect-specs, secrets-scan, arch-bound, no-cheat, holes-review (D12), adr-lint (D14), sdd-presence (D15), spec-sync, docs, complexity (+ deps-lock se no template; mutation no Todo) | Sim (sempre no config) |
-| 2         | unit + coverage                                                                                                                                                                       | Ideal                  |
-| 3         | OpenAPI contract                                                                                                                                                                      | Se houver API          |
-| 4         | Gherkin + Playwright E2E                                                                                                                                                              | Poucos fluxos críticos |
-| 5         | CI = verify                                                                                                                                                                           | Quando local estável   |
+| Camada    | O quê                                                                                                                                                                                                       | Dia 1?                 |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| 0         | `AGENTS.md` + skills                                                                                                                                                                                        | Sim                    |
+| 1         | format / lint / typecheck                                                                                                                                                                                   | Ideal                  |
+| Hardening | protect-specs, secrets-scan, arch-bound, no-cheat, holes-review (D12), spec-code (CHANGE-3), adr-lint (D14), sdd-presence (D15), spec-sync, docs, complexity (+ deps-lock se no template; mutation no Todo) | Sim (sempre no config) |
+| 2         | unit + coverage                                                                                                                                                                                             | Ideal                  |
+| 3         | OpenAPI contract                                                                                                                                                                                            | Se houver API          |
+| 4         | Gherkin + Playwright E2E                                                                                                                                                                                    | Poucos fluxos críticos |
+| 5         | CI = verify                                                                                                                                                                                                 | Quando local estável   |
 
 ## CLI
 
@@ -75,7 +75,7 @@ Greenfield `create` continua a copiar o template inteiro (já hardenado).
 | `mutation` (Todo) | `npm run test:mutation` | Kill-score floor on domain; template is opt-in only                                            |
 
 Ordem típica (template): format → lint → typecheck → complexity → arch-bound →
-protect-specs → [`deps-lock`] → holes-review → adr-lint → sdd-presence → secrets-scan → no-cheat → spec-sync → docs → unit →
+protect-specs → [`deps-lock`] → holes-review → spec-code → adr-lint → sdd-presence → secrets-scan → no-cheat → spec-sync → docs → unit →
 crap → mutation → contract → e2e → gherkin-mutation.
 
 **D10:** mudança em Gherkin/OpenAPI no diff exige `docs/generated` no mesmo
@@ -87,6 +87,10 @@ diff (`docs:generate`). Reabrir spec fechada: grant protect-specs + skill
 **D14:** ADRs novos/alterados em `docs/adr/**` precisam das secções do template; não apagar — marcar Superseded.
 
 **D15:** Com SDD ativo, `docs/sdd/Security.md` e `Observability.md` são obrigatórios (heading + ≥1 requirement). Adopt falha se faltar. Skip com `sdd: false`. Residual: lorem/TODO passa presença.
+
+**CHANGE-2:** mutation/gherkin-mutation com zero sites **falha** (nunca 100%); `skipReason`+`expires` ou soft-skip diferencial.
+
+**CHANGE-3:** PRs com `src/**` precisam de Gherkin/OpenAPI/holes-review no mesmo PR, ou grant `SPEC_SYNC_APPROVED` / label `spec-sync-approved`.
 
 ## Grants humanos (não bakear no CI)
 

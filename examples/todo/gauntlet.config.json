@@ -54,6 +54,11 @@
       "args": ["run", "holes-review"]
     },
     {
+      "id": "spec-code",
+      "command": "npm",
+      "args": ["run", "spec-code"]
+    },
+    {
       "id": "adr-lint",
       "command": "npm",
       "args": ["run", "adr-lint"]
@@ -211,5 +216,9 @@
   },
   "adrLint": {
     "glob": "docs/adr/**/*.md"
+  },
+  "allowSpecCodeSkip": false,
+  "specCode": {
+    "implementationGlobs": ["src/**"]
   }
 }

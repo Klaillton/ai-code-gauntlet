@@ -177,6 +177,7 @@ const HARDENING_GATE_IDS = [
   "arch-bound",
   "protect-specs",
   "holes-review",
+  "spec-code",
   "adr-lint",
   "sdd-presence",
   "secrets-scan",
@@ -259,6 +260,7 @@ function buildAdoptConfig(name, skeleton) {
     "arch-bound": { id: "arch-bound", command: "npm", args: ["run", "arch-bound"] },
     "protect-specs": { id: "protect-specs", command: "npm", args: ["run", "protect-specs"] },
     "holes-review": { id: "holes-review", command: "npm", args: ["run", "holes-review"] },
+    "spec-code": { id: "spec-code", command: "npm", args: ["run", "spec-code"] },
     "adr-lint": { id: "adr-lint", command: "npm", args: ["run", "adr-lint"] },
     "sdd-presence": { id: "sdd-presence", command: "npm", args: ["run", "sdd-presence"] },
     "deps-lock": { id: "deps-lock", command: "npm", args: ["run", "deps-lock"] },
@@ -289,6 +291,7 @@ function buildAdoptConfig(name, skeleton) {
       defaults["protect-specs"],
       ...(hasDepsLock ? [defaults["deps-lock"]] : []),
       defaults["holes-review"],
+      defaults["spec-code"],
       defaults["adr-lint"],
       defaults["sdd-presence"],
       defaults["secrets-scan"],
@@ -317,7 +320,8 @@ function buildAdoptConfig(name, skeleton) {
       config.gates = config.gates.filter((g) => g.id !== "deps-lock");
       ensureGate(config.gates, defaults["holes-review"], "protect-specs");
     }
-    ensureGate(config.gates, defaults["adr-lint"], "holes-review");
+    ensureGate(config.gates, defaults["spec-code"], "holes-review");
+    ensureGate(config.gates, defaults["adr-lint"], "spec-code");
     ensureGate(config.gates, defaults["sdd-presence"], "adr-lint");
     ensureGate(config.gates, defaults["secrets-scan"], "sdd-presence");
     ensureGate(config.gates, defaults["no-cheat"], "secrets-scan");
@@ -345,6 +349,12 @@ function buildAdoptConfig(name, skeleton) {
   }
   if (!config.adrLint) {
     config.adrLint = { glob: "docs/adr/**/*.md" };
+  }
+  if (config.allowSpecCodeSkip === undefined) {
+    config.allowSpecCodeSkip = false;
+  }
+  if (!config.specCode) {
+    config.specCode = { implementationGlobs: ["src/**"] };
   }
   if (!config.contract) {
     config.contract = {
@@ -379,6 +389,7 @@ function mergeGitignore(target, skeleton) {
     "holes-review-report.json",
     "adr-lint-report.json",
     "sdd-presence-report.json",
+    "spec-code-report.json",
     "mutation-report.json",
     "gherkin-mutation-report.json",
     "complexity-report.json",
@@ -561,6 +572,7 @@ function adoptProject(dir, { gates } = {}) {
       "no-cheat": "tsx scripts/no-cheat.ts",
       "protect-specs": "tsx scripts/protect-specs.ts",
       "holes-review": "tsx scripts/holes-review.ts",
+      "spec-code": "tsx scripts/spec-code.ts",
       "adr-lint": "tsx scripts/adr-lint.ts",
       "sdd-presence": "tsx scripts/sdd-presence.ts",
       "secrets-scan": "tsx scripts/secrets-scan.ts",
@@ -607,6 +619,7 @@ Hardening gates always wired: ${hardeningList.join(", ")}.
 - [ ] Review AGENTS.md (merge with existing rules if any)
 - [ ] Align package.json scripts with real commands
 - [ ] Confirm \`docs/sdd/Security.md\` and \`docs/sdd/Observability.md\` (D15) — heading + ≥1 requirement each (or set \`sdd: false\`)
+- [ ] CHANGE-3: implementation PRs must also touch Gherkin/OpenAPI/holes-review (or \`SPEC_SYNC_APPROVED\` / label \`spec-sync-approved\`)
 - [ ] Expand openapi/features for your domain
 - [ ] Run \`npm run docs:generate\` then \`npm run verify\` until green
 - [ ] Use human grants for protected edits (see docs/ADOPT.md): \`specs-approved\`, \`deps-approved\`, \`ALLOW_SPEC_EDIT\`, \`ALLOW_DEPS_EDIT\`

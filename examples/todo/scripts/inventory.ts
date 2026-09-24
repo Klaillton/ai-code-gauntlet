@@ -116,6 +116,30 @@ export type GauntletConfig = {
   secretsScan?: {
     allowPaths?: string[];
   };
+  /** CHANGE-2: unit mutation config (include/threshold + optional skipReason+expires). */
+  mutation?: {
+    include?: string[];
+    threshold?: number;
+    timeoutMs?: number;
+    skipReason?: string;
+    expires?: string;
+  };
+  /** CHANGE-2: gherkin-mutation config + optional skipReason+expires. */
+  gherkinMutation?: {
+    include?: string[];
+    threshold?: number;
+    timeoutMs?: number;
+    maxMutants?: number;
+    skipReason?: string;
+    expires?: string;
+  };
+  /** CHANGE-3: DoD spec↔code pairing. */
+  allowSpecCodeSkip?: boolean;
+  specCode?: {
+    implementationGlobs?: string[];
+    specGlobs?: string[];
+    approved?: boolean;
+  };
   agent?: {
     protectedGlobs?: string[];
     maxVerifyCycles?: number;

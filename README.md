@@ -37,6 +37,8 @@ spec-sync inventory        -> D1-D8 + D10-D11 + D13 drift (D8 = gherkin leak; D1
 holes-review (D12)         -> src/** needs docs/holes-review artifact or human grant
 adr-lint (D14)             -> docs/adr/** template sections; no ADR deletes (mark Superseded)
 sdd-presence (D15)         -> docs/sdd/Security.md + Observability.md presence (skip if sdd:false)
+spec-code (CHANGE-3)       -> src/** PRs must also touch protected spec (or SPEC_SYNC_APPROVED)
+mutation (CHANGE-2)        -> empty mutants/sites never score 100%
 no-cheat                   -> skip/only, disabled gates, lowered floors
 ESLint + Prettier + tsc    -> static shape
 AGENTS.md + skills         -> agent rules (incl. spec-review before implement)
@@ -118,7 +120,7 @@ Todo is `strict` (D3 fail). The template is `lenient` (D3 warn).
 [docs/ADR-phase2-mutation-complexity.md](./docs/ADR-phase2-mutation-complexity.md).
 
 - Mutation: Stryker-equivalent, **80%** kill-score floor. **Template and Todo**
-  both run the gate (empty domain → 100%). Timeouts are not kills.
+  both run the gate (CHANGE-2: empty surface fails / skipReason+expires / differential soft-skip — never 100%). Timeouts are not kills.
 - Complexity: cyclomatic **max 10** per domain function. **CRAP ≤ 8** on
   touched domain after unit. Domain coverage floors **90/90/70/90**.
 - Gherkin leakage is **D8** (already in spec-sync; confirmed, not changed).

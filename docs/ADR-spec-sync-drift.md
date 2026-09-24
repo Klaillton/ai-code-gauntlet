@@ -79,6 +79,8 @@ Scripts:
 - `scripts/holes-review.ts` — D12 implementation requires holes-review artifact or grant
 - `scripts/adr-lint.ts` — D14 ADR template light gate (diff-based on `docs/adr/**`)
 - `scripts/sdd-presence.ts` — D15 Security + Observability presence (heading + ≥1 requirement)
+- `scripts/mutation.ts` / `gherkin-mutation.ts` — CHANGE-2 empty surface ≠ 100%
+- `scripts/spec-code.ts` — CHANGE-3 DoD spec↔code pairing
 - `scripts/deps-lock.ts` — package manifest grant (see ADR-phase2-deps-spec-review.md)
 - `scripts/generate-docs.ts` — `docs/generated/{api,behaviors,gauntlet,gaps}.md`
 - `scripts/check-docs-fresh.ts` — D7 content compare
@@ -161,6 +163,20 @@ Allowlist seed entries expire **2027-06-02** — renew before that date
 4. **Supply chain** — **wired as CI extras:** SBOM CycloneDX job, gitleaks history, Dependabot. Not local verify gates.
 
 Gherkin leakage is D8 and **is** wired. Phase 2/3 must not weaken D1-D9 or lower coverage floors.
+
+### CHANGE-2 — empty mutation ≠ 100%
+
+When the mutation or gherkin-mutation gate is enabled, zero mutants/sites **fail** with
+an “empty mutation surface” finding (score 0, never 100). Escape hatch: committed
+`mutation.skipReason` / `gherkinMutation.skipReason` plus `expires` (ISO date).
+A PR that does not touch the include set soft-skips (ok, not 100).
+
+### CHANGE-3 — DoD spec↔code
+
+Implementation (`src/**`) in a PR must also touch a protected spec (Gherkin, OpenAPI,
+or holes-review) in the **same** PR, or carry a human grant (`SPEC_SYNC_APPROVED=1`,
+label `spec-sync-approved`, or committed `allowSpecCodeSkip` / `specCode.approved`).
+No local allow-file. Docs-only / spec-only diffs skip.
 
 ### Security + Observability presence (D15)
 
