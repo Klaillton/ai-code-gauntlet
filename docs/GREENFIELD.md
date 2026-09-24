@@ -28,7 +28,7 @@ npm install && npm run prepare:browsers && npm run verify
 1. Human writes Gherkin (grant protect-specs if an agent must edit features).
 2. Human approves OpenAPI for HTTP behavior.
 3. Confirm new scenarios are red.
-4. Agent implements under AGENTS.md. no-cheat, spec-sync, and secrets-scan are hard gates.
+4. Agent implements under AGENTS.md after holes-review (D12). no-cheat, spec-sync, secrets-scan are hard gates.
 5. `npm run docs:generate && npm run verify` (max ~5 cycles).
 6. Short human exploratory check.
 

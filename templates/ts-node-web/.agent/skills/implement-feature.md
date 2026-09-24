@@ -46,3 +46,10 @@ Use when the human asks to implement a feature that already has (or will have) G
 - Files changed
 - Any residual risk / flaky notes
 - Exact `npm run verify` result
+
+## Holes review (D12)
+
+Before implementing `src/**` changes, ensure a human-approved holes-review artifact exists
+in `docs/holes-review/` (same PR) with non-empty **Ambiguities**, **Contradictions**,
+**Missing AC**, and **Unhappy/edge** — or a human grant (`holes-approved` /
+`HOLES_REVIEW_APPROVED=1`). Do not invent AC. Do not create working-tree allow files.

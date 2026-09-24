@@ -71,6 +71,19 @@ Grants: `ALLOW_DEPS_EDIT=1`, `allowDepsEdit: true` (committed config, default fa
 or PR label `deps-approved`. CI exports `ALLOW_DEPS_EDIT=1`
 only when the PR has `deps-approved`.
 
+### Holes review — D12 (holes-review)
+
+Implementation without a reviewed holes list invents product decisions. Hard gate.
+
+When the git diff touches `src/**` (configurable), verify **fails** unless:
+
+1. `docs/holes-review/**/*.md` in the **same diff**, with non-empty sections:
+   `Ambiguities`, `Contradictions`, `Missing AC`, `Unhappy/edge` (headers-only = fail), or
+2. Grant: `HOLES_REVIEW_APPROVED=1`, committed `allowHolesReviewSkip: true`, or PR label `holes-approved`
+
+Artifact paths are protect-specs protected. Docs/specs-only diffs skip D12.
+No `.gauntlet/allow-*` file grant. Config/label grants are **human-only** (agents must not self-apply).
+
 ### Secrets & privacy — secrets-scan
 
 Hard tool. Fails verify. Not a request. There is **no** `ALLOW_SECRETS=1`.

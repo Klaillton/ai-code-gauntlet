@@ -60,6 +60,12 @@ export type GauntletConfig = {
   };
   allowSpecEdit?: boolean;
   allowDepsEdit?: boolean;
+  allowHolesReviewSkip?: boolean;
+  holesReview?: {
+    implementationGlobs?: string[];
+    artifactGlob?: string;
+    approved?: boolean;
+  };
   secretsScan?: {
     allowPaths?: string[];
   };

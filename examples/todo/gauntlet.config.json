@@ -13,23 +13,96 @@
     "timeoutMs": 90000
   },
   "gates": [
-    { "id": "format", "command": "npm", "args": ["run", "format"] },
-    { "id": "lint", "command": "npm", "args": ["run", "lint"] },
-    { "id": "typecheck", "command": "npm", "args": ["run", "typecheck"] },
-    { "id": "complexity", "command": "npm", "args": ["run", "complexity"] },
-    { "id": "arch-bound", "command": "npm", "args": ["run", "arch-bound"] },
-    { "id": "protect-specs", "command": "npm", "args": ["run", "protect-specs"] },
-    { "id": "deps-lock", "command": "npm", "args": ["run", "deps-lock"] },
-    { "id": "secrets-scan", "command": "npm", "args": ["run", "secrets-scan"] },
-    { "id": "no-cheat", "command": "npm", "args": ["run", "no-cheat"] },
-    { "id": "spec-sync", "command": "npm", "args": ["run", "spec-sync"] },
-    { "id": "docs", "command": "npm", "args": ["run", "docs:check"] },
-    { "id": "unit", "command": "npm", "args": ["run", "test:unit:coverage"] },
-    { "id": "crap", "command": "npm", "args": ["run", "crap"] },
-    { "id": "mutation", "command": "npm", "args": ["run", "test:mutation"] },
-    { "id": "contract", "command": "npm", "args": ["run", "test:contract"] },
-    { "id": "e2e", "command": "npm", "args": ["run", "test:e2e"] },
-    { "id": "gherkin-mutation", "command": "npm", "args": ["run", "gherkin-mutation"] }
+    {
+      "id": "format",
+      "command": "npm",
+      "args": ["run", "format"]
+    },
+    {
+      "id": "lint",
+      "command": "npm",
+      "args": ["run", "lint"]
+    },
+    {
+      "id": "typecheck",
+      "command": "npm",
+      "args": ["run", "typecheck"]
+    },
+    {
+      "id": "complexity",
+      "command": "npm",
+      "args": ["run", "complexity"]
+    },
+    {
+      "id": "arch-bound",
+      "command": "npm",
+      "args": ["run", "arch-bound"]
+    },
+    {
+      "id": "protect-specs",
+      "command": "npm",
+      "args": ["run", "protect-specs"]
+    },
+    {
+      "id": "deps-lock",
+      "command": "npm",
+      "args": ["run", "deps-lock"]
+    },
+    {
+      "id": "holes-review",
+      "command": "npm",
+      "args": ["run", "holes-review"]
+    },
+    {
+      "id": "secrets-scan",
+      "command": "npm",
+      "args": ["run", "secrets-scan"]
+    },
+    {
+      "id": "no-cheat",
+      "command": "npm",
+      "args": ["run", "no-cheat"]
+    },
+    {
+      "id": "spec-sync",
+      "command": "npm",
+      "args": ["run", "spec-sync"]
+    },
+    {
+      "id": "docs",
+      "command": "npm",
+      "args": ["run", "docs:check"]
+    },
+    {
+      "id": "unit",
+      "command": "npm",
+      "args": ["run", "test:unit:coverage"]
+    },
+    {
+      "id": "crap",
+      "command": "npm",
+      "args": ["run", "crap"]
+    },
+    {
+      "id": "mutation",
+      "command": "npm",
+      "args": ["run", "test:mutation"]
+    },
+    {
+      "id": "contract",
+      "command": "npm",
+      "args": ["run", "test:contract"]
+    },
+    {
+      "id": "e2e",
+      "command": "npm",
+      "args": ["run", "test:e2e"]
+    },
+    {
+      "id": "gherkin-mutation",
+      "command": "npm",
+      "args": ["run", "gherkin-mutation"]
+    }
   ],
   "allowlist": [
     {
@@ -69,12 +142,17 @@
         "label": "POST /api/todos 201",
         "method": "POST",
         "path": "/api/todos",
-        "body": { "title": "Contract todo" },
+        "body": {
+          "title": "Contract todo"
+        },
         "expectedStatus": 201,
         "schemaPath": "/api/todos",
         "schemaMethod": "post",
         "schemaStatus": "201",
-        "save": { "as": "todoId", "from": "id" }
+        "save": {
+          "as": "todoId",
+          "from": "id"
+        }
       },
       {
         "label": "GET /api/todos",
@@ -98,7 +176,9 @@
         "label": "POST /api/todos 400",
         "method": "POST",
         "path": "/api/todos",
-        "body": { "title": "   " },
+        "body": {
+          "title": "   "
+        },
         "expectedStatus": 400,
         "schemaPath": "/api/todos",
         "schemaMethod": "post",
@@ -107,7 +187,16 @@
     ]
   },
   "agent": {
-    "protectedGlobs": ["features/**/*.feature", "openapi/openapi.yaml"],
+    "protectedGlobs": [
+      "features/**/*.feature",
+      "openapi/openapi.yaml",
+      "docs/holes-review/**/*.md"
+    ],
     "maxVerifyCycles": 5
+  },
+  "allowHolesReviewSkip": false,
+  "holesReview": {
+    "implementationGlobs": ["src/**"],
+    "artifactGlob": "docs/holes-review/**/*.md"
   }
 }

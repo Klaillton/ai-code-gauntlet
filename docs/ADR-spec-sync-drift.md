@@ -64,6 +64,7 @@ Todo seed (owner `klaillton`, expires **`2027-06-02`** — renew before that dat
 | **D9**            | skip/only/pending, disabled gates, lowered coverage floors                | fail                                                                                      |
 | **D10**           | Gherkin/OpenAPI in the git diff without `docs/generated` in the same diff | fail (info if no SDD change)                                                              |
 | **D11**           | `@op` with Gherkin but no exclusive scenario-level `@unhappy`/`@edge` (exactly one `@op` on that scenario) | **fail** in both strict and lenient                          |
+| **D12**           | `src/**` (implementation) in git diff without holes-review artifact or grant | **fail**; docs/specs-only diffs skip |
 | **protect-specs** | git diff touches features/OpenAPI/`protectedGlobs` without a human grant  | fail; also **fail** if git/`rev-parse` unavailable (`git required for this gate`)          |
 
 Scripts:
@@ -72,6 +73,7 @@ Scripts:
 - `scripts/spec-sync.ts` — D1-D6, D8, D10, D11; exit 1 on fails
 - `scripts/no-cheat.ts` — D9; does **not** scan `scripts/` (self-match)
 - `scripts/protect-specs.ts` — spec-edit grant; `GITHUB_BASE_REF` in CI
+- `scripts/holes-review.ts` — D12 implementation requires holes-review artifact or grant
 - `scripts/deps-lock.ts` — package manifest grant (see ADR-phase2-deps-spec-review.md)
 - `scripts/generate-docs.ts` — `docs/generated/{api,behaviors,gauntlet,gaps}.md`
 - `scripts/check-docs-fresh.ts` — D7 content compare
@@ -152,3 +154,16 @@ Allowlist seed entries expire **2027-06-02** — renew before that date
 4. **Supply chain** — **wired as CI extras:** SBOM CycloneDX job, gitleaks history, Dependabot. Not local verify gates.
 
 Gherkin leakage is D8 and **is** wired. Phase 2/3 must not weaken D1-D9 or lower coverage floors.
+
+### holes-review grants (human-only) — D12
+
+When the git diff touches implementation globs (default `src/**`):
+
+1. A `docs/holes-review/**/*.md` artifact **in the same diff** with non-empty sections
+   `Ambiguities`, `Contradictions`, `Missing AC`, `Unhappy/edge` (headers-only fails), or
+2. `HOLES_REVIEW_APPROVED=1`, or
+3. `allowHolesReviewSkip: true` / `holesReview.approved: true` in committed config, or
+4. PR label `holes-approved` (CI exports `HOLES_REVIEW_APPROVED=1`)
+
+No working-tree allow-file. Artifact paths are in `protectedGlobs` (protect-specs).
+Docs/specs-only diffs without `src/` skip D12 (not a false pass for implementation).

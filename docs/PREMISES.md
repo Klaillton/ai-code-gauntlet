@@ -35,6 +35,7 @@ See [ADR-spec-sync-drift.md](./ADR-spec-sync-drift.md).
   differential on PRs; timeouts are not kills
 - **D10**: Gherkin/OpenAPI in a diff requires `docs/generated` in the same diff
 - **D11**: every `@op` with Gherkin needs ≥1 scenario-level `@unhappy`/`@edge` (fail in both apps)
+- **D12**: implementation (`src/**`) in a diff requires holes-review artifact or human grant
 - ESLint + Prettier + TypeScript
 - AGENTS.md + skills
 - CI = the same gates
