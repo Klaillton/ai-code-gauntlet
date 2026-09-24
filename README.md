@@ -89,8 +89,10 @@ See [docs/PREMISES.md](./docs/PREMISES.md) and [docs/original-plan.md](./docs/or
 protect-specs, deps-lock, secrets-scan, arch-bound, and no-cheat are **hard tools**. Agents
 cannot edit `features/**` or `openapi/openapi.yaml` without a protect-specs
 grant, cannot edit `package.json` / `package-lock.json` (root, examples,
-templates) without a deps-lock grant (`ALLOW_DEPS_EDIT=1`,
-`.gauntlet/allow-deps-edit`, or PR label `deps-approved`), and cannot land
+templates) without a deps-lock grant (`ALLOW_DEPS_EDIT=1`, committed
+`allowDepsEdit: true`, or PR label `deps-approved` — working-tree
+`.gauntlet/allow-*` files are **not** grants; no usable git → these gates
+**fail**), and cannot land
 credentials / private keys / high-confidence PII dumps (there is **no**
 `ALLOW_SECRETS` standing override).
 
