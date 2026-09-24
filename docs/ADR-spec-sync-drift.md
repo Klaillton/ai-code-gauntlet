@@ -52,22 +52,23 @@ Todo seed (owner `klaillton`, expires **`2027-06-02`** — renew before that dat
 
 ## Drift catalog (implemented)
 
-| Id                | Rule                                                                      | Default                                                                                   |
-| ----------------- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| **D1**            | Route in `src/api/app.ts` not in OpenAPI                                  | fail unless allowlisted (`exemptFrom: openapi`)                                           |
-| **D2**            | OpenAPI path+method has no matching route                                 | fail                                                                                      |
-| **D3**            | `operationId` has no `@op:<operationId>` scenario                         | fail if `strict`, warn if `lenient`; skip if exempt `gherkin`                             |
-| **D5**            | `src/domain` module with no unit test (same-stem or import)               | fail (unless internal allowlist exempts `unit`)                                           |
-| **D6**            | Changed `src/api` / `src/domain` without matching spec/unit in git diff   | fail-closed in **strict** (including git missing); warn in **lenient**; empty diff = info |
-| **D7**            | Committed `docs/generated/*` does not match a fresh generate              | fail                                                                                      |
-| **D8**            | `.feature` steps leak CSS, `data-testid`, or raw HTTP paths               | fail                                                                                      |
-| **D9**            | skip/only/pending, disabled gates, lowered coverage floors                | fail                                                                                      |
-| **D10**           | Gherkin/OpenAPI in the git diff without `docs/generated` in the same diff | fail (info if no SDD change)                                                              |
-| **D11**           | `@op` with Gherkin but no exclusive scenario-level `@unhappy`/`@edge` (exactly one `@op` on that scenario) | **fail** in both strict and lenient                          |
-| **D12**           | `src/**` (implementation) in git diff without holes-review artifact or grant | **fail**; docs/specs-only diffs skip |
-| **D13**           | OpenAPI op (`operationId` or method+path) with zero `contract.cases` entries | **fail**; skip if OpenAPI absent/disabled; invalid case path/method fails; `caseAllowlist` needs committed config + `expires` |
-| **D14**           | New/changed `docs/adr/**` missing Context/Decision/Consequences/Discarded/Status, empty Discarded/Status, bad Status, or ADR delete | **fail**; skip if diff does not touch `docs/adr/**`; Superseded needs existing `ADR-` ref |
-| **protect-specs** | git diff touches features/OpenAPI/`protectedGlobs` without a human grant  | fail; also **fail** if git/`rev-parse` unavailable (`git required for this gate`)          |
+| Id                | Rule                                                                                                                                | Default                                                                                                                       |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| **D1**            | Route in `src/api/app.ts` not in OpenAPI                                                                                            | fail unless allowlisted (`exemptFrom: openapi`)                                                                               |
+| **D2**            | OpenAPI path+method has no matching route                                                                                           | fail                                                                                                                          |
+| **D3**            | `operationId` has no `@op:<operationId>` scenario                                                                                   | fail if `strict`, warn if `lenient`; skip if exempt `gherkin`                                                                 |
+| **D5**            | `src/domain` module with no unit test (same-stem or import)                                                                         | fail (unless internal allowlist exempts `unit`)                                                                               |
+| **D6**            | Changed `src/api` / `src/domain` without matching spec/unit in git diff                                                             | fail-closed in **strict** (including git missing); warn in **lenient**; empty diff = info                                     |
+| **D7**            | Committed `docs/generated/*` does not match a fresh generate                                                                        | fail                                                                                                                          |
+| **D8**            | `.feature` steps leak CSS, `data-testid`, or raw HTTP paths                                                                         | fail                                                                                                                          |
+| **D9**            | skip/only/pending, disabled gates, lowered coverage floors                                                                          | fail                                                                                                                          |
+| **D10**           | Gherkin/OpenAPI in the git diff without `docs/generated` in the same diff                                                           | fail (info if no SDD change)                                                                                                  |
+| **D11**           | `@op` with Gherkin but no exclusive scenario-level `@unhappy`/`@edge` (exactly one `@op` on that scenario)                          | **fail** in both strict and lenient                                                                                           |
+| **D12**           | `src/**` (implementation) in git diff without holes-review artifact or grant                                                        | **fail**; docs/specs-only diffs skip                                                                                          |
+| **D13**           | OpenAPI op (`operationId` or method+path) with zero `contract.cases` entries                                                        | **fail**; skip if OpenAPI absent/disabled; invalid case path/method fails; `caseAllowlist` needs committed config + `expires` |
+| **D14**           | New/changed `docs/adr/**` missing Context/Decision/Consequences/Discarded/Status, empty Discarded/Status, bad Status, or ADR delete | **fail**; skip if diff does not touch `docs/adr/**`; Superseded needs existing `ADR-` ref                                     |
+| **D15**           | SDD-active app missing/empty `docs/sdd/Security.md` or `Observability.md` (or config paths), or file lacks heading + ≥1 requirement | **fail**; skip if `sdd: false`                                                                                                |
+| **protect-specs** | git diff touches features/OpenAPI/`protectedGlobs` without a human grant                                                            | fail; also **fail** if git/`rev-parse` unavailable (`git required for this gate`)                                             |
 
 Scripts:
 
@@ -77,6 +78,7 @@ Scripts:
 - `scripts/protect-specs.ts` — spec-edit grant; `GITHUB_BASE_REF` in CI
 - `scripts/holes-review.ts` — D12 implementation requires holes-review artifact or grant
 - `scripts/adr-lint.ts` — D14 ADR template light gate (diff-based on `docs/adr/**`)
+- `scripts/sdd-presence.ts` — D15 Security + Observability presence (heading + ≥1 requirement)
 - `scripts/deps-lock.ts` — package manifest grant (see ADR-phase2-deps-spec-review.md)
 - `scripts/generate-docs.ts` — `docs/generated/{api,behaviors,gauntlet,gaps}.md`
 - `scripts/check-docs-fresh.ts` — D7 content compare
@@ -159,6 +161,13 @@ Allowlist seed entries expire **2027-06-02** — renew before that date
 4. **Supply chain** — **wired as CI extras:** SBOM CycloneDX job, gitleaks history, Dependabot. Not local verify gates.
 
 Gherkin leakage is D8 and **is** wired. Phase 2/3 must not weaken D1-D9 or lower coverage floors.
+
+### Security + Observability presence (D15)
+
+Greenfield / SDD-active apps must ship `docs/sdd/Security.md` and `docs/sdd/Observability.md`
+(override with `sdd.securityPath` / `sdd.observabilityPath`). Each file needs a markdown
+heading and ≥1 requirement list item (`-` / `*` / `1.`). Adopt installs the same files or fails.
+Skip with `sdd: false`. **Residual:** lorem/TODO-only bodies still pass presence — quality is Spec review.
 
 ### ADR template (D14)
 

@@ -38,6 +38,7 @@ See [ADR-spec-sync-drift.md](./ADR-spec-sync-drift.md).
 - **D12**: implementation (`src/**`) in a diff requires holes-review artifact or human grant
 - **D13**: every OpenAPI op needs ≥1 `contract.cases` entry (invalid cases fail; `caseAllowlist` + expires)
 - **D14**: new/changed `docs/adr/**` must use the ADR template (Discarded + Status; no deletes — mark Superseded)
+- **D15**: SDD-active apps need non-empty `docs/sdd/Security.md` + `Observability.md` (heading + ≥1 requirement; skip if `sdd: false`)
 - ESLint + Prettier + TypeScript
 - AGENTS.md + skills
 - CI = the same gates

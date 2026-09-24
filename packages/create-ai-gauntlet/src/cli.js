@@ -178,6 +178,7 @@ const HARDENING_GATE_IDS = [
   "protect-specs",
   "holes-review",
   "adr-lint",
+  "sdd-presence",
   "secrets-scan",
   "no-cheat",
   "spec-sync",
@@ -259,6 +260,7 @@ function buildAdoptConfig(name, skeleton) {
     "protect-specs": { id: "protect-specs", command: "npm", args: ["run", "protect-specs"] },
     "holes-review": { id: "holes-review", command: "npm", args: ["run", "holes-review"] },
     "adr-lint": { id: "adr-lint", command: "npm", args: ["run", "adr-lint"] },
+    "sdd-presence": { id: "sdd-presence", command: "npm", args: ["run", "sdd-presence"] },
     "deps-lock": { id: "deps-lock", command: "npm", args: ["run", "deps-lock"] },
     "secrets-scan": { id: "secrets-scan", command: "npm", args: ["run", "secrets-scan"] },
     "no-cheat": { id: "no-cheat", command: "npm", args: ["run", "no-cheat"] },
@@ -288,6 +290,7 @@ function buildAdoptConfig(name, skeleton) {
       ...(hasDepsLock ? [defaults["deps-lock"]] : []),
       defaults["holes-review"],
       defaults["adr-lint"],
+      defaults["sdd-presence"],
       defaults["secrets-scan"],
       defaults["no-cheat"],
       defaults["spec-sync"],
@@ -315,7 +318,8 @@ function buildAdoptConfig(name, skeleton) {
       ensureGate(config.gates, defaults["holes-review"], "protect-specs");
     }
     ensureGate(config.gates, defaults["adr-lint"], "holes-review");
-    ensureGate(config.gates, defaults["secrets-scan"], "adr-lint");
+    ensureGate(config.gates, defaults["sdd-presence"], "adr-lint");
+    ensureGate(config.gates, defaults["secrets-scan"], "sdd-presence");
     ensureGate(config.gates, defaults["no-cheat"], "secrets-scan");
     ensureGate(config.gates, defaults["spec-sync"], "no-cheat");
     ensureGate(config.gates, defaults.docs, "spec-sync");
@@ -374,6 +378,7 @@ function mergeGitignore(target, skeleton) {
     "protect-specs-report.json",
     "holes-review-report.json",
     "adr-lint-report.json",
+    "sdd-presence-report.json",
     "mutation-report.json",
     "gherkin-mutation-report.json",
     "complexity-report.json",
@@ -402,6 +407,48 @@ function mergeGitignore(target, skeleton) {
     const prefix = existing.length && !existing.endsWith("\n") ? "\n" : "";
     appendFileSync(to, `${prefix}${lines.join("\n")}\n`);
     console.log(`+ .gitignore entries (${lines.length})`);
+  }
+}
+
+
+const SDD_PRESENCE_DOCS = ["docs/sdd/Security.md", "docs/sdd/Observability.md"];
+
+function sddPresenceDocOk(markdown) {
+  const text = String(markdown || "").replace(/^\uFEFF/, "");
+  if (text.trim().length === 0) return false;
+  const hasHeading = /^#{1,6}\s+\S/m.test(text);
+  const hasRequirement = /^\s*(?:[-*+]|\d+\.)\s+\S/m.test(text);
+  return hasHeading && hasRequirement;
+}
+
+/**
+ * D15: adopt requires Security.md + Observability.md (same as greenfield)
+ * unless the written config will set sdd:false (template never does).
+ * Copies from skeleton when missing; fails adopt if still invalid.
+ */
+function ensureSddPresenceDocs(target, skeleton) {
+  for (const rel of SDD_PRESENCE_DOCS) {
+    const to = join(target, rel);
+    const from = join(skeleton, rel);
+    if (!existsSync(to)) {
+      if (!existsSync(from)) {
+        throw new Error(
+          `adopt failed (D15): missing ${rel} and template has no copy to install`,
+        );
+      }
+      mkdirSync(dirname(to), { recursive: true });
+      cpSync(from, to);
+      console.log(`+ ${rel}`);
+    }
+  }
+  for (const rel of SDD_PRESENCE_DOCS) {
+    const full = join(target, rel);
+    const body = readFileSync(full, "utf8");
+    if (!sddPresenceDocOk(body)) {
+      throw new Error(
+        `adopt failed (D15): ${rel} must have a markdown heading and ≥1 requirement list item`,
+      );
+    }
   }
 }
 
@@ -446,6 +493,8 @@ function adoptProject(dir, { gates } = {}) {
     copyDir(docsGenFrom, docsGenTo, { skip: [] });
     console.log("+ docs/ (generated baseline)");
   }
+
+  ensureSddPresenceDocs(target, skeleton);
 
   for (const rel of [
     "eslint.config.js",
@@ -513,6 +562,7 @@ function adoptProject(dir, { gates } = {}) {
       "protect-specs": "tsx scripts/protect-specs.ts",
       "holes-review": "tsx scripts/holes-review.ts",
       "adr-lint": "tsx scripts/adr-lint.ts",
+      "sdd-presence": "tsx scripts/sdd-presence.ts",
       "secrets-scan": "tsx scripts/secrets-scan.ts",
       "docs:generate": "tsx scripts/generate-docs.ts",
       "docs:check": "tsx scripts/check-docs-fresh.ts",
@@ -556,6 +606,7 @@ Hardening gates always wired: ${hardeningList.join(", ")}.
 ## Checklist
 - [ ] Review AGENTS.md (merge with existing rules if any)
 - [ ] Align package.json scripts with real commands
+- [ ] Confirm \`docs/sdd/Security.md\` and \`docs/sdd/Observability.md\` (D15) — heading + ≥1 requirement each (or set \`sdd: false\`)
 - [ ] Expand openapi/features for your domain
 - [ ] Run \`npm run docs:generate\` then \`npm run verify\` until green
 - [ ] Use human grants for protected edits (see docs/ADOPT.md): \`specs-approved\`, \`deps-approved\`, \`ALLOW_SPEC_EDIT\`, \`ALLOW_DEPS_EDIT\`

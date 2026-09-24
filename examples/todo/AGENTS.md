@@ -101,6 +101,13 @@ Discarded (non-empty), Status (`Accepted` or `Superseded by ADR-XXXX` + date).
 Deleting an ADR fails — mark Superseded only. Skip when the diff does not touch `docs/adr/**`.
 Scaffold `TEMPLATE.md` / `README.md` bodies are not linted. Residual: `Discarded: n/a` passes.
 
+### Security + Observability presence — D15 (sdd-presence)
+
+When SDD is active (default), `docs/sdd/Security.md` and `docs/sdd/Observability.md`
+must exist with a markdown heading and ≥1 requirement list item. Paths override via
+`sdd.securityPath` / `sdd.observabilityPath`. Skip with `sdd: false`.
+Quality is Spec's job — lorem/TODO-only still passes presence.
+
 ### Secrets & privacy — secrets-scan
 
 Hard tool. Fails verify. Not a request. There is **no** `ALLOW_SECRETS=1`.

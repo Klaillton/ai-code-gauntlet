@@ -5,15 +5,15 @@
 Não exija green total no dia 1. Adote por **camadas** de trabalho humano, mas o
 **config gerado é fail-closed**: `verify` não aceita `enabled: false` (D9 / verify).
 
-| Camada    | O quê                                                                                                                         | Dia 1?                 |
-| --------- | ----------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
-| 0         | `AGENTS.md` + skills                                                                                                          | Sim                    |
-| 1         | format / lint / typecheck                                                                                                     | Ideal                  |
-| Hardening | protect-specs, secrets-scan, arch-bound, no-cheat, holes-review (D12), adr-lint (D14), spec-sync, docs, complexity (+ deps-lock se no template; mutation no Todo) | Sim (sempre no config) |
-| 2         | unit + coverage                                                                                                               | Ideal                  |
-| 3         | OpenAPI contract                                                                                                              | Se houver API          |
-| 4         | Gherkin + Playwright E2E                                                                                                      | Poucos fluxos críticos |
-| 5         | CI = verify                                                                                                                   | Quando local estável   |
+| Camada    | O quê                                                                                                                                                                                 | Dia 1?                 |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| 0         | `AGENTS.md` + skills                                                                                                                                                                  | Sim                    |
+| 1         | format / lint / typecheck                                                                                                                                                             | Ideal                  |
+| Hardening | protect-specs, secrets-scan, arch-bound, no-cheat, holes-review (D12), adr-lint (D14), sdd-presence (D15), spec-sync, docs, complexity (+ deps-lock se no template; mutation no Todo) | Sim (sempre no config) |
+| 2         | unit + coverage                                                                                                                                                                       | Ideal                  |
+| 3         | OpenAPI contract                                                                                                                                                                      | Se houver API          |
+| 4         | Gherkin + Playwright E2E                                                                                                                                                              | Poucos fluxos críticos |
+| 5         | CI = verify                                                                                                                                                                           | Quando local estável   |
 
 ## CLI
 
@@ -68,13 +68,14 @@ Greenfield `create` continua a copiar o template inteiro (já hardenado).
 | `deps-lock`       | `npm run deps-lock`     | Diff em `package.json` / lockfile exige grant (só se no template)                              |
 | `secrets-scan`    | `npm run secrets-scan`  | Credenciais, PEM, tokens de alta confiança, PII em fixtures — fail-closed; sem `ALLOW_SECRETS` |
 | `no-cheat`        | `npm run no-cheat`      | D9: skip/only/pending, `enabled:false`, coverage floors                                        |
-| `spec-sync`       | `npm run spec-sync`     | Drift D1–D6, D8, D10, **D11** (edge), **D13** (OpenAPI ↔ contract.cases)                        |
+| `spec-sync`       | `npm run spec-sync`     | Drift D1–D6, D8, D10, **D11** (edge), **D13** (OpenAPI ↔ contract.cases)                       |
 | `adr-lint`        | `npm run adr-lint`      | **D14** ADR template on new/changed `docs/adr/**`                                              |
+| `sdd-presence`    | `npm run sdd-presence`  | **D15** `docs/sdd/Security.md` + `Observability.md` presence (heading + ≥1 requirement)        |
 | `docs`            | `npm run docs:check`    | D7: `docs/generated/*` fresco                                                                  |
 | `mutation` (Todo) | `npm run test:mutation` | Kill-score floor on domain; template is opt-in only                                            |
 
 Ordem típica (template): format → lint → typecheck → complexity → arch-bound →
-protect-specs → [`deps-lock`] → secrets-scan → holes-review → adr-lint → no-cheat → spec-sync → docs → unit →
+protect-specs → [`deps-lock`] → holes-review → adr-lint → sdd-presence → secrets-scan → no-cheat → spec-sync → docs → unit →
 crap → mutation → contract → e2e → gherkin-mutation.
 
 **D10:** mudança em Gherkin/OpenAPI no diff exige `docs/generated` no mesmo
@@ -84,6 +85,8 @@ diff (`docs:generate`). Reabrir spec fechada: grant protect-specs + skill
 **D11:** todo `@op` com Gherkin precisa de ≥1 cenário com `@unhappy`/`@edge` (nível Scenario; falha em strict e lenient).
 **D13:** cada op OpenAPI precisa de ≥1 `contract.cases`; case inválido falha; `caseAllowlist` committed + `expires`.
 **D14:** ADRs novos/alterados em `docs/adr/**` precisam das secções do template; não apagar — marcar Superseded.
+
+**D15:** Com SDD ativo, `docs/sdd/Security.md` e `Observability.md` são obrigatórios (heading + ≥1 requirement). Adopt falha se faltar. Skip com `sdd: false`. Residual: lorem/TODO passa presença.
 
 ## Grants humanos (não bakear no CI)
 

@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import process from "node:process";
 import yaml from "js-yaml";
 import {
+  getSddOptions,
   ALLOWLIST_KINDS,
   EDGE_SCENARIO_TAGS,
   EXEMPT_FROM,
@@ -644,7 +645,7 @@ export function evaluateContractCasesInventory(input: ContractCasesInventoryInpu
 function checkD13(inventory: Inventory): Finding[] {
   const contract = inventory.config.contract;
   const openapiRel =
-    inventory.config.sdd?.openapiPath ?? contract?.openapiPath ?? "openapi/openapi.yaml";
+    getSddOptions(inventory.config).openapiPath ?? contract?.openapiPath ?? "openapi/openapi.yaml";
   const openapiAbs = resolve(inventory.cwd, openapiRel);
   const openapiPresent = existsSync(openapiAbs);
   const disabled = contract?.enabled === false || contract?.casesInventory === false;
@@ -933,10 +934,10 @@ function checkD10(inventory: Inventory): Finding[] {
   }
   const prefix = scopedPrefix(root, cwd);
   const openapiRel =
-    inventory.config.sdd?.openapiPath ??
+    getSddOptions(inventory.config).openapiPath ??
     inventory.config.contract?.openapiPath ??
     "openapi/openapi.yaml";
-  const featuresDirRel = inventory.config.sdd?.featuresDir ?? "features";
+  const featuresDirRel = getSddOptions(inventory.config).featuresDir ?? "features";
   return checkD10FromChanged(collectChangedFiles(cwd), prefix, featuresDirRel, openapiRel);
 }
 
@@ -1064,15 +1065,15 @@ function checkD6(inventory: Inventory): Finding[] {
   }
 
   const prefix = scopedPrefix(root, cwd);
-  const appRel = inventory.config.sdd?.appPath ?? "src/api/app.ts";
+  const appRel = getSddOptions(inventory.config).appPath ?? "src/api/app.ts";
   const apiDirRel = dirname(appRel).split(sep).join("/");
-  const domainDirRel = inventory.config.sdd?.domainDir ?? "src/domain";
-  const unitDirRel = inventory.config.sdd?.unitDir ?? "tests/unit";
+  const domainDirRel = getSddOptions(inventory.config).domainDir ?? "src/domain";
+  const unitDirRel = getSddOptions(inventory.config).unitDir ?? "tests/unit";
   const openapiRel =
-    inventory.config.sdd?.openapiPath ??
+    getSddOptions(inventory.config).openapiPath ??
     inventory.config.contract?.openapiPath ??
     "openapi/openapi.yaml";
-  const featuresDirRel = inventory.config.sdd?.featuresDir ?? "features";
+  const featuresDirRel = getSddOptions(inventory.config).featuresDir ?? "features";
   const configRel = "gauntlet.config.json";
 
   const severity: Finding["severity"] = inventory.strictness === "strict" ? "fail" : "warn";
