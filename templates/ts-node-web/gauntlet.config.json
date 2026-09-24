@@ -4,15 +4,11 @@
   "allowSpecEdit": false,
   "allowDepsEdit": false,
   "complexity": {
-    "include": [
-      "src/domain"
-    ],
+    "include": ["src/domain"],
     "max": 10
   },
   "mutation": {
-    "include": [
-      "src/domain"
-    ],
+    "include": ["src/domain"],
     "threshold": 80,
     "timeoutMs": 90000
   },
@@ -20,154 +16,97 @@
     {
       "id": "format",
       "command": "npm",
-      "args": [
-        "run",
-        "format"
-      ]
+      "args": ["run", "format"]
     },
     {
       "id": "lint",
       "command": "npm",
-      "args": [
-        "run",
-        "lint"
-      ]
+      "args": ["run", "lint"]
     },
     {
       "id": "typecheck",
       "command": "npm",
-      "args": [
-        "run",
-        "typecheck"
-      ]
+      "args": ["run", "typecheck"]
     },
     {
       "id": "complexity",
       "command": "npm",
-      "args": [
-        "run",
-        "complexity"
-      ]
+      "args": ["run", "complexity"]
     },
     {
       "id": "arch-bound",
       "command": "npm",
-      "args": [
-        "run",
-        "arch-bound"
-      ]
+      "args": ["run", "arch-bound"]
     },
     {
       "id": "protect-specs",
       "command": "npm",
-      "args": [
-        "run",
-        "protect-specs"
-      ]
+      "args": ["run", "protect-specs"]
     },
     {
       "id": "deps-lock",
       "command": "npm",
-      "args": [
-        "run",
-        "deps-lock"
-      ]
+      "args": ["run", "deps-lock"]
     },
     {
       "id": "holes-review",
       "command": "npm",
-      "args": [
-        "run",
-        "holes-review"
-      ]
+      "args": ["run", "holes-review"]
     },
     {
       "id": "adr-lint",
       "command": "npm",
-      "args": [
-        "run",
-        "adr-lint"
-      ]
+      "args": ["run", "adr-lint"]
     },
     {
       "id": "secrets-scan",
       "command": "npm",
-      "args": [
-        "run",
-        "secrets-scan"
-      ]
+      "args": ["run", "secrets-scan"]
     },
     {
       "id": "no-cheat",
       "command": "npm",
-      "args": [
-        "run",
-        "no-cheat"
-      ]
+      "args": ["run", "no-cheat"]
     },
     {
       "id": "spec-sync",
       "command": "npm",
-      "args": [
-        "run",
-        "spec-sync"
-      ]
+      "args": ["run", "spec-sync"]
     },
     {
       "id": "docs",
       "command": "npm",
-      "args": [
-        "run",
-        "docs:check"
-      ]
+      "args": ["run", "docs:check"]
     },
     {
       "id": "unit",
       "command": "npm",
-      "args": [
-        "run",
-        "test:unit:coverage"
-      ]
+      "args": ["run", "test:unit:coverage"]
     },
     {
       "id": "crap",
       "command": "npm",
-      "args": [
-        "run",
-        "crap"
-      ]
+      "args": ["run", "crap"]
     },
     {
       "id": "mutation",
       "command": "npm",
-      "args": [
-        "run",
-        "test:mutation"
-      ]
+      "args": ["run", "test:mutation"]
     },
     {
       "id": "contract",
       "command": "npm",
-      "args": [
-        "run",
-        "test:contract"
-      ]
+      "args": ["run", "test:contract"]
     },
     {
       "id": "e2e",
       "command": "npm",
-      "args": [
-        "run",
-        "test:e2e"
-      ]
+      "args": ["run", "test:e2e"]
     },
     {
       "id": "gherkin-mutation",
       "command": "npm",
-      "args": [
-        "run",
-        "gherkin-mutation"
-      ]
+      "args": ["run", "gherkin-mutation"]
     }
   ],
   "allowlist": [
@@ -176,9 +115,7 @@
       "method": "GET",
       "path": "/",
       "reason": "HTML shell",
-      "exemptFrom": [
-        "openapi"
-      ],
+      "exemptFrom": ["openapi"],
       "owner": "app-owner",
       "expires": "2027-06-02"
     }
@@ -209,9 +146,7 @@
   },
   "allowHolesReviewSkip": false,
   "holesReview": {
-    "implementationGlobs": [
-      "src/**"
-    ],
+    "implementationGlobs": ["src/**"],
     "artifactGlob": "docs/holes-review/**/*.md"
   },
   "adrLint": {

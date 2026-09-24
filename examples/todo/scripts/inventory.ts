@@ -4,23 +4,10 @@ import { fileURLToPath } from "node:url";
 import process from "node:process";
 import yaml from "js-yaml";
 
-export const HTTP_METHODS = [
-  "get",
-  "post",
-  "put",
-  "patch",
-  "delete",
-  "options",
-  "head",
-] as const;
+export const HTTP_METHODS = ["get", "post", "put", "patch", "delete", "options", "head"] as const;
 export type HttpMethod = (typeof HTTP_METHODS)[number];
 
-export const ALLOWLIST_KINDS = [
-  "test-harness",
-  "static-ui",
-  "internal",
-  "wip-red",
-] as const;
+export const ALLOWLIST_KINDS = ["test-harness", "static-ui", "internal", "wip-red"] as const;
 export type AllowlistKind = (typeof ALLOWLIST_KINDS)[number];
 
 export const EXEMPT_FROM = ["openapi", "gherkin", "unit", "docs"] as const;
@@ -170,17 +157,14 @@ export type Inventory = {
 
 const METHOD_SET = new Set<string>(HTTP_METHODS);
 
-const ROUTE_RE =
-  /\bapp\.(get|post|put|patch|delete|options|head)\(\s*(['"`])([^'"`]+)\2/gi;
+const ROUTE_RE = /\bapp\.(get|post|put|patch|delete|options|head)\(\s*(['"`])([^'"`]+)\2/gi;
 
 export function posixRel(from: string, to: string): string {
   return relative(from, to).split(sep).join("/");
 }
 
 /** Push CI on main already merged the PR; do not re-litigate origin/main...HEAD. */
-export function includeGitBranchDivergence(
-  env: NodeJS.ProcessEnv = process.env,
-): boolean {
+export function includeGitBranchDivergence(env: NodeJS.ProcessEnv = process.env): boolean {
   if (env.GITHUB_EVENT_NAME !== "push") {
     return true;
   }
@@ -226,10 +210,7 @@ export function loadConfig(cwd = process.cwd()): GauntletConfig {
   return JSON.parse(readFileSync(path, "utf8")) as GauntletConfig;
 }
 
-export function discoverRoutes(
-  appPath: string,
-  cwd: string,
-): DiscoveredRoute[] {
+export function discoverRoutes(appPath: string, cwd: string): DiscoveredRoute[] {
   if (!existsSync(appPath)) {
     return [];
   }
@@ -252,17 +233,12 @@ export function discoverRoutes(
       source,
     });
   }
-  routes.sort((a, b) =>
-    routeKey(a.method, a.path).localeCompare(routeKey(b.method, b.path)),
-  );
+  routes.sort((a, b) => routeKey(a.method, a.path).localeCompare(routeKey(b.method, b.path)));
   return routes;
 }
 
 type OpenApiDoc = {
-  paths?: Record<
-    string,
-    Record<string, { operationId?: string } | undefined> | undefined
-  >;
+  paths?: Record<string, Record<string, { operationId?: string } | undefined> | undefined>;
 };
 
 export function discoverOpenApi(openapiPath: string): OpenApiOperation[] {
@@ -306,13 +282,8 @@ function parseTags(line: string): string[] {
     .filter((token) => token.startsWith("@"));
 }
 
-export function discoverFeatures(
-  featuresDir: string,
-  cwd: string,
-): FeatureScenario[] {
-  const files = walkFiles(featuresDir).filter((file) =>
-    file.endsWith(".feature"),
-  );
+export function discoverFeatures(featuresDir: string, cwd: string): FeatureScenario[] {
+  const files = walkFiles(featuresDir).filter((file) => file.endsWith(".feature"));
   const scenarios: FeatureScenario[] = [];
 
   for (const file of files) {
@@ -389,16 +360,10 @@ export function discoverDomain(
   unitDir: string,
   cwd: string,
 ): { modules: DomainModule[]; unitTests: string[] } {
-  const domainFiles = walkFiles(domainDir).filter((file) =>
-    file.endsWith(".ts"),
-  );
-  const unitFiles = walkFiles(unitDir).filter((file) =>
-    file.endsWith(".test.ts"),
-  );
+  const domainFiles = walkFiles(domainDir).filter((file) => file.endsWith(".ts"));
+  const unitFiles = walkFiles(unitDir).filter((file) => file.endsWith(".test.ts"));
   const unitTests = unitFiles.map((file) => posixRel(cwd, file));
-  const unitContents = new Map(
-    unitFiles.map((file) => [file, readFileSync(file, "utf8")]),
-  );
+  const unitContents = new Map(unitFiles.map((file) => [file, readFileSync(file, "utf8")]));
 
   const modules: DomainModule[] = domainFiles.map((file) => {
     const stem = basename(file, ".ts");
@@ -430,9 +395,7 @@ export function buildInventory(cwd = process.cwd()): Inventory {
   const config = loadConfig(cwd);
   const openapiPath = resolve(
     cwd,
-    config.sdd?.openapiPath ??
-      config.contract?.openapiPath ??
-      "openapi/openapi.yaml",
+    config.sdd?.openapiPath ?? config.contract?.openapiPath ?? "openapi/openapi.yaml",
   );
   const appPath = resolve(cwd, config.sdd?.appPath ?? "src/api/app.ts");
   const featuresDir = resolve(cwd, config.sdd?.featuresDir ?? "features");
