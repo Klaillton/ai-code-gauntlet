@@ -11,6 +11,15 @@ export const ALLOWLIST_KINDS = ["test-harness", "static-ui", "internal", "wip-re
 export type AllowlistKind = (typeof ALLOWLIST_KINDS)[number];
 
 export const EXEMPT_FROM = ["openapi", "gherkin", "unit", "docs"] as const;
+
+/** Scenario-level markers that satisfy D11 (edge / unhappy inventory). */
+export const EDGE_SCENARIO_TAGS = ["@unhappy", "@edge"] as const;
+export type EdgeScenarioTag = (typeof EDGE_SCENARIO_TAGS)[number];
+
+export function isEdgeScenarioTag(tag: string): tag is EdgeScenarioTag {
+  return (EDGE_SCENARIO_TAGS as readonly string[]).includes(tag);
+}
+
 export type ExemptFrom = (typeof EXEMPT_FROM)[number];
 
 export type Strictness = "strict" | "lenient";
@@ -77,7 +86,10 @@ export type OpenApiOperation = {
 export type FeatureScenario = {
   featureFile: string;
   name: string;
+  /** Feature-level tags plus tags immediately above the Scenario. */
   tags: string[];
+  /** Tags on the lines immediately above this Scenario only (not Feature-level). */
+  scenarioTags: string[];
   operationIds: string[];
   steps: string[];
 };
@@ -260,7 +272,8 @@ export function discoverFeatures(featuresDir: string, cwd: string): FeatureScena
       const scenarioMatch = trimmed.match(/^(Scenario(?: Outline)?):\s*(.*)$/);
       if (scenarioMatch) {
         flush();
-        const tags = [...featureTags, ...pendingTags];
+        const scenarioTags = [...pendingTags];
+        const tags = [...featureTags, ...scenarioTags];
         pendingTags = [];
         const operationIds = tags
           .filter((tag) => tag.startsWith("@op:"))
@@ -270,6 +283,7 @@ export function discoverFeatures(featuresDir: string, cwd: string): FeatureScena
           featureFile,
           name: scenarioMatch[2] ?? "",
           tags,
+          scenarioTags,
           operationIds,
           steps: [],
         };

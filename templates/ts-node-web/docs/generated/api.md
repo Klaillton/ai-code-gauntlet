@@ -9,7 +9,7 @@
 
 | operationId | method | path | @op scenario |
 | --- | --- | --- | --- |
-| getHealth | GET | /health | Health endpoint reports ok |
+| getHealth | GET | /health | Health endpoint reports ok; Health response names the running service |
 
 ## Implemented routes
 

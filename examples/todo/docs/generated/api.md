@@ -9,10 +9,10 @@
 
 | operationId | method | path | @op scenario |
 | --- | --- | --- | --- |
-| listTodos | GET | /api/todos | List existing todos on the board |
+| listTodos | GET | /api/todos | Empty board shows no todos; List existing todos on the board |
 | createTodo | POST | /api/todos | Create a todo from the UI; Create a todo via the API; Reject empty todo titles via API |
-| completeTodo | POST | /api/todos/{id}/complete | Complete a todo from the UI |
-| getHealth | GET | /health | Health endpoint reports ok |
+| completeTodo | POST | /api/todos/{id}/complete | Complete a todo from the UI; Completing an unknown todo via the API fails |
+| getHealth | GET | /health | Health endpoint reports ok; Health response names the running service |
 
 ## Implemented routes
 

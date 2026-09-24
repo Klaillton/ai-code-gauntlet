@@ -9,12 +9,15 @@ Gherkin is the behavior surface. Link HTTP operations with `@op:<operationId>`.
 
 ## features/health.feature
 
-- **Health endpoint reports ok** — tags: `@op:getHealth`
+- **Health endpoint reports ok** — tags: `@op:getHealth` `@happy`
+- **Health response names the running service** — tags: `@op:getHealth` `@edge`
 
 ## features/todos.feature
 
-- **Complete a todo from the UI** — tags: `@op:completeTodo`
-- **Create a todo from the UI** — tags: `@op:createTodo`
-- **Create a todo via the API** — tags: `@op:createTodo`
-- **List existing todos on the board** — tags: `@op:listTodos`
-- **Reject empty todo titles via API** — tags: `@op:createTodo`
+- **Complete a todo from the UI** — tags: `@op:completeTodo` `@happy`
+- **Completing an unknown todo via the API fails** — tags: `@op:completeTodo` `@unhappy`
+- **Create a todo from the UI** — tags: `@op:createTodo` `@happy`
+- **Create a todo via the API** — tags: `@op:createTodo` `@happy`
+- **Empty board shows no todos** — tags: `@op:listTodos` `@edge`
+- **List existing todos on the board** — tags: `@op:listTodos` `@happy`
+- **Reject empty todo titles via API** — tags: `@op:createTodo` `@unhappy`

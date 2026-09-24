@@ -48,20 +48,22 @@ async function main(): Promise<void> {
   server.stdout?.on("data", (chunk) => process.stdout.write(chunk));
   server.stderr?.on("data", (chunk) => process.stderr.write(chunk));
 
+  let code = 1;
   try {
     await waitForHealth(baseUrl);
-    const code = await run("npx", ["cucumber-js"], {
+    code = await run("npx", ["cucumber-js"], {
       ...process.env,
       BASE_URL: baseUrl,
       GAUNTLET_E2E: "1",
       NODE_OPTIONS: [process.env.NODE_OPTIONS, "--import", "tsx"].filter(Boolean).join(" "),
     });
-    process.exit(code);
   } finally {
     if (!server.killed) {
       server.kill("SIGTERM");
     }
   }
+  // Exit after finally so the e2e server is not left bound on PORT (breaks the next app).
+  process.exit(code);
 }
 
 main().catch((error) => {

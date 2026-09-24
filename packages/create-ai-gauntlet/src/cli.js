@@ -122,6 +122,12 @@ function createProject(dir, { sample } = {}) {
         raw.replace(/("name"\s*:\s*)"[^"]*"/, `$1${JSON.stringify(pkgName)}`),
       );
     }
+    // Keep committed D7 docs honest after the name patch (no npm install yet).
+    const gauntletMd = join(target, "docs/generated/gauntlet.md");
+    if (existsSync(gauntletMd)) {
+      const md = readFileSync(gauntletMd, "utf8");
+      writeFileSync(gauntletMd, md.replace(/^- \*\*App:\*\* .*$/m, `- **App:** ${pkgName}`));
+    }
   }
 
   console.log(`\n✅ Created ${target}`);

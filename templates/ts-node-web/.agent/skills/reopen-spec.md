@@ -9,15 +9,16 @@ protect-specs grant.
 
 These already fail `npm run verify` when a closed phase is wrong:
 
-| Signal                                    | Meaning                                                   |
-| ----------------------------------------- | --------------------------------------------------------- |
-| e2e / contract red, code matches the spec | Spec may be wrong — stop                                  |
-| D6 src changed without specs/tests        | You are inventing behavior                                |
-| D1–D3/D5/D8 spec-sync                     | Code and SDD drifted                                      |
-| gherkin-mutation survivor                 | Example does not pin behavior                             |
-| protect-specs red                         | You tried to edit SDD without a grant                     |
-| **D10**                                   | SDD changed but `docs/generated` was not in the same diff |
-| D7                                        | Generated docs stale vs current inventory                 |
+| Signal                                    | Meaning                                                    |
+| ----------------------------------------- | ---------------------------------------------------------- |
+| e2e / contract red, code matches the spec | Spec may be wrong — stop                                   |
+| D6 src changed without specs/tests        | You are inventing behavior                                 |
+| D1–D3/D5/D8 spec-sync                     | Code and SDD drifted                                       |
+| gherkin-mutation survivor                 | Example does not pin behavior                              |
+| protect-specs red                         | You tried to edit SDD without a grant                      |
+| **D10**                                   | SDD changed but `docs/generated` was not in the same diff  |
+| **D11**                                   | `@op` has Gherkin but no scenario-level `@unhappy`/`@edge` |
+| D7                                        | Generated docs stale vs current inventory                  |
 
 ## Correct
 

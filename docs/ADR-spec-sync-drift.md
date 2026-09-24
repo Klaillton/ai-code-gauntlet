@@ -13,20 +13,20 @@ format/lint/types/unit/contract/e2e.
 
 Humans defend three artifacts:
 
-| Surface | Artifact | Truth |
-| --- | --- | --- |
-| Behavior (WHAT) | `features/**/*.feature` | Gherkin, domain language |
-| HTTP | `openapi/openapi.yaml` | operationId + schema |
-| Domain HOW | `src/domain` vs `tests/unit` | unit tests, not E2E |
+| Surface         | Artifact                     | Truth                    |
+| --------------- | ---------------------------- | ------------------------ |
+| Behavior (WHAT) | `features/**/*.feature`      | Gherkin, domain language |
+| HTTP            | `openapi/openapi.yaml`       | operationId + schema     |
+| Domain HOW      | `src/domain` vs `tests/unit` | unit tests, not E2E      |
 
 HTTP operations are linked to scenarios with Cucumber tags `@op:<operationId>`.
 
 ## Strictness
 
-| App | Strictness | D3 (operationId without `@op` scenario) | D6 |
-| --- | --- | --- | --- |
-| `examples/todo` | `strict` | **fail** | **fail** if git missing or unmatched src |
-| `templates/ts-node-web` | `lenient` | **warn** | **warn** if git missing or unmatched src |
+| App                     | Strictness | D3 (operationId without `@op` scenario) | D6                                       |
+| ----------------------- | ---------- | --------------------------------------- | ---------------------------------------- |
+| `examples/todo`         | `strict`   | **fail**                                | **fail** if git missing or unmatched src |
+| `templates/ts-node-web` | `lenient`  | **warn**                                | **warn** if git missing or unmatched src |
 
 Other implemented drifts (D1, D2, D5, D7, D8, D9) fail in both apps.
 protect-specs fails in both apps when specs change without a human grant.
@@ -51,23 +51,24 @@ Todo seed (owner `klaillton`, expires **`2027-06-02`** — renew before that dat
 
 ## Drift catalog (implemented)
 
-| Id | Rule | Default |
-| --- | --- | --- |
-| **D1** | Route in `src/api/app.ts` not in OpenAPI | fail unless allowlisted (`exemptFrom: openapi`) |
-| **D2** | OpenAPI path+method has no matching route | fail |
-| **D3** | `operationId` has no `@op:<operationId>` scenario | fail if `strict`, warn if `lenient`; skip if exempt `gherkin` |
-| **D5** | `src/domain` module with no unit test (same-stem or import) | fail (unless internal allowlist exempts `unit`) |
-| **D6** | Changed `src/api` / `src/domain` without matching spec/unit in git diff | fail-closed in **strict** (including git missing); warn in **lenient**; empty diff = info |
-| **D7** | Committed `docs/generated/*` does not match a fresh generate | fail |
-| **D8** | `.feature` steps leak CSS, `data-testid`, or raw HTTP paths | fail |
-| **D9** | skip/only/pending, disabled gates, lowered coverage floors | fail |
-| **D10** | Gherkin/OpenAPI in the git diff without `docs/generated` in the same diff | fail (info if no SDD change) |
-| **protect-specs** | git diff touches features/OpenAPI/`protectedGlobs` without a human grant | fail (info if git unavailable) |
+| Id                | Rule                                                                      | Default                                                                                   |
+| ----------------- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| **D1**            | Route in `src/api/app.ts` not in OpenAPI                                  | fail unless allowlisted (`exemptFrom: openapi`)                                           |
+| **D2**            | OpenAPI path+method has no matching route                                 | fail                                                                                      |
+| **D3**            | `operationId` has no `@op:<operationId>` scenario                         | fail if `strict`, warn if `lenient`; skip if exempt `gherkin`                             |
+| **D5**            | `src/domain` module with no unit test (same-stem or import)               | fail (unless internal allowlist exempts `unit`)                                           |
+| **D6**            | Changed `src/api` / `src/domain` without matching spec/unit in git diff   | fail-closed in **strict** (including git missing); warn in **lenient**; empty diff = info |
+| **D7**            | Committed `docs/generated/*` does not match a fresh generate              | fail                                                                                      |
+| **D8**            | `.feature` steps leak CSS, `data-testid`, or raw HTTP paths               | fail                                                                                      |
+| **D9**            | skip/only/pending, disabled gates, lowered coverage floors                | fail                                                                                      |
+| **D10**           | Gherkin/OpenAPI in the git diff without `docs/generated` in the same diff | fail (info if no SDD change)                                                              |
+| **D11**           | `@op` with Gherkin but no exclusive scenario-level `@unhappy`/`@edge` (exactly one `@op` on that scenario) | **fail** in both strict and lenient                          |
+| **protect-specs** | git diff touches features/OpenAPI/`protectedGlobs` without a human grant  | fail (info if git unavailable)                                                            |
 
 Scripts:
 
 - `scripts/inventory.ts` — routes, OpenAPI via `js-yaml`, feature tags, domain/unit
-- `scripts/spec-sync.ts` — D1-D6, D8, D10; exit 1 on fails
+- `scripts/spec-sync.ts` — D1-D6, D8, D10, D11; exit 1 on fails
 - `scripts/no-cheat.ts` — D9; does **not** scan `scripts/` (self-match)
 - `scripts/protect-specs.ts` — spec-edit grant; `GITHUB_BASE_REF` in CI
 - `scripts/deps-lock.ts` — package manifest grant (see ADR-phase2-deps-spec-review.md)
@@ -92,7 +93,7 @@ On `pull_request`, `.github/workflows/verify.yml` exports `ALLOW_SPEC_EDIT=1`
 
 ## How to add a new endpoint (SDD)
 
-1. Human writes a Gherkin scenario tagged `@op:<operationId>` in domain language.
+1. Human writes Gherkin tagged `@op:<operationId>` with **happy + ≥1 `@unhappy`/`@edge`** (scenario-level; D11).
 2. Human approves the OpenAPI path, operationId, and schemas (protect-specs grant).
 3. Add a contract case when the operation is HTTP-visible.
 4. Implement domain, unit tests, and the HTTP adapter.
@@ -100,6 +101,7 @@ On `pull_request`, `.github/workflows/verify.yml` exports `ALLOW_SPEC_EDIT=1`
 6. Non-product routes use the typed allowlist (kind, reason, exemptFrom, owner, expires).
 
 Keep selectors and raw paths in step defs, not in feature files (D8).
+D11 is inventory of scenario tags — not a prose “edge cases” checklist. Multi-`@op` on one edge/unhappy scenario covers none (explicit fail). Mutation remains separate.
 
 ## D6 / D7 notes
 
@@ -118,6 +120,7 @@ Allowlist seed entries expire **2027-06-02** — renew before that date
 
 - A route needs OpenAPI or an expiry-bounded allowlist.
 - Product operations without a tagged scenario fail in the Todo example.
+- Operations with Gherkin but no scenario-level `@unhappy`/`@edge` fail in **both** apps (D11).
 - Generated docs are a committed, checkable artifact (D7).
 - Coverage thresholds and existing gates are unchanged.
 - Agents cannot skip tests, disable gates, or edit specs without a human grant.
@@ -128,7 +131,7 @@ Allowlist seed entries expire **2027-06-02** — renew before that date
 
 **Wired:**
 
-- **deps-lock** — human grant required for `package.json` / `package-lock.json` edits (root, examples/*, templates/*); CI grant via label `deps-approved` → `ALLOW_DEPS_EDIT=1`
+- **deps-lock** — human grant required for `package.json` / `package-lock.json` edits (root, examples/_, templates/_); CI grant via label `deps-approved` → `ALLOW_DEPS_EDIT=1`
 - **spec-review** — `.agent/skills/spec-review.md` devil's-advocate checklist before `implement-feature`; feeds human approval / gaps.md
 - **complexity** — cyclomatic max 10 on `src/domain` (`scripts/complexity.ts`); verify gate on template + Todo
 - **mutation (custom)** — `scripts/mutation.ts` on **template + Todo** verify (80%; timeouts are not kills)

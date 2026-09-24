@@ -142,7 +142,7 @@ Do not silently rewrite the contract.
 
 0. Run **spec-review** (`.agent/skills/spec-review.md`) — devil's advocate;
    get human approval before coding.
-1. Human writes a Gherkin scenario tagged `@op:<operationId>` (grant protect-specs).
+1. Human writes Gherkin tagged `@op:<operationId>` with happy + `@unhappy`/`@edge` (D11; grant protect-specs).
 2. Human approves the OpenAPI path, operationId, and schemas.
 3. Add a contract case when the operation is HTTP-visible.
 4. Implement domain, unit tests, and the HTTP adapter.
