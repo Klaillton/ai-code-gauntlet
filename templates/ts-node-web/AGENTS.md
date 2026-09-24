@@ -18,7 +18,7 @@ Ship behavior that is:
 2. Contracted in human-approved **OpenAPI** (`openapi/openapi.yaml`)
 3. Proven by **two test streams**: unit (Vitest) + acceptance (Cucumber + Playwright)
 4. Shaped by **static gates**: TypeScript, ESLint, Prettier, coverage, complexity
-5. Kept honest by **spec-sync** (D1–D8, **D10**, **D11**), **no-cheat** (D9), **protect-specs**,
+5. Kept honest by **spec-sync** (D1–D8, **D10**, **D11**, **D13**), **no-cheat** (D9), **protect-specs**,
    **deps-lock**, **secrets-scan**, and **arch-bound**
 
 You implement. Humans defend the specs.
@@ -82,6 +82,15 @@ When the git diff touches `src/**` (configurable), verify **fails** unless:
 2. Grant: `HOLES_REVIEW_APPROVED=1`, committed `allowHolesReviewSkip: true`, or PR label `holes-approved`
 
 Artifact paths are protect-specs protected. Docs/specs-only diffs skip D12.
+
+### Contract cases inventory — D13 (spec-sync)
+
+Every OpenAPI operation (`operationId` or method+path) needs ≥1 `contract.cases` entry.
+Invalid cases (path/method not in OpenAPI) fail. Temporary gaps: committed
+`contract.caseAllowlist` with mandatory `expires` (no local allow-file; expired = fail).
+Skip only if OpenAPI is absent or `contract.enabled` / `contract.casesInventory` is false.
+Residual: weak asserts on existing cases are out of D13 scope (mutation/runtime).
+
 No `.gauntlet/allow-*` file grant. Config/label grants are **human-only** (agents must not self-apply).
 
 ### Secrets & privacy — secrets-scan
@@ -147,7 +156,7 @@ If a gate fails because the **spec is wrong**, stop and ask the human.
 0. Run **spec-review** (`.agent/skills/spec-review.md`) — human approval first.
 1. Human writes Gherkin tagged `@op:<operationId>` with happy + `@unhappy`/`@edge` (D11; grant protect-specs).
 2. Human approves the OpenAPI path, operationId, and schemas.
-3. Add a contract case when the operation is HTTP-visible.
+3. Add a contract case when the operation is HTTP-visible (D13 inventories OpenAPI ↔ cases).
 4. Implement domain, unit tests, and the HTTP adapter.
 5. Run `npm run docs:generate` then `npm run verify`.
 6. Non-product routes use the typed allowlist:

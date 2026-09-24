@@ -17,7 +17,7 @@ _None._
 
 ## Notes
 
-_None._
+- **D13:** D13 contract.cases inventory: 4 OpenAPI op(s) each have ≥1 case (or a non-expired caseAllowlist entry).
 
 D6 / D10 (git differential) and D9 (no-cheat coverage baseline) are evaluated at
 verify time and are not snapshotted here, so D7 stays deterministic.
