@@ -66,6 +66,7 @@ Todo seed (owner `klaillton`, expires **`2027-06-02`** — renew before that dat
 | **D11**           | `@op` with Gherkin but no exclusive scenario-level `@unhappy`/`@edge` (exactly one `@op` on that scenario) | **fail** in both strict and lenient                          |
 | **D12**           | `src/**` (implementation) in git diff without holes-review artifact or grant | **fail**; docs/specs-only diffs skip |
 | **D13**           | OpenAPI op (`operationId` or method+path) with zero `contract.cases` entries | **fail**; skip if OpenAPI absent/disabled; invalid case path/method fails; `caseAllowlist` needs committed config + `expires` |
+| **D14**           | New/changed `docs/adr/**` missing Context/Decision/Consequences/Discarded/Status, empty Discarded/Status, bad Status, or ADR delete | **fail**; skip if diff does not touch `docs/adr/**`; Superseded needs existing `ADR-` ref |
 | **protect-specs** | git diff touches features/OpenAPI/`protectedGlobs` without a human grant  | fail; also **fail** if git/`rev-parse` unavailable (`git required for this gate`)          |
 
 Scripts:
@@ -75,6 +76,7 @@ Scripts:
 - `scripts/no-cheat.ts` — D9; does **not** scan `scripts/` (self-match)
 - `scripts/protect-specs.ts` — spec-edit grant; `GITHUB_BASE_REF` in CI
 - `scripts/holes-review.ts` — D12 implementation requires holes-review artifact or grant
+- `scripts/adr-lint.ts` — D14 ADR template light gate (diff-based on `docs/adr/**`)
 - `scripts/deps-lock.ts` — package manifest grant (see ADR-phase2-deps-spec-review.md)
 - `scripts/generate-docs.ts` — `docs/generated/{api,behaviors,gauntlet,gaps}.md`
 - `scripts/check-docs-fresh.ts` — D7 content compare
@@ -157,6 +159,13 @@ Allowlist seed entries expire **2027-06-02** — renew before that date
 4. **Supply chain** — **wired as CI extras:** SBOM CycloneDX job, gitleaks history, Dependabot. Not local verify gates.
 
 Gherkin leakage is D8 and **is** wired. Phase 2/3 must not weaken D1-D9 or lower coverage floors.
+
+### ADR template (D14)
+
+Canonical template: `docs/adr/TEMPLATE.md`. Required sections: Context, Decision,
+Consequences, Discarded (non-empty), Status (`Accepted` or `Superseded by ADR-XXXX` + ISO date).
+Diff-based: skip when the PR does not touch `docs/adr/**`. Do not delete ADRs — only mark
+Superseded. Residual: generic `Discarded: n/a` passes the light check; quality is human review.
 
 ### contract.caseAllowlist (D13)
 

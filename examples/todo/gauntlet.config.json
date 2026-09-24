@@ -54,6 +54,11 @@
       "args": ["run", "holes-review"]
     },
     {
+      "id": "adr-lint",
+      "command": "npm",
+      "args": ["run", "adr-lint"]
+    },
+    {
       "id": "secrets-scan",
       "command": "npm",
       "args": ["run", "secrets-scan"]
@@ -198,5 +203,8 @@
   "holesReview": {
     "implementationGlobs": ["src/**"],
     "artifactGlob": "docs/holes-review/**/*.md"
+  },
+  "adrLint": {
+    "glob": "docs/adr/**/*.md"
   }
 }

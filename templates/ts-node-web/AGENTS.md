@@ -93,6 +93,13 @@ Residual: weak asserts on existing cases are out of D13 scope (mutation/runtime)
 
 No `.gauntlet/allow-*` file grant. Config/label grants are **human-only** (agents must not self-apply).
 
+### ADR template — D14 (adr-lint)
+
+New/changed files under `docs/adr/**` need sections Context, Decision, Consequences,
+Discarded (non-empty), Status (`Accepted` or `Superseded by ADR-XXXX` + date).
+Deleting an ADR fails — mark Superseded only. Skip when the diff does not touch `docs/adr/**`.
+Scaffold `TEMPLATE.md` / `README.md` bodies are not linted. Residual: `Discarded: n/a` passes.
+
 ### Secrets & privacy — secrets-scan
 
 Hard tool. Fails verify. Not a request. There is **no** `ALLOW_SECRETS=1`.

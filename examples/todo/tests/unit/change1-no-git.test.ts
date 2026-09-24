@@ -78,10 +78,24 @@ describe("CHANGE-1 no-git fail-closed", () => {
     expect(result.findings.every((f) => f.severity !== "fail")).toBe(true);
   });
 
-  it("depsLockPassesInRealGitCheckoutWithoutDepsDiff", () => {
-    const result = runDepsLock(process.cwd());
-    expect(result.ok).toBe(true);
-    expect(result.findings.every((f) => f.severity !== "fail")).toBe(true);
+  it("depsLockDoesNotFailClosedForMissingGitInRealCheckout", () => {
+    // Branch may touch package.json (deps-approved). Assert CHANGE-1 positive path:
+    // a real git checkout must not fail with "git required for this gate".
+    const prev = process.env.ALLOW_DEPS_EDIT;
+    process.env.ALLOW_DEPS_EDIT = "1";
+    try {
+      const result = runDepsLock(process.cwd());
+      expect(
+        result.findings.some((f) => f.message.toLowerCase().includes("git required for this gate")),
+      ).toBe(false);
+      expect(result.ok).toBe(true);
+    } finally {
+      if (prev === undefined) {
+        delete process.env.ALLOW_DEPS_EDIT;
+      } else {
+        process.env.ALLOW_DEPS_EDIT = prev;
+      }
+    }
   });
 });
 

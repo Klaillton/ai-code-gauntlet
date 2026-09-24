@@ -100,6 +100,9 @@ export type GauntletConfig = {
     artifactGlob?: string;
     approved?: boolean;
   };
+  adrLint?: {
+    glob?: string;
+  };
   secretsScan?: {
     allowPaths?: string[];
   };

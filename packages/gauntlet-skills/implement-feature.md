@@ -47,6 +47,10 @@ Use when the human asks to implement a feature that already has (or will have) G
 - Any residual risk / flaky notes
 - Exact `npm run verify` result
 
+## ADR template (D14)
+
+New ADRs go in `docs/adr/` from `TEMPLATE.md`. Do not delete superseded ADRs — change Status.
+
 ## Contract cases (D13)
 
 Every OpenAPI op needs ≥1 `gauntlet.config.json` → `contract.cases` entry. Invalid

@@ -177,6 +177,7 @@ const HARDENING_GATE_IDS = [
   "arch-bound",
   "protect-specs",
   "holes-review",
+  "adr-lint",
   "secrets-scan",
   "no-cheat",
   "spec-sync",
@@ -257,6 +258,7 @@ function buildAdoptConfig(name, skeleton) {
     "arch-bound": { id: "arch-bound", command: "npm", args: ["run", "arch-bound"] },
     "protect-specs": { id: "protect-specs", command: "npm", args: ["run", "protect-specs"] },
     "holes-review": { id: "holes-review", command: "npm", args: ["run", "holes-review"] },
+    "adr-lint": { id: "adr-lint", command: "npm", args: ["run", "adr-lint"] },
     "deps-lock": { id: "deps-lock", command: "npm", args: ["run", "deps-lock"] },
     "secrets-scan": { id: "secrets-scan", command: "npm", args: ["run", "secrets-scan"] },
     "no-cheat": { id: "no-cheat", command: "npm", args: ["run", "no-cheat"] },
@@ -285,6 +287,7 @@ function buildAdoptConfig(name, skeleton) {
       defaults["protect-specs"],
       ...(hasDepsLock ? [defaults["deps-lock"]] : []),
       defaults["holes-review"],
+      defaults["adr-lint"],
       defaults["secrets-scan"],
       defaults["no-cheat"],
       defaults["spec-sync"],
@@ -311,7 +314,8 @@ function buildAdoptConfig(name, skeleton) {
       config.gates = config.gates.filter((g) => g.id !== "deps-lock");
       ensureGate(config.gates, defaults["holes-review"], "protect-specs");
     }
-    ensureGate(config.gates, defaults["secrets-scan"], "holes-review");
+    ensureGate(config.gates, defaults["adr-lint"], "holes-review");
+    ensureGate(config.gates, defaults["secrets-scan"], "adr-lint");
     ensureGate(config.gates, defaults["no-cheat"], "secrets-scan");
     ensureGate(config.gates, defaults["spec-sync"], "no-cheat");
     ensureGate(config.gates, defaults.docs, "spec-sync");
@@ -334,6 +338,9 @@ function buildAdoptConfig(name, skeleton) {
       protectedGlobs: ["features/**/*.feature", "openapi/openapi.yaml", "docs/holes-review/**/*.md"],
       maxVerifyCycles: 5,
     };
+  }
+  if (!config.adrLint) {
+    config.adrLint = { glob: "docs/adr/**/*.md" };
   }
   if (!config.contract) {
     config.contract = {
@@ -366,6 +373,7 @@ function mergeGitignore(target, skeleton) {
     "no-cheat-report.json",
     "protect-specs-report.json",
     "holes-review-report.json",
+    "adr-lint-report.json",
     "mutation-report.json",
     "gherkin-mutation-report.json",
     "complexity-report.json",
@@ -504,6 +512,7 @@ function adoptProject(dir, { gates } = {}) {
       "no-cheat": "tsx scripts/no-cheat.ts",
       "protect-specs": "tsx scripts/protect-specs.ts",
       "holes-review": "tsx scripts/holes-review.ts",
+      "adr-lint": "tsx scripts/adr-lint.ts",
       "secrets-scan": "tsx scripts/secrets-scan.ts",
       "docs:generate": "tsx scripts/generate-docs.ts",
       "docs:check": "tsx scripts/check-docs-fresh.ts",

@@ -23,5 +23,6 @@ arch-bound-report.json
 crap-report.json
 deps-lock-report.json
 holes-review-report.json
+adr-lint-report.json
 secrets-scan-report.json
 .gauntlet/allow-secrets-paths

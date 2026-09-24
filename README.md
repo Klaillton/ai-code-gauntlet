@@ -12,7 +12,7 @@ This repo is **not** only a Todo app. It is:
 | [`packages/gauntlet-gates`](./packages/gauntlet-gates) | Canonical verify scripts (`gates:sync` / `gates:check`) |
 | [`docs/ADR-gates-source.md`](./docs/ADR-gates-source.md) | B1: one copy of gate scripts |
 | [`docs/`](./docs) | Premises, greenfield, adopt, original plan, [roadmap](./docs/plan.md) |
-| [`docs/ADR-spec-sync-drift.md`](./docs/ADR-spec-sync-drift.md) | Spec-sync drift catalog (D1–D13) |
+| [`docs/ADR-spec-sync-drift.md`](./docs/ADR-spec-sync-drift.md) | Spec-sync drift catalog (D1–D14) |
 | [`docs/ADR-phase2-deps-spec-review.md`](./docs/ADR-phase2-deps-spec-review.md) | Phase 2: deps-lock + spec-review |
 | [`docs/ADR-phase2-mutation-complexity.md`](./docs/ADR-phase2-mutation-complexity.md) | Phase 2: mutation + complexity |
 | [`docs/ADR-secrets-privacy.md`](./docs/ADR-secrets-privacy.md) | secrets-scan: credentials + PII hard gate |
@@ -35,6 +35,7 @@ Complexity (src/domain)    -> cyclomatic max 10
 CRAP (touched domain)      -> complexity × coverage ≤ 8 after unit
 spec-sync inventory        -> D1-D8 + D10-D11 + D13 drift (D8 = gherkin leak; D11 = edge; D13 = OpenAPI↔cases)
 holes-review (D12)         -> src/** needs docs/holes-review artifact or human grant
+adr-lint (D14)             -> docs/adr/** template sections; no ADR deletes (mark Superseded)
 no-cheat                   -> skip/only, disabled gates, lowered floors
 ESLint + Prettier + tsc    -> static shape
 AGENTS.md + skills         -> agent rules (incl. spec-review before implement)
@@ -123,6 +124,7 @@ Todo is `strict` (D3 fail). The template is `lenient` (D3 warn).
 - Edge/unhappy inventory is **D11** (fail-closed in strict and lenient; scenario-level `@unhappy`/`@edge` with exactly one `@op`).
 - Implementation without holes-review is **D12** (fail-closed when `src/**` changes; artifact `docs/holes-review/**/*.md` with non-empty sections, or human grant — no allow-file).
 - OpenAPI ↔ `contract.cases` inventory is **D13** (every op needs a case; invalid cases fail; `caseAllowlist` + mandatory `expires`).
+- ADR template light gate is **D14** (new/changed `docs/adr/**`; Discarded + Status; deletes fail — mark Superseded).
 
 Remaining (not default kit gates):
 
