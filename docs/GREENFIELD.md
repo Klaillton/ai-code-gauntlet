@@ -39,7 +39,7 @@ npm install && npm run prepare:browsers && npm run verify
 - Domain unit (`src/domain/health.ts`)
 - Cucumber + Playwright harness
 - `gauntlet.config.json` **lenient** plus complexity, arch-bound, deps-lock, secrets-scan, spec-sync, no-cheat, protect-specs, docs, crap
-- `AGENTS.md` (mutation + gherkin-mutation are verify gates; empty domain scores 100)
+- `AGENTS.md` (mutation + gherkin-mutation are verify gates; CHANGE-2 empty ≠ 100%)
 - `docs/sdd/Security.md` + `Observability.md` (D15 presence)
 
 Template D3 warns (lenient). Todo D3 fails (strict).
@@ -47,4 +47,6 @@ D11 (edge inventory) **fails** in both apps when an `@op` has no scenario-level 
 D13 **fails** when an OpenAPI op has no `contract.cases` entry (unless non-expired `caseAllowlist`).
 D14 **fails** when new/changed `docs/adr/**` omit template sections or delete an ADR (mark Superseded only).
 D15 **fails** when SDD is active and `docs/sdd/Security.md` / `Observability.md` are missing, empty, or lack heading + ≥1 requirement (skip if `sdd: false`).
+CHANGE-2 **fails** when mutation/gherkin-mutation has zero sites (never score 100; skipReason+expires or differential soft-skip).
+CHANGE-3 **fails** when `src/**` changes without Gherkin/OpenAPI/holes-review in the same PR (or SPEC_SYNC_APPROVED grant).
 Business domain lives in `examples/todo` only.

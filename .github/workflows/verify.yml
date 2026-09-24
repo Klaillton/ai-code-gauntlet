@@ -167,6 +167,7 @@ jobs:
           ALLOW_SPEC_EDIT: ${{ contains(github.event.pull_request.labels.*.name, 'specs-approved') && '1' || '' }}
           ALLOW_DEPS_EDIT: ${{ contains(github.event.pull_request.labels.*.name, 'deps-approved') && '1' || '' }}
           HOLES_REVIEW_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'holes-approved') && '1' || '' }}
+          SPEC_SYNC_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'spec-sync-approved') && '1' || '' }}
       - if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -202,6 +203,7 @@ jobs:
           ALLOW_SPEC_EDIT: ${{ contains(github.event.pull_request.labels.*.name, 'specs-approved') && '1' || '' }}
           ALLOW_DEPS_EDIT: ${{ contains(github.event.pull_request.labels.*.name, 'deps-approved') && '1' || '' }}
           HOLES_REVIEW_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'holes-approved') && '1' || '' }}
+          SPEC_SYNC_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'spec-sync-approved') && '1' || '' }}
       - if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:

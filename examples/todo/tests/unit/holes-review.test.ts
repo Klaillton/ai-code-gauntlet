@@ -125,12 +125,16 @@ describe("evaluateHolesReview", () => {
 describe("holesReviewAllowed", () => {
   it("honorsEnvAndConfigNotAllowFile", () => {
     const prev = process.env.HOLES_REVIEW_APPROVED;
+    const prevEvent = process.env.GITHUB_EVENT_PATH;
     delete process.env.HOLES_REVIEW_APPROVED;
+    delete process.env.GITHUB_EVENT_PATH;
     expect(holesReviewAllowed("/tmp", false).allowed).toBe(false);
     expect(holesReviewAllowed("/tmp", true).allowed).toBe(true);
     process.env.HOLES_REVIEW_APPROVED = "1";
     expect(holesReviewAllowed("/tmp", false).allowed).toBe(true);
     if (prev === undefined) delete process.env.HOLES_REVIEW_APPROVED;
     else process.env.HOLES_REVIEW_APPROVED = prev;
+    if (prevEvent === undefined) delete process.env.GITHUB_EVENT_PATH;
+    else process.env.GITHUB_EVENT_PATH = prevEvent;
   });
 });

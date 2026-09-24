@@ -19,7 +19,8 @@ import { includeGitBranchDivergence, loadConfig } from "./inventory.js";
  * treated as killed (Stryker-like) to avoid flake-fails; see
  * ADR-phase2-mutation-complexity.md.
  *
- * Template verify omits the mutation gate for speed. Run the script opt-in.
+ * CHANGE-2: empty mutants/sites never score 100% — fail or committed skipReason+expires.
+ * Differential PR with no include hits soft-skips (not 100%).
  */
 
 export type MutantStatus = "killed" | "survived" | "timeout" | "error";
@@ -43,21 +44,102 @@ export type MutationReport = {
   survived: number;
   timeout: number;
   error: number;
+  /** Kill score; 0 when empty-surface fail/skip (never 100 on empty — CHANGE-2). */
   score: number;
   threshold: number;
   findings: string[];
   mutants: MutantResult[];
+  /** True when gate skipped (diff miss or committed skipReason). */
+  skipped?: boolean;
 };
 
 type MutationConfig = {
   include?: string[];
   threshold?: number;
   timeoutMs?: number;
+  /**
+   * CHANGE-2: committed skip for empty mutation surface (never score 100).
+   * Requires expires (YYYY-MM-DD); expired entries do not grant.
+   */
+  skipReason?: string;
+  expires?: string;
 };
 
 const DEFAULT_INCLUDE = "src/domain";
 const DEFAULT_THRESHOLD = 80;
 const DEFAULT_TIMEOUT_MS = 90_000;
+
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+export function todayUtcIso(now = new Date()): string {
+  return now.toISOString().slice(0, 10);
+}
+
+export function isIsoDate(value: string): boolean {
+  return ISO_DATE_RE.test(value);
+}
+
+export type EmptyMutationSurfaceResult =
+  | { outcome: "proceed" }
+  | { outcome: "skip"; finding: string }
+  | { outcome: "fail"; finding: string };
+
+/**
+ * CHANGE-2 — empty mutation surface must never score 100%.
+ *
+ * - differentialSkip: PR selected zero include files → soft skip (ok), not 100%.
+ * - Otherwise fail unless committed skipReason + non-expired expires.
+ */
+export function resolveEmptyMutationSurface(input: {
+  mutantCount: number;
+  differentialSkip: boolean;
+  skipReason?: string;
+  expires?: string;
+  today?: string;
+  label?: string;
+}): EmptyMutationSurfaceResult {
+  if (input.mutantCount > 0) {
+    return { outcome: "proceed" };
+  }
+  const label = input.label ?? "mutation";
+  if (input.differentialSkip) {
+    return {
+      outcome: "skip",
+      finding: `${label}: empty mutation surface not in this diff; gate skipped (not 100%).`,
+    };
+  }
+  const reason = input.skipReason?.trim() ?? "";
+  const expires = input.expires?.trim() ?? "";
+  const today = input.today ?? todayUtcIso();
+  if (reason.length > 0) {
+    if (!isIsoDate(expires)) {
+      return {
+        outcome: "fail",
+        finding:
+          `${label}: empty mutation surface — skipReason requires expires (YYYY-MM-DD); ` +
+          `never score 100% on empty.`,
+      };
+    }
+    if (expires < today) {
+      return {
+        outcome: "fail",
+        finding:
+          `${label}: empty mutation surface — skipReason expired on ${expires} ` +
+          `(expired entries do not grant; never score 100% on empty).`,
+      };
+    }
+    return {
+      outcome: "skip",
+      finding: `${label}: empty mutation surface skipped — ${reason} (expires ${expires}).`,
+    };
+  }
+  return {
+    outcome: "fail",
+    finding:
+      `${label}: empty mutation surface — zero mutants/sites while gate is enabled. ` +
+      `Fail-closed (never 100%). Add mutable domain logic, or set mutation.skipReason + expires.`,
+  };
+}
 
 type PlannedMutant = {
   start: number;
@@ -425,21 +507,41 @@ export function runMutation(cwd = process.cwd()): MutationReport {
   const timeout = mutants.filter((m) => m.status === "timeout").length;
   const error = mutants.filter((m) => m.status === "error").length;
   const mutantCount = mutants.length;
-  const score = mutantCount === 0 ? 100 : Math.round((killed / mutantCount) * 100);
-  if (mutantCount === 0) {
-    findings.push(
-      `No mutable sites under ${includeRel}; treating score as 100. Add operators or domain logic as the app grows.`,
-    );
-  }
-  if (score < threshold) {
-    findings.push(`Kill score ${score}% is below threshold ${threshold}%.`);
-  }
-  if (timeout > 0) {
-    findings.push(`${timeout} mutant(s) timed out — timeouts are not kills (fail-closed).`);
+  const differentialSkip =
+    includeGitBranchDivergence() && allChanged.length > 0 && files.length === 0;
+  const empty = resolveEmptyMutationSurface({
+    mutantCount,
+    differentialSkip,
+    ...(extra.mutation?.skipReason !== undefined ? { skipReason: extra.mutation.skipReason } : {}),
+    ...(extra.mutation?.expires !== undefined ? { expires: extra.mutation.expires } : {}),
+    label: "mutation",
+  });
+
+  let score = 0;
+  let skipped = false;
+  let ok = false;
+  if (empty.outcome === "fail") {
+    findings.push(empty.finding);
+    score = 0;
+    ok = false;
+  } else if (empty.outcome === "skip") {
+    findings.push(empty.finding);
+    score = 0;
+    skipped = true;
+    ok = error === 0;
+  } else {
+    score = Math.round((killed / mutantCount) * 100);
+    if (score < threshold) {
+      findings.push(`Kill score ${score}% is below threshold ${threshold}%.`);
+    }
+    if (timeout > 0) {
+      findings.push(`${timeout} mutant(s) timed out — timeouts are not kills (fail-closed).`);
+    }
+    ok = score >= threshold && error === 0 && timeout === 0;
   }
 
   const report: MutationReport = {
-    ok: score >= threshold && error === 0 && timeout === 0,
+    ok,
     generatedAt: new Date().toISOString(),
     include: includeRel,
     mutantCount,
@@ -451,6 +553,7 @@ export function runMutation(cwd = process.cwd()): MutationReport {
     threshold,
     findings,
     mutants,
+    skipped,
   };
   writeFileSync(resolve(cwd, "mutation-report.json"), `${JSON.stringify(report, null, 2)}\n`);
   return report;

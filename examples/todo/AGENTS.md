@@ -101,6 +101,19 @@ Discarded (non-empty), Status (`Accepted` or `Superseded by ADR-XXXX` + date).
 Deleting an ADR fails — mark Superseded only. Skip when the diff does not touch `docs/adr/**`.
 Scaffold `TEMPLATE.md` / `README.md` bodies are not linted. Residual: `Discarded: n/a` passes.
 
+### Empty mutation surface — CHANGE-2
+
+mutation / gherkin-mutation must never report score 100% with zero mutants/sites.
+Empty surface **fails** unless committed `mutation.skipReason` / `gherkinMutation.skipReason`
+plus `expires`, or the PR soft-skips because the include set is not in the diff.
+
+### Spec↔code DoD — CHANGE-3 (spec-code)
+
+Implementation (`src/**`) in a PR must also touch a protected spec (Gherkin, OpenAPI,
+or holes-review) in the same PR, or a human grant: `SPEC_SYNC_APPROVED=1`, label
+`spec-sync-approved`, or committed `allowSpecCodeSkip` / `specCode.approved`.
+No local allow-file. Docs-only / spec-only diffs skip.
+
 ### Security + Observability presence — D15 (sdd-presence)
 
 When SDD is active (default), `docs/sdd/Security.md` and `docs/sdd/Observability.md`

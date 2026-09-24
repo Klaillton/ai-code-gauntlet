@@ -1,3 +1,4 @@
+# Spec paired with src/domain/health (CHANGE-3 DoD).
 Feature: Service health
   As a user of the system
   I want to know the service is alive

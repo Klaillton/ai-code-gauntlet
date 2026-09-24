@@ -6,6 +6,7 @@ import process from "node:process";
 import { includeGitBranchDivergence, loadConfig } from "./inventory.js";
 import {
   listGitChangedRels,
+  resolveEmptyMutationSurface,
   selectMutationFiles,
   type MutantResult,
   type MutantStatus,
@@ -15,7 +16,8 @@ import {
  * Mutate Gherkin examples/assertions. If cucumber still passes, the scenario
  * was not actually pinning that value (theater). Does not replace unit mutation.
  *
- * Todo verify includes the gate after e2e. Template ships the script opt-in.
+ * CHANGE-2: empty sites never score 100% — fail or gherkinMutation.skipReason+expires.
+ * Differential PR with no feature hits soft-skips (not 100%).
  */
 
 export type GherkinMutant = {
@@ -30,6 +32,9 @@ type GherkinConfig = {
   threshold?: number;
   timeoutMs?: number;
   maxMutants?: number;
+  /** CHANGE-2: committed skip for empty surface; requires expires. */
+  skipReason?: string;
+  expires?: string;
 };
 
 const DEFAULT_INCLUDE = "features";
@@ -248,18 +253,45 @@ export function runGherkinMutation(cwd = process.cwd()): {
   const timeout = mutants.filter((m) => m.status === "timeout").length;
   const error = mutants.filter((m) => m.status === "error").length;
   const mutantCount = mutants.length;
-  const score = mutantCount === 0 ? 100 : Math.round((killed / mutantCount) * 100);
-  if (mutantCount === 0) {
-    findings.push(`No Gherkin assertion sites under ${includeRel}; treating score as 100.`);
-  }
-  if (score < threshold) {
-    findings.push(`Gherkin kill score ${score}% is below threshold ${threshold}%.`);
-  }
-  if (timeout > 0) {
-    findings.push(`${timeout} Gherkin mutant(s) timed out — timeouts are not kills (fail-closed).`);
+  const differentialSkip =
+    includeGitBranchDivergence() && allChanged.length > 0 && files.length === 0;
+  const empty = resolveEmptyMutationSurface({
+    mutantCount,
+    differentialSkip,
+    ...(config.gherkinMutation?.skipReason !== undefined
+      ? { skipReason: config.gherkinMutation.skipReason }
+      : {}),
+    ...(config.gherkinMutation?.expires !== undefined
+      ? { expires: config.gherkinMutation.expires }
+      : {}),
+    label: "gherkin-mutation",
+  });
+
+  let score = 0;
+  let skipped = false;
+  let ok = false;
+  if (empty.outcome === "fail") {
+    findings.push(empty.finding);
+    score = 0;
+    ok = false;
+  } else if (empty.outcome === "skip") {
+    findings.push(empty.finding);
+    score = 0;
+    skipped = true;
+    ok = error === 0;
+  } else {
+    score = Math.round((killed / mutantCount) * 100);
+    if (score < threshold) {
+      findings.push(`Gherkin kill score ${score}% is below threshold ${threshold}%.`);
+    }
+    if (timeout > 0) {
+      findings.push(
+        `${timeout} Gherkin mutant(s) timed out — timeouts are not kills (fail-closed).`,
+      );
+    }
+    ok = score >= threshold && error === 0 && timeout === 0;
   }
 
-  const ok = score >= threshold && error === 0 && timeout === 0;
   const report = {
     ok,
     generatedAt: new Date().toISOString(),
@@ -273,6 +305,7 @@ export function runGherkinMutation(cwd = process.cwd()): {
     threshold,
     findings,
     mutants,
+    skipped,
   };
   writeFileSync(
     resolve(cwd, "gherkin-mutation-report.json"),

@@ -39,6 +39,8 @@ See [ADR-spec-sync-drift.md](./ADR-spec-sync-drift.md).
 - **D13**: every OpenAPI op needs ≥1 `contract.cases` entry (invalid cases fail; `caseAllowlist` + expires)
 - **D14**: new/changed `docs/adr/**` must use the ADR template (Discarded + Status; no deletes — mark Superseded)
 - **D15**: SDD-active apps need non-empty `docs/sdd/Security.md` + `Observability.md` (heading + ≥1 requirement; skip if `sdd: false`)
+- **CHANGE-2**: mutation / gherkin-mutation empty surface fails (never 100%); skipReason+expires or differential soft-skip
+- **CHANGE-3**: `src/**` PRs must also touch protected spec or human SPEC_SYNC_APPROVED grant
 - ESLint + Prettier + TypeScript
 - AGENTS.md + skills
 - CI = the same gates
