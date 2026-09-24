@@ -100,7 +100,6 @@ Discarded (non-empty), Status (`Accepted` or `Superseded by ADR-XXXX` + date).
 Deleting an ADR fails — mark Superseded only. Skip when the diff does not touch `docs/adr/**`.
 Scaffold `TEMPLATE.md` / `README.md` bodies are not linted. Residual: `Discarded: n/a` passes.
 
-
 ### Security + Observability presence — D15 (sdd-presence)
 
 When SDD is active (default), `docs/sdd/Security.md` and `docs/sdd/Observability.md`

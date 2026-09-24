@@ -4,21 +4,21 @@
 
 This repo is **not** only a Todo app. It is:
 
-| Path | Role |
-|------|------|
-| [`templates/ts-node-web`](./templates/ts-node-web) | **Greenfield skeleton** (health-only, lenient D3) |
-| [`examples/todo`](./examples/todo) | **Full demo** that proves every gate (strict) |
-| [`packages/create-ai-gauntlet`](./packages/create-ai-gauntlet) | CLI: `create` + `adopt` |
-| [`packages/gauntlet-gates`](./packages/gauntlet-gates) | Canonical verify scripts (`gates:sync` / `gates:check`) |
-| [`docs/ADR-gates-source.md`](./docs/ADR-gates-source.md) | B1: one copy of gate scripts |
-| [`docs/`](./docs) | Premises, greenfield, adopt, original plan, [roadmap](./docs/plan.md) |
-| [`docs/ADR-spec-sync-drift.md`](./docs/ADR-spec-sync-drift.md) | Spec-sync drift catalog (D1–D15) |
-| [`docs/ADR-phase2-deps-spec-review.md`](./docs/ADR-phase2-deps-spec-review.md) | Phase 2: deps-lock + spec-review |
-| [`docs/ADR-phase2-mutation-complexity.md`](./docs/ADR-phase2-mutation-complexity.md) | Phase 2: mutation + complexity |
-| [`docs/ADR-secrets-privacy.md`](./docs/ADR-secrets-privacy.md) | secrets-scan: credentials + PII hard gate |
-| [`docs/ADR-arch-bound.md`](./docs/ADR-arch-bound.md) | arch-bound: domain must not import infra |
-| [`docs/ADR-gherkin-mutation.md`](./docs/ADR-gherkin-mutation.md) | Gherkin mutation + differential unit mutation |
-| [`docs/six-pack.md`](./docs/six-pack.md) | Role playbook (not a swarm) |
+| Path                                                                                 | Role                                                                  |
+| ------------------------------------------------------------------------------------ | --------------------------------------------------------------------- |
+| [`templates/ts-node-web`](./templates/ts-node-web)                                   | **Greenfield skeleton** (health-only, lenient D3)                     |
+| [`examples/todo`](./examples/todo)                                                   | **Full demo** that proves every gate (strict)                         |
+| [`packages/create-ai-gauntlet`](./packages/create-ai-gauntlet)                       | CLI: `create` + `adopt`                                               |
+| [`packages/gauntlet-gates`](./packages/gauntlet-gates)                               | Canonical verify scripts (`gates:sync` / `gates:check`)               |
+| [`docs/ADR-gates-source.md`](./docs/ADR-gates-source.md)                             | B1: one copy of gate scripts                                          |
+| [`docs/`](./docs)                                                                    | Premises, greenfield, adopt, original plan, [roadmap](./docs/plan.md) |
+| [`docs/ADR-spec-sync-drift.md`](./docs/ADR-spec-sync-drift.md)                       | Spec-sync drift catalog (D1–D15)                                      |
+| [`docs/ADR-phase2-deps-spec-review.md`](./docs/ADR-phase2-deps-spec-review.md)       | Phase 2: deps-lock + spec-review                                      |
+| [`docs/ADR-phase2-mutation-complexity.md`](./docs/ADR-phase2-mutation-complexity.md) | Phase 2: mutation + complexity                                        |
+| [`docs/ADR-secrets-privacy.md`](./docs/ADR-secrets-privacy.md)                       | secrets-scan: credentials + PII hard gate                             |
+| [`docs/ADR-arch-bound.md`](./docs/ADR-arch-bound.md)                                 | arch-bound: domain must not import infra                              |
+| [`docs/ADR-gherkin-mutation.md`](./docs/ADR-gherkin-mutation.md)                     | Gherkin mutation + differential unit mutation                         |
+| [`docs/six-pack.md`](./docs/six-pack.md)                                             | Role playbook (not a swarm)                                           |
 
 ```
 Gherkin (human-owned)      -> behavior (protect-specs)
