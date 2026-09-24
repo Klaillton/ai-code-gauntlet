@@ -34,6 +34,29 @@ export type AllowlistEntry = {
   expires: string;
 };
 
+export type ContractCase = {
+  label?: string;
+  method: string;
+  path: string;
+  body?: unknown;
+  expectedStatus?: number;
+  schemaPath?: string;
+  schemaMethod?: string;
+  schemaStatus?: string;
+  save?: { as: string; from: string };
+};
+
+/** Allowlist entry for an OpenAPI op with no contract.cases yet (D13). */
+export type ContractCaseAllowlistEntry = {
+  operationId?: string;
+  method?: string;
+  path?: string;
+  reason: string;
+  owner: string;
+  /** ISO date YYYY-MM-DD; expired entries do not grant. */
+  expires: string;
+};
+
 export type Gate = {
   id: string;
   command: string;
@@ -50,6 +73,17 @@ export type GauntletConfig = {
     openapiPath?: string;
     serverEntry?: string;
     port?: number;
+    /** Runtime contract cases (also inventoried by D13). */
+    cases?: ContractCase[];
+    /**
+     * Ops temporarily without a contract.cases entry.
+     * Committed config only; expires required. No local allow-file.
+     */
+    caseAllowlist?: ContractCaseAllowlistEntry[];
+    /** When false, skip OpenAPI ↔ contract.cases inventory (D13). */
+    enabled?: boolean;
+    /** When false, skip D13 only (runtime contract may still run). */
+    casesInventory?: boolean;
   };
   sdd?: {
     appPath?: string;

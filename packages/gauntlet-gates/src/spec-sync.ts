@@ -12,17 +12,21 @@ import {
   isEdgeScenarioTag,
   type AllowlistEntry,
   type AllowlistKind,
+  type ContractCase,
+  type ContractCaseAllowlistEntry,
   type ExemptFrom,
   type FeatureScenario,
   type Inventory,
+  type OpenApiOperation,
   type Strictness,
   buildInventory,
   includeGitBranchDivergence,
   normalizeMethod,
+  normalizePath,
   routeKey,
 } from "./inventory.js";
 
-export type DriftId = "D1" | "D2" | "D3" | "D5" | "D6" | "D8" | "D9" | "D10" | "D11" | "allowlist";
+export type DriftId = "D1" | "D2" | "D3" | "D5" | "D6" | "D8" | "D9" | "D10" | "D11" | "D13" | "allowlist";
 
 export type Finding = {
   id: DriftId;
@@ -374,6 +378,275 @@ export function evaluateEdgeInventory(scenarios: FeatureScenario[]): Finding[] {
 function checkD11(inventory: Inventory): Finding[] {
   return evaluateEdgeInventory(inventory.scenarios);
 }
+
+/** Normalize runtime path templates `{{id}}` to OpenAPI `{id}`. */
+export function normalizeCasePath(path: string): string {
+  return normalizePath(path.replace(/\{\{(\w+)\}\}/g, "{$1}"));
+}
+
+/** Collapse `{name}` segments so `{{todoId}}` matches OpenAPI `{id}`. */
+export function inventoryPathKey(path: string): string {
+  return normalizeCasePath(path).replace(/\{[^}]+\}/g, "{}");
+}
+
+export function inventoryRouteKey(method: string, path: string): string {
+  return `${method.toUpperCase()} ${inventoryPathKey(path)}`;
+}
+
+/** Route key for a contract case (prefer schemaPath/schemaMethod). */
+export function contractCaseRouteKey(c: Pick<ContractCase, "method" | "path" | "schemaPath" | "schemaMethod">): string {
+  const method = c.schemaMethod ?? c.method;
+  const path = c.schemaPath ?? c.path;
+  return inventoryRouteKey(method, path);
+}
+
+export function opInventoryLabel(op: OpenApiOperation): string {
+  const key = routeKey(op.method, op.normalizedPath);
+  return op.operationId ? `${op.operationId} (${key})` : key;
+}
+
+export type ContractCasesInventoryInput = {
+  operations: OpenApiOperation[];
+  cases: ContractCase[];
+  caseAllowlist?: unknown;
+  /** False when OpenAPI file is missing or unreadable / no path configured. */
+  openapiPresent: boolean;
+  /** contract.enabled === false or contract.casesInventory === false. */
+  disabled?: boolean;
+  today?: string;
+};
+
+function parseCaseAllowlist(
+  raw: unknown,
+): { entries: ContractCaseAllowlistEntry[]; findings: Finding[] } {
+  const findings: Finding[] = [];
+  if (raw === undefined) {
+    return { entries: [], findings };
+  }
+  if (!Array.isArray(raw)) {
+    findings.push({
+      id: "D13",
+      severity: "fail",
+      message: "D13 contract.caseAllowlist must be an array (committed config only; no local allow-file)",
+    });
+    return { entries: [], findings };
+  }
+  const entries: ContractCaseAllowlistEntry[] = [];
+  raw.forEach((item, index) => {
+    if (!item || typeof item !== "object") {
+      findings.push({
+        id: "D13",
+        severity: "fail",
+        message: `D13 contract.caseAllowlist[${index}] must be an object`,
+      });
+      return;
+    }
+    const rec = item as Record<string, unknown>;
+    const missing: string[] = [];
+    for (const field of ["reason", "owner", "expires"]) {
+      if (rec[field] === undefined || rec[field] === "") {
+        missing.push(field);
+      }
+    }
+    if (missing.length > 0) {
+      findings.push({
+        id: "D13",
+        severity: "fail",
+        message: `D13 contract.caseAllowlist[${index}] missing required fields: ${missing.join(", ")}`,
+      });
+      return;
+    }
+    if (typeof rec.reason !== "string" || typeof rec.owner !== "string") {
+      findings.push({
+        id: "D13",
+        severity: "fail",
+        message: `D13 contract.caseAllowlist[${index}] reason and owner must be strings`,
+      });
+      return;
+    }
+    if (typeof rec.expires !== "string" || !isIsoDate(rec.expires)) {
+      findings.push({
+        id: "D13",
+        severity: "fail",
+        message: `D13 contract.caseAllowlist[${index}] expires must be an ISO date (YYYY-MM-DD)`,
+      });
+      return;
+    }
+    const operationId = typeof rec.operationId === "string" ? rec.operationId : undefined;
+    const method = typeof rec.method === "string" ? rec.method : undefined;
+    const path = typeof rec.path === "string" ? rec.path : undefined;
+    if (!operationId && !(method && path)) {
+      findings.push({
+        id: "D13",
+        severity: "fail",
+        message:
+          `D13 contract.caseAllowlist[${index}] needs operationId and/or method+path ` +
+          `to identify the OpenAPI operation`,
+      });
+      return;
+    }
+    entries.push({
+      operationId,
+      method,
+      path,
+      reason: rec.reason,
+      owner: rec.owner,
+      expires: rec.expires,
+    });
+  });
+  return { entries, findings };
+}
+
+function caseAllowlistCovers(entry: ContractCaseAllowlistEntry, op: OpenApiOperation): boolean {
+  if (entry.operationId && op.operationId && entry.operationId === op.operationId) {
+    return true;
+  }
+  if (entry.method && entry.path) {
+    return inventoryRouteKey(entry.method, entry.path) ===
+      inventoryRouteKey(op.method, op.normalizedPath);
+  }
+  return false;
+}
+
+/**
+ * D13 — every OpenAPI operation must have ≥1 contract.cases entry.
+ * Invalid cases (path/method not in OpenAPI) fail. Ops without a case fail
+ * unless covered by a non-expired committed contract.caseAllowlist entry.
+ * Skip only when OpenAPI is absent or inventory is disabled in config.
+ * Residual weak asserts on existing cases are out of scope (mutation).
+ */
+export function evaluateContractCasesInventory(input: ContractCasesInventoryInput): Finding[] {
+  const today = input.today ?? todayUtc();
+  if (input.disabled) {
+    return [
+      {
+        id: "D13",
+        severity: "info",
+        message: "D13 skipped: contract cases inventory disabled in config.",
+      },
+    ];
+  }
+  if (!input.openapiPresent) {
+    return [
+      {
+        id: "D13",
+        severity: "info",
+        message: "D13 skipped: OpenAPI absent or not configured.",
+      },
+    ];
+  }
+
+  const { entries: allowEntries, findings } = parseCaseAllowlist(input.caseAllowlist);
+  const openapiKeys = new Set(
+    input.operations.map((op) => inventoryRouteKey(op.method, op.normalizedPath)),
+  );
+
+  const coveredKeys = new Set<string>();
+  input.cases.forEach((c, index) => {
+    if (!c || typeof c !== "object") {
+      findings.push({
+        id: "D13",
+        severity: "fail",
+        message: `D13 contract.cases[${index}] must be an object`,
+      });
+      return;
+    }
+    if (typeof c.method !== "string" || typeof c.path !== "string") {
+      findings.push({
+        id: "D13",
+        severity: "fail",
+        message: `D13 contract.cases[${index}] method and path must be strings`,
+      });
+      return;
+    }
+    let key: string;
+    try {
+      key = contractCaseRouteKey(c);
+    } catch (err) {
+      findings.push({
+        id: "D13",
+        severity: "fail",
+        message: `D13 contract.cases[${index}] invalid method/path: ${(err as Error).message}`,
+      });
+      return;
+    }
+    if (!openapiKeys.has(key)) {
+      const label = c.label ? `"${c.label}" ` : "";
+      findings.push({
+        id: "D13",
+        severity: "fail",
+        message:
+          `D13 invalid case ${label}(${key}): path/method not in OpenAPI. ` +
+          `Fix schemaPath/schemaMethod (or method/path) or remove the case.`,
+      });
+      return;
+    }
+    coveredKeys.add(key);
+  });
+
+  for (const op of input.operations) {
+    const key = inventoryRouteKey(op.method, op.normalizedPath);
+    if (coveredKeys.has(key)) {
+      continue;
+    }
+    const matches = allowEntries.filter((entry) => caseAllowlistCovers(entry, op));
+    const live = matches.find((entry) => entry.expires.slice(0, 10) >= today);
+    if (live) {
+      continue;
+    }
+    const expired = matches.find((entry) => entry.expires.slice(0, 10) < today);
+    if (expired) {
+      findings.push({
+        id: "D13",
+        severity: "fail",
+        message:
+          `D13 OpenAPI op ${opInventoryLabel(op)} has zero contract.cases and ` +
+          `caseAllowlist expired on ${expired.expires.slice(0, 10)} ` +
+          `(expired entries do not grant; renew expires or add a case).`,
+      });
+      continue;
+    }
+    findings.push({
+      id: "D13",
+      severity: "fail",
+      message:
+        `D13 OpenAPI op ${opInventoryLabel(op)} has zero contract.cases entries. ` +
+        `Add a case, or a committed contract.caseAllowlist entry with mandatory expires.`,
+    });
+  }
+
+  if (findings.every((f) => f.severity !== "fail")) {
+    findings.push({
+      id: "D13",
+      severity: "info",
+      message:
+        `D13 contract.cases inventory: ${input.operations.length} OpenAPI op(s) each have ` +
+        `≥1 case (or a non-expired caseAllowlist entry).`,
+    });
+  }
+  return findings;
+}
+
+function checkD13(inventory: Inventory): Finding[] {
+  const contract = inventory.config.contract;
+  const openapiRel =
+    inventory.config.sdd?.openapiPath ?? contract?.openapiPath ?? "openapi/openapi.yaml";
+  const openapiAbs = resolve(inventory.cwd, openapiRel);
+  const openapiPresent = existsSync(openapiAbs);
+  const disabled =
+    contract?.enabled === false || contract?.casesInventory === false;
+  const cases = Array.isArray(contract?.cases) ? contract.cases : [];
+  // If OpenAPI file exists but discover found nothing and path defaulted with no config —
+  // still "present". Skip only when file missing.
+  return evaluateContractCasesInventory({
+    operations: inventory.operations,
+    cases,
+    caseAllowlist: contract?.caseAllowlist,
+    openapiPresent,
+    disabled,
+  });
+}
+
 
 function checkD5(inventory: Inventory, allowlist: AllowlistEntry[]): Finding[] {
   const findings: Finding[] = [];
@@ -941,6 +1214,7 @@ export function runSpecSync(cwd = process.cwd()): SpecSyncResult {
     ...checkD6(inventory),
     ...checkD10(inventory),
     ...checkD11(inventory),
+    ...checkD13(inventory),
   ];
 
   const ok = findings.every((finding) => finding.severity !== "fail");

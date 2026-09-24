@@ -18,6 +18,7 @@ These already fail `npm run verify` when a closed phase is wrong:
 | protect-specs red                         | You tried to edit SDD without a grant                      |
 | **D10**                                   | SDD changed but `docs/generated` was not in the same diff  |
 | **D11**                                   | `@op` has Gherkin but no scenario-level `@unhappy`/`@edge` |
+| **D13**                                   | OpenAPI op has zero `contract.cases` (or invalid case)     |
 | D7                                        | Generated docs stale vs current inventory                  |
 
 ## Correct

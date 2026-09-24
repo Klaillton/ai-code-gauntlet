@@ -65,12 +65,13 @@ Todo seed (owner `klaillton`, expires **`2027-06-02`** — renew before that dat
 | **D10**           | Gherkin/OpenAPI in the git diff without `docs/generated` in the same diff | fail (info if no SDD change)                                                              |
 | **D11**           | `@op` with Gherkin but no exclusive scenario-level `@unhappy`/`@edge` (exactly one `@op` on that scenario) | **fail** in both strict and lenient                          |
 | **D12**           | `src/**` (implementation) in git diff without holes-review artifact or grant | **fail**; docs/specs-only diffs skip |
+| **D13**           | OpenAPI op (`operationId` or method+path) with zero `contract.cases` entries | **fail**; skip if OpenAPI absent/disabled; invalid case path/method fails; `caseAllowlist` needs committed config + `expires` |
 | **protect-specs** | git diff touches features/OpenAPI/`protectedGlobs` without a human grant  | fail; also **fail** if git/`rev-parse` unavailable (`git required for this gate`)          |
 
 Scripts:
 
 - `scripts/inventory.ts` — routes, OpenAPI via `js-yaml`, feature tags, domain/unit
-- `scripts/spec-sync.ts` — D1-D6, D8, D10, D11; exit 1 on fails
+- `scripts/spec-sync.ts` — D1-D6, D8, D10, D11, D13; exit 1 on fails
 - `scripts/no-cheat.ts` — D9; does **not** scan `scripts/` (self-match)
 - `scripts/protect-specs.ts` — spec-edit grant; `GITHUB_BASE_REF` in CI
 - `scripts/holes-review.ts` — D12 implementation requires holes-review artifact or grant
@@ -104,6 +105,8 @@ On `pull_request`, `.github/workflows/verify.yml` exports `ALLOW_SPEC_EDIT=1`
 
 Keep selectors and raw paths in step defs, not in feature files (D8).
 D11 is inventory of scenario tags — not a prose “edge cases” checklist. Multi-`@op` on one edge/unhappy scenario covers none (explicit fail). Mutation remains separate.
+
+D13 is inventory of OpenAPI ↔ `contract.cases` — not assertion strength. Weak asserts on existing cases remain a residual false-green (mutation/runtime). Ops without a case fail unless covered by a non-expired committed `contract.caseAllowlist` entry (`expires` mandatory; no local allow-file).
 
 ## D6 / D7 notes
 
@@ -154,6 +157,18 @@ Allowlist seed entries expire **2027-06-02** — renew before that date
 4. **Supply chain** — **wired as CI extras:** SBOM CycloneDX job, gitleaks history, Dependabot. Not local verify gates.
 
 Gherkin leakage is D8 and **is** wired. Phase 2/3 must not weaken D1-D9 or lower coverage floors.
+
+### contract.caseAllowlist (D13)
+
+Temporary exemption for an OpenAPI op that has no `contract.cases` entry yet.
+Committed in `gauntlet.config.json` only (no local allow-file). Required fields:
+
+- `operationId` and/or `method`+`path`
+- `reason`, `owner`
+- `expires` (ISO `YYYY-MM-DD`) — expired entries do not grant
+
+Disable inventory only via `contract.enabled: false` or `contract.casesInventory: false`
+(or by omitting OpenAPI). Invalid cases (path/method not in OpenAPI) always fail.
 
 ### holes-review grants (human-only) — D12
 
