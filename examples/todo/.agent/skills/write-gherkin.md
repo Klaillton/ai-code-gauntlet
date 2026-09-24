@@ -22,9 +22,13 @@ Use when drafting or refining Cucumber features **with the human**.
 Tags must sit on the **scenario** (lines immediately above `Scenario:`). Feature-level
 `@unhappy` / `@edge` alone do **not** satisfy D11.
 
-spec-sync **fails** if an operationId has Gherkin and zero scenario-level
-`@unhappy` / `@edge` markers. This is inventory, not prose. Mutation stays a
-separate gate (weak asserts).
+An edge/unhappy scenario must carry **exactly one** `@op:<operationId>` at scenario
+level. Multi-`@op` on the same edge/unhappy scenario covers **none** and fails D11
+explicitly — split into one scenario per op.
+
+spec-sync **fails** if an operationId has Gherkin and zero exclusive scenario-level
+`@unhappy` / `@edge` coverage. This is inventory, not prose. Mutation stays a
+separate gate (weak asserts / tag theater).
 
 ## Template
 

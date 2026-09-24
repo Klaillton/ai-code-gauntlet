@@ -276,15 +276,64 @@ function checkD3(inventory: Inventory, allowlist: AllowlistEntry[]): Finding[] {
 
 /**
  * D11 (ADD edge inventory): every operationId that has at least one Gherkin
- * scenario must also have ≥1 scenario-level @unhappy or @edge marker.
- * Feature-level tags alone do not count (fail-closed against tag theater).
- * Always fail (strict and lenient). Mutation remains a separate gate.
+ * scenario must also have ≥1 scenario-level @unhappy or @edge marker on a
+ * scenario that tags **exactly one** @op:<operationId>.
+ * Feature-level tags alone do not count. Multi-@op on an edge/unhappy scenario
+ * covers none and fails explicitly. Always fail (strict and lenient).
+ * Mutation remains a separate gate (tag theater is out of D11 scope).
  */
 export function scenarioHasEdgeMarker(scenario: Pick<FeatureScenario, "scenarioTags">): boolean {
   return scenario.scenarioTags.some((tag) => isEdgeScenarioTag(tag));
 }
 
+/** @op ids from scenario-level tags only (not Feature-level). */
+export function scenarioLevelOpIds(scenario: Pick<FeatureScenario, "scenarioTags">): string[] {
+  return scenario.scenarioTags
+    .filter((tag) => tag.startsWith("@op:") && tag.length > 4)
+    .map((tag) => tag.slice("@op:".length));
+}
+
+/**
+ * Edge/unhappy credit for D11: scenario-level @unhappy|@edge AND exactly one
+ * scenario-level @op. Multi-op edge scenarios intentionally cover none.
+ */
+export function isExclusiveEdgeScenario(scenario: Pick<FeatureScenario, "scenarioTags">): boolean {
+  return scenarioHasEdgeMarker(scenario) && scenarioLevelOpIds(scenario).length === 1;
+}
+
 export function evaluateEdgeInventory(scenarios: FeatureScenario[]): Finding[] {
+  const tagList = EDGE_SCENARIO_TAGS.join(" / ");
+  const findings: Finding[] = [];
+
+  for (const scenario of scenarios) {
+    if (!scenarioHasEdgeMarker(scenario)) {
+      continue;
+    }
+    const ops = scenarioLevelOpIds(scenario);
+    if (ops.length === 1) {
+      continue;
+    }
+    const where = `${scenario.featureFile} / "${scenario.name}"`;
+    if (ops.length === 0) {
+      findings.push({
+        id: "D11",
+        severity: "fail",
+        message:
+          `D11 ${where}: scenario-level ${tagList} without exactly one @op:<operationId> ` +
+          `(found 0). Edge/unhappy scenarios must tag a single op at scenario level.`,
+      });
+    } else {
+      const listed = ops.map((id) => `@op:${id}`).join(", ");
+      findings.push({
+        id: "D11",
+        severity: "fail",
+        message:
+          `D11 ${where}: scenario-level ${tagList} with multiple @op tags (${listed}). ` +
+          `Multi-op edge/unhappy scenarios cover none — split into one @op per scenario.`,
+      });
+    }
+  }
+
   const byOp = new Map<string, FeatureScenario[]>();
   for (const scenario of scenarios) {
     for (const operationId of scenario.operationIds) {
@@ -294,20 +343,29 @@ export function evaluateEdgeInventory(scenarios: FeatureScenario[]): Finding[] {
     }
   }
 
-  const tagList = EDGE_SCENARIO_TAGS.join(" / ");
-  const findings: Finding[] = [];
+  const coveredOps = new Set<string>();
+  for (const scenario of scenarios) {
+    if (!isExclusiveEdgeScenario(scenario)) {
+      continue;
+    }
+    const [only] = scenarioLevelOpIds(scenario);
+    if (only) {
+      coveredOps.add(only);
+    }
+  }
+
   for (const operationId of [...byOp.keys()].sort((a, b) => a.localeCompare(b))) {
-    const list = byOp.get(operationId) ?? [];
-    if (list.some(scenarioHasEdgeMarker)) {
+    if (coveredOps.has(operationId)) {
       continue;
     }
     findings.push({
       id: "D11",
       severity: "fail",
       message:
-        `D11 operationId "${operationId}" has Gherkin but zero scenario-level ` +
-        `${tagList} markers. Add an unhappy/edge scenario tagged @op:${operationId} ` +
-        `and ${tagList} (scenario-level; Feature-level tags do not count).`,
+        `D11 operationId "${operationId}" has Gherkin but zero exclusive scenario-level ` +
+        `${tagList} coverage. Add an unhappy/edge scenario with exactly one ` +
+        `@op:${operationId} (scenario-level; Feature-level tags and multi-@op edge ` +
+        `scenarios do not count).`,
     });
   }
   return findings;

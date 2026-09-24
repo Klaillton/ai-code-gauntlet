@@ -62,7 +62,7 @@ Todo seed (owner `klaillton`, expires **`2027-06-02`** — renew before that dat
 | **D8**            | `.feature` steps leak CSS, `data-testid`, or raw HTTP paths               | fail                                                                                      |
 | **D9**            | skip/only/pending, disabled gates, lowered coverage floors                | fail                                                                                      |
 | **D10**           | Gherkin/OpenAPI in the git diff without `docs/generated` in the same diff | fail (info if no SDD change)                                                              |
-| **D11**           | `@op:<operationId>` present but zero scenario-level `@unhappy` / `@edge`  | **fail** in both strict and lenient                                                       |
+| **D11**           | `@op` with Gherkin but no exclusive scenario-level `@unhappy`/`@edge` (exactly one `@op` on that scenario) | **fail** in both strict and lenient                          |
 | **protect-specs** | git diff touches features/OpenAPI/`protectedGlobs` without a human grant  | fail (info if git unavailable)                                                            |
 
 Scripts:
@@ -101,7 +101,7 @@ On `pull_request`, `.github/workflows/verify.yml` exports `ALLOW_SPEC_EDIT=1`
 6. Non-product routes use the typed allowlist (kind, reason, exemptFrom, owner, expires).
 
 Keep selectors and raw paths in step defs, not in feature files (D8).
-D11 is inventory of scenario tags — not a prose “edge cases” checklist. Mutation remains separate.
+D11 is inventory of scenario tags — not a prose “edge cases” checklist. Multi-`@op` on one edge/unhappy scenario covers none (explicit fail). Mutation remains separate.
 
 ## D6 / D7 notes
 
