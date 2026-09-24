@@ -134,6 +134,7 @@ function createProject(dir, { sample } = {}) {
   console.log(`
 Next:
   cd ${dir}
+  git init && git add -A && git commit -m "chore: initial commit"
   npm install
   npm run prepare:browsers
   npm run verify

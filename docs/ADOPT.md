@@ -89,16 +89,14 @@ diff (`docs:generate`). Reabrir spec fechada: grant protect-specs + skill
 Verify falha se o diff tocar specs protegidos **a menos que** um destes exista:
 
 1. `ALLOW_SPEC_EDIT=1` (documentar no PR; **não** env permanente no CI)
-2. `.gauntlet/allow-spec-edit` (gitignored, local)
-3. `allowSpecEdit: true` no config (default **false**)
-4. Label de PR **`specs-approved`** — o workflow exporta `ALLOW_SPEC_EDIT=1` só nesse caso
+2. `allowSpecEdit: true` no config (default **false**; config commitada)
+3. Label de PR **`specs-approved`** — o workflow exporta `ALLOW_SPEC_EDIT=1` só nesse caso
 
 ### Deps (`deps-lock`, quando presente)
 
 1. `ALLOW_DEPS_EDIT=1`
-2. `.gauntlet/allow-deps-edit` (gitignored)
-3. `allowDepsEdit: true` no config (default **false**)
-4. Label de PR **`deps-approved`**
+2. `allowDepsEdit: true` no config (default **false**; config commitada)
+3. Label de PR **`deps-approved`**
 
 Pushes a `main` e PRs sem label continuam fail-closed no **working tree**.
 Em evento `push` para `main`/`master`, protect-specs e deps-lock **não**

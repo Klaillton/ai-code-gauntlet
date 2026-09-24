@@ -30,6 +30,7 @@ HTTP operations are linked to scenarios with Cucumber tags `@op:<operationId>`.
 
 Other implemented drifts (D1, D2, D5, D7, D8, D9) fail in both apps.
 protect-specs fails in both apps when specs change without a human grant.
+Without a usable git checkout (`rev-parse` fails), **protect-specs**, **deps-lock**, and **crap** fail closed (`git required for this gate`) — no soft skip.
 
 ## Allowlist
 
@@ -63,7 +64,7 @@ Todo seed (owner `klaillton`, expires **`2027-06-02`** — renew before that dat
 | **D9**            | skip/only/pending, disabled gates, lowered coverage floors                | fail                                                                                      |
 | **D10**           | Gherkin/OpenAPI in the git diff without `docs/generated` in the same diff | fail (info if no SDD change)                                                              |
 | **D11**           | `@op` with Gherkin but no exclusive scenario-level `@unhappy`/`@edge` (exactly one `@op` on that scenario) | **fail** in both strict and lenient                          |
-| **protect-specs** | git diff touches features/OpenAPI/`protectedGlobs` without a human grant  | fail (info if git unavailable)                                                            |
+| **protect-specs** | git diff touches features/OpenAPI/`protectedGlobs` without a human grant  | fail; also **fail** if git/`rev-parse` unavailable (`git required for this gate`)          |
 
 Scripts:
 
@@ -83,13 +84,12 @@ Scripts:
 Verify fails if the diff includes protected globs unless one of:
 
 1. `ALLOW_SPEC_EDIT=1` (document in the PR; do **not** bake this into CI as a permanent env)
-2. `.gauntlet/allow-spec-edit` (gitignored, local, human-only)
-3. `allowSpecEdit: true` in config (default **false**; keep fail-closed)
-4. GitHub PR label `specs-approved`
+2. `allowSpecEdit: true` in config (default **false**; committed human config; keep fail-closed)
+3. GitHub PR label `specs-approved`
 
 On `pull_request`, `.github/workflows/verify.yml` exports `ALLOW_SPEC_EDIT=1`
 **only when** the PR has label `specs-approved`. That is CI wiring for grant
-(4), not a standing override. Unlabeled PRs and pushes to main stay fail-closed.
+(3), not a standing override. Unlabeled PRs and pushes to main stay fail-closed.
 
 ## How to add a new endpoint (SDD)
 

@@ -102,6 +102,12 @@ jobs:
         run: |
           npm ci
           npx playwright install --with-deps chromium
+          # protect-specs / deps-lock / crap are fail-closed without git
+          git init
+          git config user.email "ci@gauntlet.local"
+          git config user.name "gauntlet-ci"
+          git add -A
+          git commit -m "smoke scaffold"
           npm run verify
 
   gitleaks:

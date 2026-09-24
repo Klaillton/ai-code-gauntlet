@@ -23,6 +23,4 @@ arch-bound-report.json
 crap-report.json
 deps-lock-report.json
 secrets-scan-report.json
-.gauntlet/allow-spec-edit
-.gauntlet/allow-deps-edit
 .gauntlet/allow-secrets-paths
