@@ -9,7 +9,7 @@ Não exija green total no dia 1. Adote por **camadas** de trabalho humano, mas o
 | --------- | ----------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
 | 0         | `AGENTS.md` + skills                                                                                                          | Sim                    |
 | 1         | format / lint / typecheck                                                                                                     | Ideal                  |
-| Hardening | protect-specs, secrets-scan, arch-bound, no-cheat, spec-sync, docs, complexity (+ deps-lock se no template; mutation no Todo) | Sim (sempre no config) |
+| Hardening | protect-specs, secrets-scan, arch-bound, no-cheat, holes-review (D12), spec-sync, docs, complexity (+ deps-lock se no template; mutation no Todo) | Sim (sempre no config) |
 | 2         | unit + coverage                                                                                                               | Ideal                  |
 | 3         | OpenAPI contract                                                                                                              | Se houver API          |
 | 4         | Gherkin + Playwright E2E                                                                                                      | Poucos fluxos críticos |
@@ -38,7 +38,7 @@ node packages/create-ai-gauntlet/bin/create-ai-gauntlet.js adopt . --gates stati
   scripts canônicos — `protect-specs.ts`,
   `no-cheat.ts`, `spec-sync.ts`, `complexity.ts`, `mutation.ts`,
   `generate-docs.ts`, `check-docs-fresh.ts`, `inventory.ts`, `verify.ts`,
-  `deps-lock.ts`, `secrets-scan.ts`, `arch-bound.ts`, `crap.ts`,
+  `deps-lock.ts`, `holes-review.ts`, `secrets-scan.ts`, `arch-bound.ts`, `crap.ts`,
   `gherkin-mutation.ts`, …)
 - Inclui o gate `deps-lock` quando o template tem `scripts/deps-lock.ts`
 - Escreve `gauntlet.config.json` alinhado a `templates/ts-node-web`:
@@ -73,7 +73,7 @@ Greenfield `create` continua a copiar o template inteiro (já hardenado).
 | `mutation` (Todo) | `npm run test:mutation` | Kill-score floor on domain; template is opt-in only                                            |
 
 Ordem típica (template): format → lint → typecheck → complexity → arch-bound →
-protect-specs → [`deps-lock`] → secrets-scan → no-cheat → spec-sync → docs → unit →
+protect-specs → [`deps-lock`] → secrets-scan → holes-review → no-cheat → spec-sync → docs → unit →
 crap → mutation → contract → e2e → gherkin-mutation.
 
 **D10:** mudança em Gherkin/OpenAPI no diff exige `docs/generated` no mesmo
