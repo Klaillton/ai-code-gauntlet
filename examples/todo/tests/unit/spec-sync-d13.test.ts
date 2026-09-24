@@ -196,9 +196,7 @@ describe("D13 contract.cases inventory", () => {
       ],
       openapiPresent: true,
     });
-    expect(findings.some((f) => f.message.includes("missing required fields: expires"))).toBe(
-      true,
-    );
+    expect(findings.some((f) => f.message.includes("missing required fields: expires"))).toBe(true);
   });
 
   it("failsAllowlistWithoutOpIdentity", () => {

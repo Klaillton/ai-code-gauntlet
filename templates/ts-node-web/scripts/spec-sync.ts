@@ -26,7 +26,8 @@ import {
   routeKey,
 } from "./inventory.js";
 
-export type DriftId = "D1" | "D2" | "D3" | "D5" | "D6" | "D8" | "D9" | "D10" | "D11" | "D13" | "allowlist";
+export type DriftId =
+  "D1" | "D2" | "D3" | "D5" | "D6" | "D8" | "D9" | "D10" | "D11" | "D13" | "allowlist";
 
 export type Finding = {
   id: DriftId;
@@ -394,7 +395,9 @@ export function inventoryRouteKey(method: string, path: string): string {
 }
 
 /** Route key for a contract case (prefer schemaPath/schemaMethod). */
-export function contractCaseRouteKey(c: Pick<ContractCase, "method" | "path" | "schemaPath" | "schemaMethod">): string {
+export function contractCaseRouteKey(
+  c: Pick<ContractCase, "method" | "path" | "schemaPath" | "schemaMethod">,
+): string {
   const method = c.schemaMethod ?? c.method;
   const path = c.schemaPath ?? c.path;
   return inventoryRouteKey(method, path);
@@ -416,9 +419,10 @@ export type ContractCasesInventoryInput = {
   today?: string;
 };
 
-function parseCaseAllowlist(
-  raw: unknown,
-): { entries: ContractCaseAllowlistEntry[]; findings: Finding[] } {
+function parseCaseAllowlist(raw: unknown): {
+  entries: ContractCaseAllowlistEntry[];
+  findings: Finding[];
+} {
   const findings: Finding[] = [];
   if (raw === undefined) {
     return { entries: [], findings };
@@ -427,7 +431,8 @@ function parseCaseAllowlist(
     findings.push({
       id: "D13",
       severity: "fail",
-      message: "D13 contract.caseAllowlist must be an array (committed config only; no local allow-file)",
+      message:
+        "D13 contract.caseAllowlist must be an array (committed config only; no local allow-file)",
     });
     return { entries: [], findings };
   }
@@ -502,8 +507,10 @@ function caseAllowlistCovers(entry: ContractCaseAllowlistEntry, op: OpenApiOpera
     return true;
   }
   if (entry.method && entry.path) {
-    return inventoryRouteKey(entry.method, entry.path) ===
-      inventoryRouteKey(op.method, op.normalizedPath);
+    return (
+      inventoryRouteKey(entry.method, entry.path) ===
+      inventoryRouteKey(op.method, op.normalizedPath)
+    );
   }
   return false;
 }
@@ -633,8 +640,7 @@ function checkD13(inventory: Inventory): Finding[] {
     inventory.config.sdd?.openapiPath ?? contract?.openapiPath ?? "openapi/openapi.yaml";
   const openapiAbs = resolve(inventory.cwd, openapiRel);
   const openapiPresent = existsSync(openapiAbs);
-  const disabled =
-    contract?.enabled === false || contract?.casesInventory === false;
+  const disabled = contract?.enabled === false || contract?.casesInventory === false;
   const cases = Array.isArray(contract?.cases) ? contract.cases : [];
   // If OpenAPI file exists but discover found nothing and path defaulted with no config —
   // still "present". Skip only when file missing.
@@ -646,7 +652,6 @@ function checkD13(inventory: Inventory): Finding[] {
     disabled,
   });
 }
-
 
 function checkD5(inventory: Inventory, allowlist: AllowlistEntry[]): Finding[] {
   const findings: Finding[] = [];
