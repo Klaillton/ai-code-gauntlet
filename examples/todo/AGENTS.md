@@ -21,7 +21,7 @@ Ship behavior that is:
 2. Contracted in human-approved **OpenAPI** (`openapi/openapi.yaml`)
 3. Proven by **two test streams**: unit (Vitest) + acceptance (Cucumber + Playwright)
 4. Shaped by **static gates**: TypeScript, ESLint, Prettier, coverage, complexity
-5. Kept honest by **spec-sync** (D1–D8, **D10**), **no-cheat** (D9), **protect-specs**,
+5. Kept honest by **spec-sync** (D1–D8, **D10**, **D11**), **no-cheat** (D9), **protect-specs**,
    **deps-lock**, **secrets-scan**, and **arch-bound**
 
 You implement. Humans defend the specs and dependency manifests.
@@ -209,7 +209,7 @@ npm run protect-specs       # fail if specs changed without a human grant
 npm run deps-lock           # fail if package manifests changed without a grant
 npm run secrets-scan        # fail on credentials, private keys, high-confidence PII
 npm run no-cheat            # fail on skip/only, disabled gates, lowered floors
-npm run spec-sync           # D1–D8 inventory drift
+npm run spec-sync           # D1–D8 + D10–D11 inventory drift
 npm run docs:generate       # write docs/generated/*
 npm run docs:check          # D7 freshness
 npm run verify              # FULL gauntlet — required before "done"
