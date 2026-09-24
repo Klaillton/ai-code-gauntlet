@@ -40,14 +40,15 @@ It **fails** when any of these change without a grant:
 
 1. `ALLOW_DEPS_EDIT=1` (document in the PR; do **not** bake into CI permanently)
 2. `allowDepsEdit: true` in `gauntlet.config.json` (default **false**; committed human config)
-4. GitHub PR label `deps-approved`
+3. GitHub PR label `deps-approved`
 
 On `pull_request`, `.github/workflows/verify.yml` exports `ALLOW_DEPS_EDIT=1`
 **only when** the PR has label `deps-approved`. Unlabeled PRs and pushes to
 main stay fail-closed.
 
-If git is unavailable, the gate records **info** and does not fail; agents
-must still not edit dependency manifests.
+If git is unavailable (`rev-parse` fails), the gate **fails** with
+`git required for this gate` (same fail-closed rule as protect-specs and crap).
+Working-tree `.gauntlet/allow-deps-edit` is **not** a grant.
 
 ### Wiring
 
