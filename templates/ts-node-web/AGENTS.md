@@ -24,6 +24,7 @@ Ship behavior that is:
 You implement. Humans defend the specs.
 
 This template is **lenient**: D3 (operationId without `@op` scenario) **warns**.
+D11 (edge inventory) still **fails** here: every `@op` needs scenario-level `@unhappy`/`@edge`.
 D1, D2, D5, D7, D8, D9, protect-specs, deps-lock, secrets-scan, and arch-bound still **fail**.
 D6 warns when git diffs are unmatched (fail-closed in the Todo example).
 Complexity, mutation, and gherkin-mutation are verify gates. Zero domain
@@ -132,7 +133,7 @@ If a gate fails because the **spec is wrong**, stop and ask the human.
 ## How to add a new endpoint (SDD)
 
 0. Run **spec-review** (`.agent/skills/spec-review.md`) — human approval first.
-1. Human writes a Gherkin scenario tagged `@op:<operationId>` (grant protect-specs).
+1. Human writes Gherkin tagged `@op:<operationId>` with happy + `@unhappy`/`@edge` (D11; grant protect-specs).
 2. Human approves the OpenAPI path, operationId, and schemas.
 3. Add a contract case when the operation is HTTP-visible.
 4. Implement domain, unit tests, and the HTTP adapter.

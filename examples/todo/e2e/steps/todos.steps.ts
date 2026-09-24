@@ -83,3 +83,19 @@ Then("the API todo is not completed", function (this: GauntletWorld) {
   const body = this.lastApiResponse?.body as { completed?: boolean };
   assert.equal(body.completed, false);
 });
+
+When(
+  "I complete a todo via the API with id {string}",
+  async function (this: GauntletWorld, id: string) {
+    const response = await this.api.post(`/api/todos/${id}/complete`);
+    this.lastApiResponse = {
+      status: response.status(),
+      body: await response.json(),
+    };
+  },
+);
+
+Then("I should see no todos", async function (this: GauntletWorld) {
+  const count = await this.page.getByTestId("todo-item").count();
+  assert.equal(count, 0);
+});

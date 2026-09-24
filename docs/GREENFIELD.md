@@ -32,7 +32,7 @@ npm install && npm run prepare:browsers && npm run verify
 
 ## Skeleton includes
 
-- `features/health.feature` (`@op:getHealth`)
+- `features/health.feature` (`@op:getHealth` with `@happy` + `@edge` slots; D11)
 - OpenAPI `/health` only
 - Domain unit (`src/domain/health.ts`)
 - Cucumber + Playwright harness
@@ -40,4 +40,5 @@ npm install && npm run prepare:browsers && npm run verify
 - `AGENTS.md` (mutation + gherkin-mutation are verify gates; empty domain scores 100)
 
 Template D3 warns (lenient). Todo D3 fails (strict).
+D11 (edge inventory) **fails** in both apps when an `@op` has no scenario-level `@unhappy`/`@edge`.
 Business domain lives in `examples/todo` only.

@@ -5,15 +5,15 @@
 Não exija green total no dia 1. Adote por **camadas** de trabalho humano, mas o
 **config gerado é fail-closed**: `verify` não aceita `enabled: false` (D9 / verify).
 
-| Camada | O quê | Dia 1? |
-|--------|--------|--------|
-| 0 | `AGENTS.md` + skills | Sim |
-| 1 | format / lint / typecheck | Ideal |
+| Camada    | O quê                                                                                                                         | Dia 1?                 |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| 0         | `AGENTS.md` + skills                                                                                                          | Sim                    |
+| 1         | format / lint / typecheck                                                                                                     | Ideal                  |
 | Hardening | protect-specs, secrets-scan, arch-bound, no-cheat, spec-sync, docs, complexity (+ deps-lock se no template; mutation no Todo) | Sim (sempre no config) |
-| 2 | unit + coverage | Ideal |
-| 3 | OpenAPI contract | Se houver API |
-| 4 | Gherkin + Playwright E2E | Poucos fluxos críticos |
-| 5 | CI = verify | Quando local estável |
+| 2         | unit + coverage                                                                                                               | Ideal                  |
+| 3         | OpenAPI contract                                                                                                              | Se houver API          |
+| 4         | Gherkin + Playwright E2E                                                                                                      | Poucos fluxos críticos |
+| 5         | CI = verify                                                                                                                   | Quando local estável   |
 
 ## CLI
 
@@ -59,18 +59,18 @@ Greenfield `create` continua a copiar o template inteiro (já hardenado).
 
 ## Hardening gates
 
-| Gate | Script | Função |
-|------|--------|--------|
-| `complexity` | `npm run complexity` | Cyclomatic max 10 em `src/domain` |
-| `crap` | `npm run crap` | CRAP ≤ 8 em `src/domain` tocado (depois de unit+coverage) |
-| `arch-bound` | `npm run arch-bound` | `src/domain` não importa HTTP/UI/fs |
-| `protect-specs` | `npm run protect-specs` | Diff em features/OpenAPI/`protectedGlobs` exige grant humano |
-| `deps-lock` | `npm run deps-lock` | Diff em `package.json` / lockfile exige grant (só se no template) |
-| `secrets-scan` | `npm run secrets-scan` | Credenciais, PEM, tokens de alta confiança, PII em fixtures — fail-closed; sem `ALLOW_SECRETS` |
-| `no-cheat` | `npm run no-cheat` | D9: skip/only/pending, `enabled:false`, coverage floors |
-| `spec-sync` | `npm run spec-sync` | Drift D1–D6, D8 (inventory) |
-| `docs` | `npm run docs:check` | D7: `docs/generated/*` fresco |
-| `mutation` (Todo) | `npm run test:mutation` | Kill-score floor on domain; template is opt-in only |
+| Gate              | Script                  | Função                                                                                         |
+| ----------------- | ----------------------- | ---------------------------------------------------------------------------------------------- |
+| `complexity`      | `npm run complexity`    | Cyclomatic max 10 em `src/domain`                                                              |
+| `crap`            | `npm run crap`          | CRAP ≤ 8 em `src/domain` tocado (depois de unit+coverage)                                      |
+| `arch-bound`      | `npm run arch-bound`    | `src/domain` não importa HTTP/UI/fs                                                            |
+| `protect-specs`   | `npm run protect-specs` | Diff em features/OpenAPI/`protectedGlobs` exige grant humano                                   |
+| `deps-lock`       | `npm run deps-lock`     | Diff em `package.json` / lockfile exige grant (só se no template)                              |
+| `secrets-scan`    | `npm run secrets-scan`  | Credenciais, PEM, tokens de alta confiança, PII em fixtures — fail-closed; sem `ALLOW_SECRETS` |
+| `no-cheat`        | `npm run no-cheat`      | D9: skip/only/pending, `enabled:false`, coverage floors                                        |
+| `spec-sync`       | `npm run spec-sync`     | Drift D1–D6, D8, D10, **D11** (edge inventory)                                                 |
+| `docs`            | `npm run docs:check`    | D7: `docs/generated/*` fresco                                                                  |
+| `mutation` (Todo) | `npm run test:mutation` | Kill-score floor on domain; template is opt-in only                                            |
 
 Ordem típica (template): format → lint → typecheck → complexity → arch-bound →
 protect-specs → [`deps-lock`] → secrets-scan → no-cheat → spec-sync → docs → unit →
@@ -79,6 +79,8 @@ crap → mutation → contract → e2e → gherkin-mutation.
 **D10:** mudança em Gherkin/OpenAPI no diff exige `docs/generated` no mesmo
 diff (`docs:generate`). Reabrir spec fechada: grant protect-specs + skill
 `reopen-spec`.
+
+**D11:** todo `@op` com Gherkin precisa de ≥1 cenário com `@unhappy`/`@edge` (nível Scenario; falha em strict e lenient).
 
 ## Grants humanos (não bakear no CI)
 

@@ -6,8 +6,10 @@ import process from "node:process";
 import yaml from "js-yaml";
 import {
   ALLOWLIST_KINDS,
+  EDGE_SCENARIO_TAGS,
   EXEMPT_FROM,
   HTTP_METHODS,
+  isEdgeScenarioTag,
   type AllowlistEntry,
   type AllowlistKind,
   type ExemptFrom,
@@ -20,7 +22,7 @@ import {
   routeKey,
 } from "./inventory.js";
 
-export type DriftId = "D1" | "D2" | "D3" | "D5" | "D6" | "D8" | "D9" | "D10" | "allowlist";
+export type DriftId = "D1" | "D2" | "D3" | "D5" | "D6" | "D8" | "D9" | "D10" | "D11" | "allowlist";
 
 export type Finding = {
   id: DriftId;
@@ -60,7 +62,10 @@ function isExpired(entry: AllowlistEntry): boolean {
   return entry.expires.slice(0, 10) < todayUtc();
 }
 
-function asAllowlist(raw: unknown): { entries: AllowlistEntry[]; findings: Finding[] } {
+function asAllowlist(raw: unknown): {
+  entries: AllowlistEntry[];
+  findings: Finding[];
+} {
   const findings: Finding[] = [];
   if (raw === undefined) {
     findings.push({
@@ -267,6 +272,49 @@ function checkD3(inventory: Inventory, allowlist: AllowlistEntry[]): Finding[] {
     });
   }
   return findings;
+}
+
+/**
+ * D11 (ADD edge inventory): every operationId that has at least one Gherkin
+ * scenario must also have ≥1 scenario-level @unhappy or @edge marker.
+ * Feature-level tags alone do not count (fail-closed against tag theater).
+ * Always fail (strict and lenient). Mutation remains a separate gate.
+ */
+export function scenarioHasEdgeMarker(scenario: Pick<FeatureScenario, "scenarioTags">): boolean {
+  return scenario.scenarioTags.some((tag) => isEdgeScenarioTag(tag));
+}
+
+export function evaluateEdgeInventory(scenarios: FeatureScenario[]): Finding[] {
+  const byOp = new Map<string, FeatureScenario[]>();
+  for (const scenario of scenarios) {
+    for (const operationId of scenario.operationIds) {
+      const list = byOp.get(operationId) ?? [];
+      list.push(scenario);
+      byOp.set(operationId, list);
+    }
+  }
+
+  const tagList = EDGE_SCENARIO_TAGS.join(" / ");
+  const findings: Finding[] = [];
+  for (const operationId of [...byOp.keys()].sort((a, b) => a.localeCompare(b))) {
+    const list = byOp.get(operationId) ?? [];
+    if (list.some(scenarioHasEdgeMarker)) {
+      continue;
+    }
+    findings.push({
+      id: "D11",
+      severity: "fail",
+      message:
+        `D11 operationId "${operationId}" has Gherkin but zero scenario-level ` +
+        `${tagList} markers. Add an unhappy/edge scenario tagged @op:${operationId} ` +
+        `and ${tagList} (scenario-level; Feature-level tags do not count).`,
+    });
+  }
+  return findings;
+}
+
+function checkD11(inventory: Inventory): Finding[] {
+  return evaluateEdgeInventory(inventory.scenarios);
 }
 
 function checkD5(inventory: Inventory, allowlist: AllowlistEntry[]): Finding[] {
@@ -834,6 +882,7 @@ export function runSpecSync(cwd = process.cwd()): SpecSyncResult {
     ...checkD8(inventory),
     ...checkD6(inventory),
     ...checkD10(inventory),
+    ...checkD11(inventory),
   ];
 
   const ok = findings.every((finding) => finding.severity !== "fail");
@@ -865,6 +914,7 @@ export function writeSpecSyncReport(result: SpecSyncResult, cwd = process.cwd())
     scenarios: result.inventory.scenarios.map((scenario: FeatureScenario) => ({
       name: scenario.name,
       tags: scenario.tags,
+      scenarioTags: scenario.scenarioTags,
     })),
   };
   writeFileSync(resolve(cwd, "spec-sync-report.json"), `${JSON.stringify(payload, null, 2)}\n`);

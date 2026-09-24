@@ -9,4 +9,5 @@ Gherkin is the behavior surface. Link HTTP operations with `@op:<operationId>`.
 
 ## features/health.feature
 
-- **Health endpoint reports ok** — tags: `@op:getHealth`
+- **Health endpoint reports ok** — tags: `@op:getHealth` `@happy`
+- **Health response names the running service** — tags: `@op:getHealth` `@edge`

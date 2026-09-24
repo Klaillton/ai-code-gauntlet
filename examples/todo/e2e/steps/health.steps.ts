@@ -15,3 +15,9 @@ Then("the health status is {string}", function (this: GauntletWorld, expected: s
   const body = this.lastApiResponse?.body as { status?: string };
   assert.equal(body.status, expected);
 });
+
+Then("the health service name is {string}", function (this: GauntletWorld, expected: string) {
+  assert.equal(this.lastApiResponse?.status, 200);
+  const body = this.lastApiResponse?.body as { service?: string };
+  assert.equal(body.service, expected);
+});
