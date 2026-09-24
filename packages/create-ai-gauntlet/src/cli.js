@@ -176,6 +176,7 @@ const HARDENING_GATE_IDS = [
   "complexity",
   "arch-bound",
   "protect-specs",
+  "holes-review",
   "secrets-scan",
   "no-cheat",
   "spec-sync",
@@ -237,7 +238,7 @@ function buildAdoptConfig(name, skeleton) {
         ],
       },
       agent: {
-        protectedGlobs: ["features/**/*.feature", "openapi/openapi.yaml"],
+        protectedGlobs: ["features/**/*.feature", "openapi/openapi.yaml", "docs/holes-review/**/*.md"],
         maxVerifyCycles: 5,
       },
     };
@@ -255,6 +256,7 @@ function buildAdoptConfig(name, skeleton) {
     complexity: { id: "complexity", command: "npm", args: ["run", "complexity"] },
     "arch-bound": { id: "arch-bound", command: "npm", args: ["run", "arch-bound"] },
     "protect-specs": { id: "protect-specs", command: "npm", args: ["run", "protect-specs"] },
+    "holes-review": { id: "holes-review", command: "npm", args: ["run", "holes-review"] },
     "deps-lock": { id: "deps-lock", command: "npm", args: ["run", "deps-lock"] },
     "secrets-scan": { id: "secrets-scan", command: "npm", args: ["run", "secrets-scan"] },
     "no-cheat": { id: "no-cheat", command: "npm", args: ["run", "no-cheat"] },
@@ -282,6 +284,7 @@ function buildAdoptConfig(name, skeleton) {
       defaults["arch-bound"],
       defaults["protect-specs"],
       ...(hasDepsLock ? [defaults["deps-lock"]] : []),
+      defaults["holes-review"],
       defaults["secrets-scan"],
       defaults["no-cheat"],
       defaults["spec-sync"],
@@ -303,10 +306,12 @@ function buildAdoptConfig(name, skeleton) {
     ensureGate(config.gates, defaults["protect-specs"], "arch-bound");
     if (hasDepsLock) {
       ensureGate(config.gates, defaults["deps-lock"], "protect-specs");
+      ensureGate(config.gates, defaults["holes-review"], "deps-lock");
     } else {
       config.gates = config.gates.filter((g) => g.id !== "deps-lock");
+      ensureGate(config.gates, defaults["holes-review"], "protect-specs");
     }
-    ensureGate(config.gates, defaults["secrets-scan"], hasDepsLock ? "deps-lock" : "protect-specs");
+    ensureGate(config.gates, defaults["secrets-scan"], "holes-review");
     ensureGate(config.gates, defaults["no-cheat"], "secrets-scan");
     ensureGate(config.gates, defaults["spec-sync"], "no-cheat");
     ensureGate(config.gates, defaults.docs, "spec-sync");
@@ -326,7 +331,7 @@ function buildAdoptConfig(name, skeleton) {
 
   if (!config.agent) {
     config.agent = {
-      protectedGlobs: ["features/**/*.feature", "openapi/openapi.yaml"],
+      protectedGlobs: ["features/**/*.feature", "openapi/openapi.yaml", "docs/holes-review/**/*.md"],
       maxVerifyCycles: 5,
     };
   }
@@ -360,6 +365,7 @@ function mergeGitignore(target, skeleton) {
     "spec-sync-report.json",
     "no-cheat-report.json",
     "protect-specs-report.json",
+    "holes-review-report.json",
     "mutation-report.json",
     "gherkin-mutation-report.json",
     "complexity-report.json",
@@ -497,6 +503,7 @@ function adoptProject(dir, { gates } = {}) {
       "spec-sync": "tsx scripts/spec-sync.ts",
       "no-cheat": "tsx scripts/no-cheat.ts",
       "protect-specs": "tsx scripts/protect-specs.ts",
+      "holes-review": "tsx scripts/holes-review.ts",
       "secrets-scan": "tsx scripts/secrets-scan.ts",
       "docs:generate": "tsx scripts/generate-docs.ts",
       "docs:check": "tsx scripts/check-docs-fresh.ts",
