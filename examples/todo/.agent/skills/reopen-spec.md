@@ -24,7 +24,7 @@ These already fail `npm run verify` when a closed phase is wrong:
 
 1. **Stop coding.** Do not weaken tests or skip gates.
 2. **Ask the human** (AGENTS.md checkpoint: Gherkin/OpenAPI/product).
-3. Human grants protect-specs (`ALLOW_SPEC_EDIT=1`, `.gauntlet/allow-spec-edit`,
+3. Human grants protect-specs (`ALLOW_SPEC_EDIT=1`, committed `allowSpecEdit`,
    or PR label `specs-approved`).
 4. Run **spec-review**, then edit `features/**` and/or `openapi/openapi.yaml`.
 5. `npm run docs:generate` — D7 + **D10** require generated docs in the **same

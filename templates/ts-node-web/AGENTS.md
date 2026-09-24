@@ -48,17 +48,16 @@ The gate inspects `git diff` for `HEAD`, the index, `origin/main...HEAD`,
 If those files change, verify **fails** unless a **human grant** exists:
 
 1. `ALLOW_SPEC_EDIT=1` (document why in the PR; do **not** bake this into CI as a permanent env)
-2. File `.gauntlet/allow-spec-edit` (human-only, gitignored, local)
-3. `allowSpecEdit: true` in `gauntlet.config.json` (default **false**; do not flip it)
-4. GitHub pull_request label `specs-approved`
+2. `allowSpecEdit: true` in `gauntlet.config.json` (default **false**; committed human config; do not flip it)
+3. GitHub PR label `specs-approved`
 
 On GitHub Actions `pull_request` jobs, `.github/workflows/verify.yml` exports
 `ALLOW_SPEC_EDIT=1` **only if** the PR has label `specs-approved`. That is the
-CI wiring for grant (4), not a standing override. Unlabeled PRs and pushes to
+CI wiring for grant (3), not a standing override. Unlabeled PRs and pushes to
 main stay fail-closed.
 
-If git is unavailable, the gate records info and does not fail. Agents still
-must not edit specs.
+Working-tree `.gauntlet/allow-*` files are **not** grants. If git is unavailable,
+protect-specs / deps-lock / crap **fail** (`git required for this gate`).
 
 ### Dependencies — deps-lock
 
@@ -68,8 +67,8 @@ Do not edit without a human grant:
 - `examples/*/package.json` / `package-lock.json`
 - `templates/*/package.json` / `package-lock.json`
 
-Grants: `ALLOW_DEPS_EDIT=1`, `.gauntlet/allow-deps-edit`, `allowDepsEdit: true`
-(default false), or PR label `deps-approved`. CI exports `ALLOW_DEPS_EDIT=1`
+Grants: `ALLOW_DEPS_EDIT=1`, `allowDepsEdit: true` (committed config, default false),
+or PR label `deps-approved`. CI exports `ALLOW_DEPS_EDIT=1`
 only when the PR has `deps-approved`.
 
 ### Secrets & privacy — secrets-scan

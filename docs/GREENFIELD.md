@@ -7,6 +7,7 @@ git clone https://github.com/Klaillton/ai-code-gauntlet.git
 cd ai-code-gauntlet
 node packages/create-ai-gauntlet/bin/create-ai-gauntlet.js create ../my-app
 cd ../my-app
+git init && git add -A && git commit -m "chore: initial commit"
 npm install
 npm run prepare:browsers
 npm run verify
@@ -18,6 +19,7 @@ npm run dev
 ```bash
 cp -r templates/ts-node-web ../my-app
 cd ../my-app
+git init && git add -A && git commit -m "chore: initial commit"
 npm install && npm run prepare:browsers && npm run verify
 ```
 

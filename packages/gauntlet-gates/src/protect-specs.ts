@@ -68,15 +68,13 @@ function matchGlob(rel: string, glob: string): boolean {
   return normalized === pattern || normalized.endsWith("/" + pattern);
 }
 
-function specEditAllowed(
+/** Grants: env, committed config, or CI label — not a working-tree allow file. */
+export function specEditAllowed(
   cwd: string,
   allowSpecEdit: boolean,
 ): { allowed: boolean; reason: string } {
   if (process.env.ALLOW_SPEC_EDIT === "1") {
     return { allowed: true, reason: "ALLOW_SPEC_EDIT=1" };
-  }
-  if (existsSync(resolve(cwd, ".gauntlet/allow-spec-edit"))) {
-    return { allowed: true, reason: ".gauntlet/allow-spec-edit" };
   }
   if (allowSpecEdit) {
     return { allowed: true, reason: "gauntlet.config.json allowSpecEdit=true" };
@@ -111,12 +109,12 @@ export function runProtectSpecs(cwd = process.cwd()): {
   if (!root) {
     findings.push({
       id: "protect-specs",
-      severity: "info",
+      severity: "fail",
       message:
-        "protect-specs: git unavailable; agents must not edit features/ or openapi/ without ALLOW_SPEC_EDIT=1.",
+        "protect-specs: git required for this gate (rev-parse failed or not a git checkout).",
     });
-    writeReport(cwd, true, findings);
-    return { ok: true, findings };
+    writeReport(cwd, false, findings);
+    return { ok: false, findings };
   }
 
   const prefix = posixRel(root, cwd);
@@ -170,7 +168,7 @@ export function runProtectSpecs(cwd = process.cwd()): {
     message:
       "protect-specs blocked spec edits without human grant: " +
       localChanges.join(", ") +
-      ". Set ALLOW_SPEC_EDIT=1, add .gauntlet/allow-spec-edit, or label specs-approved.",
+      ". Set ALLOW_SPEC_EDIT=1, set allowSpecEdit: true in gauntlet.config.json, or label specs-approved.",
   });
   writeReport(cwd, false, findings);
   return { ok: false, findings };

@@ -204,12 +204,12 @@ export function runCrap(cwd = process.cwd()): {
   if (!git) {
     findings.push({
       id: "crap",
-      severity: "info",
+      severity: "fail",
       path: includeRel,
-      message: "crap: git unavailable; skipped (run after unit coverage in a git checkout).",
+      message: "crap: git required for this gate (rev-parse failed or not a git checkout).",
     });
-    writeReport(cwd, true, findings, rows, max);
-    return { ok: true, findings, rows };
+    writeReport(cwd, false, findings, rows, max);
+    return { ok: false, findings, rows };
   }
   if (rels.length === 0) {
     findings.push({

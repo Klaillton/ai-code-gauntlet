@@ -65,15 +65,13 @@ export function isProtectedDepPath(repoRelPath: string): boolean {
   return false;
 }
 
-function depsEditAllowed(
+/** Grants: env, committed config, or CI label — not a working-tree allow file. */
+export function depsEditAllowed(
   cwd: string,
   allowDepsEdit: boolean,
 ): { allowed: boolean; reason: string } {
   if (process.env.ALLOW_DEPS_EDIT === "1") {
     return { allowed: true, reason: "ALLOW_DEPS_EDIT=1" };
-  }
-  if (existsSync(resolve(cwd, ".gauntlet/allow-deps-edit"))) {
-    return { allowed: true, reason: ".gauntlet/allow-deps-edit" };
   }
   if (allowDepsEdit) {
     return { allowed: true, reason: "gauntlet.config.json allowDepsEdit=true" };
@@ -107,12 +105,11 @@ export function runDepsLock(cwd = process.cwd()): {
   if (!root) {
     findings.push({
       id: "deps-lock",
-      severity: "info",
-      message:
-        "deps-lock: git unavailable; agents must not edit package.json / package-lock.json without ALLOW_DEPS_EDIT=1.",
+      severity: "fail",
+      message: "deps-lock: git required for this gate (rev-parse failed or not a git checkout).",
     });
-    writeReport(cwd, true, findings);
-    return { ok: true, findings };
+    writeReport(cwd, false, findings);
+    return { ok: false, findings };
   }
 
   const changed = new Set<string>([
@@ -163,7 +160,7 @@ export function runDepsLock(cwd = process.cwd()): {
     message:
       "deps-lock blocked package.json / package-lock.json edits without human grant: " +
       depChanges.join(", ") +
-      ". Set ALLOW_DEPS_EDIT=1, add .gauntlet/allow-deps-edit, set allowDepsEdit: true in gauntlet.config.json, or label deps-approved.",
+      ". Set ALLOW_DEPS_EDIT=1, set allowDepsEdit: true in gauntlet.config.json, or label deps-approved.",
   });
   writeReport(cwd, false, findings);
   return { ok: false, findings };
