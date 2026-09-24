@@ -20,6 +20,7 @@ These already fail `npm run verify` when a closed phase is wrong:
 | **D11**                                   | `@op` has Gherkin but no scenario-level `@unhappy`/`@edge` |
 | **D13**                                   | OpenAPI op has zero `contract.cases` (or invalid case)     |
 | **D14**                                   | `docs/adr/**` missing template sections or ADR deleted     |
+| **D15**                                   | missing/empty `docs/sdd/Security.md` or `Observability.md` |
 | D7                                        | Generated docs stale vs current inventory                  |
 
 ## Correct

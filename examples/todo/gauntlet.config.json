@@ -59,6 +59,11 @@
       "args": ["run", "adr-lint"]
     },
     {
+      "id": "sdd-presence",
+      "command": "npm",
+      "args": ["run", "sdd-presence"]
+    },
+    {
       "id": "secrets-scan",
       "command": "npm",
       "args": ["run", "secrets-scan"]

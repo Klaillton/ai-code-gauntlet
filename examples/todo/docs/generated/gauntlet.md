@@ -19,16 +19,17 @@
 7. `deps-lock` (enabled) — `npm run deps-lock`
 8. `holes-review` (enabled) — `npm run holes-review`
 9. `adr-lint` (enabled) — `npm run adr-lint`
-10. `secrets-scan` (enabled) — `npm run secrets-scan`
-11. `no-cheat` (enabled) — `npm run no-cheat`
-12. `spec-sync` (enabled) — `npm run spec-sync`
-13. `docs` (enabled) — `npm run docs:check`
-14. `unit` (enabled) — `npm run test:unit:coverage`
-15. `crap` (enabled) — `npm run crap`
-16. `mutation` (enabled) — `npm run test:mutation`
-17. `contract` (enabled) — `npm run test:contract`
-18. `e2e` (enabled) — `npm run test:e2e`
-19. `gherkin-mutation` (enabled) — `npm run gherkin-mutation`
+10. `sdd-presence` (enabled) — `npm run sdd-presence`
+11. `secrets-scan` (enabled) — `npm run secrets-scan`
+12. `no-cheat` (enabled) — `npm run no-cheat`
+13. `spec-sync` (enabled) — `npm run spec-sync`
+14. `docs` (enabled) — `npm run docs:check`
+15. `unit` (enabled) — `npm run test:unit:coverage`
+16. `crap` (enabled) — `npm run crap`
+17. `mutation` (enabled) — `npm run test:mutation`
+18. `contract` (enabled) — `npm run test:contract`
+19. `e2e` (enabled) — `npm run test:e2e`
+20. `gherkin-mutation` (enabled) — `npm run gherkin-mutation`
 
 ## Allowlist
 

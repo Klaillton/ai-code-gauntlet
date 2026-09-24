@@ -36,7 +36,8 @@
     "verify": "tsx scripts/verify.ts",
     "agent:loop": "tsx scripts/agent-loop.ts",
     "prepare:browsers": "playwright install chromium",
-    "adr-lint": "tsx scripts/adr-lint.ts"
+    "adr-lint": "tsx scripts/adr-lint.ts",
+    "sdd-presence": "tsx scripts/sdd-presence.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.1",

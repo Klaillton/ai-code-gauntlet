@@ -85,13 +85,23 @@ export type GauntletConfig = {
     /** When false, skip D13 only (runtime contract may still run). */
     casesInventory?: boolean;
   };
-  sdd?: {
-    appPath?: string;
-    featuresDir?: string;
-    openapiPath?: string;
-    domainDir?: string;
-    unitDir?: string;
-  };
+  /**
+   * SDD path overrides, or `false` to disable SDD (skips D15 presence).
+   * Omit / object → SDD active (default for greenfield).
+   */
+  sdd?:
+    | false
+    | {
+        appPath?: string;
+        featuresDir?: string;
+        openapiPath?: string;
+        domainDir?: string;
+        unitDir?: string;
+        /** Default docs/sdd/Security.md */
+        securityPath?: string;
+        /** Default docs/sdd/Observability.md */
+        observabilityPath?: string;
+      };
   allowSpecEdit?: boolean;
   allowDepsEdit?: boolean;
   allowHolesReviewSkip?: boolean;
@@ -208,6 +218,21 @@ function walkFiles(dir: string): string[] {
 export function loadConfig(cwd = process.cwd()): GauntletConfig {
   const path = resolve(cwd, "gauntlet.config.json");
   return JSON.parse(readFileSync(path, "utf8")) as GauntletConfig;
+}
+
+export type SddOptions = Exclude<NonNullable<GauntletConfig["sdd"]>, false>;
+
+/** SDD active unless config sets `sdd: false`. */
+export function isSddActive(config: GauntletConfig): boolean {
+  return config.sdd !== false;
+}
+
+/** Path overrides when SDD is active; empty object when disabled or unset. */
+export function getSddOptions(config: GauntletConfig): SddOptions {
+  if (config.sdd === false || config.sdd == null) {
+    return {};
+  }
+  return config.sdd;
 }
 
 export function discoverRoutes(appPath: string, cwd: string): DiscoveredRoute[] {
@@ -393,14 +418,15 @@ export function discoverDomain(
 
 export function buildInventory(cwd = process.cwd()): Inventory {
   const config = loadConfig(cwd);
+  const sdd = getSddOptions(config);
   const openapiPath = resolve(
     cwd,
-    config.sdd?.openapiPath ?? config.contract?.openapiPath ?? "openapi/openapi.yaml",
+    sdd.openapiPath ?? config.contract?.openapiPath ?? "openapi/openapi.yaml",
   );
-  const appPath = resolve(cwd, config.sdd?.appPath ?? "src/api/app.ts");
-  const featuresDir = resolve(cwd, config.sdd?.featuresDir ?? "features");
-  const domainDir = resolve(cwd, config.sdd?.domainDir ?? "src/domain");
-  const unitDir = resolve(cwd, config.sdd?.unitDir ?? "tests/unit");
+  const appPath = resolve(cwd, sdd.appPath ?? "src/api/app.ts");
+  const featuresDir = resolve(cwd, sdd.featuresDir ?? "features");
+  const domainDir = resolve(cwd, sdd.domainDir ?? "src/domain");
+  const unitDir = resolve(cwd, sdd.unitDir ?? "tests/unit");
   const { modules, unitTests } = discoverDomain(domainDir, unitDir, cwd);
   const featureFiles = walkFiles(featuresDir)
     .filter((file) => file.endsWith(".feature"))

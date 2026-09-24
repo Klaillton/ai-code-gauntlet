@@ -51,6 +51,10 @@ Use when the human asks to implement a feature that already has (or will have) G
 
 New ADRs go in `docs/adr/` from `TEMPLATE.md`. Do not delete superseded ADRs — change Status.
 
+## Security + Observability (D15)
+
+Keep `docs/sdd/Security.md` and `Observability.md` present (heading + ≥1 requirement). Do not delete them while SDD is active. Skip only with human `sdd: false`.
+
 ## Contract cases (D13)
 
 Every OpenAPI op needs ≥1 `gauntlet.config.json` → `contract.cases` entry. Invalid
