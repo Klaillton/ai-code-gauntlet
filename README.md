@@ -34,6 +34,7 @@ SDD + docs                 -> D7 freshness; D10 same-diff docs/generated when SD
 Complexity (src/domain)    -> cyclomatic max 10
 CRAP (touched domain)      -> complexity × coverage ≤ 8 after unit
 spec-sync inventory        -> D1-D8 + D10-D11 + D13 drift (D8 = gherkin leak; D11 = edge; D13 = OpenAPI↔cases)
+holes-review (D12)         -> src/** needs docs/holes-review artifact or human grant
 no-cheat                   -> skip/only, disabled gates, lowered floors
 ESLint + Prettier + tsc    -> static shape
 AGENTS.md + skills         -> agent rules (incl. spec-review before implement)
@@ -86,7 +87,7 @@ See [docs/PREMISES.md](./docs/PREMISES.md) and [docs/original-plan.md](./docs/or
 **You** defend Gherkin + OpenAPI + dependency manifests. **The agent** implements.
 **`verify` / CI** are the filter.
 
-protect-specs, deps-lock, secrets-scan, arch-bound, and no-cheat are **hard tools**. Agents
+protect-specs, deps-lock, secrets-scan, arch-bound, holes-review (D12), and no-cheat are **hard tools**. Agents
 cannot edit `features/**` or `openapi/openapi.yaml` without a protect-specs
 grant, cannot edit `package.json` / `package-lock.json` (root, examples,
 templates) without a deps-lock grant (`ALLOW_DEPS_EDIT=1`, committed
@@ -120,6 +121,7 @@ Todo is `strict` (D3 fail). The template is `lenient` (D3 warn).
   touched domain after unit. Domain coverage floors **90/90/70/90**.
 - Gherkin leakage is **D8** (already in spec-sync; confirmed, not changed).
 - Edge/unhappy inventory is **D11** (fail-closed in strict and lenient; scenario-level `@unhappy`/`@edge` with exactly one `@op`).
+- Implementation without holes-review is **D12** (fail-closed when `src/**` changes; artifact `docs/holes-review/**/*.md` with non-empty sections, or human grant — no allow-file).
 - OpenAPI ↔ `contract.cases` inventory is **D13** (every op needs a case; invalid cases fail; `caseAllowlist` + mandatory `expires`).
 
 Remaining (not default kit gates):
