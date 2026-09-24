@@ -44,4 +44,5 @@ npm install && npm run prepare:browsers && npm run verify
 Template D3 warns (lenient). Todo D3 fails (strict).
 D11 (edge inventory) **fails** in both apps when an `@op` has no scenario-level `@unhappy`/`@edge`.
 D13 **fails** when an OpenAPI op has no `contract.cases` entry (unless non-expired `caseAllowlist`).
+D14 **fails** when new/changed `docs/adr/**` omit template sections or delete an ADR (mark Superseded only).
 Business domain lives in `examples/todo` only.

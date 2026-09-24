@@ -37,6 +37,7 @@ See [ADR-spec-sync-drift.md](./ADR-spec-sync-drift.md).
 - **D11**: every `@op` with Gherkin needs ≥1 scenario-level `@unhappy`/`@edge` (fail in both apps)
 - **D12**: implementation (`src/**`) in a diff requires holes-review artifact or human grant
 - **D13**: every OpenAPI op needs ≥1 `contract.cases` entry (invalid cases fail; `caseAllowlist` + expires)
+- **D14**: new/changed `docs/adr/**` must use the ADR template (Discarded + Status; no deletes — mark Superseded)
 - ESLint + Prettier + TypeScript
 - AGENTS.md + skills
 - CI = the same gates
