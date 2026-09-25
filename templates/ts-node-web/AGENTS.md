@@ -27,8 +27,9 @@ This template is **lenient**: D3 (operationId without `@op` scenario) **warns**.
 D11 (edge inventory) still **fails** here: every `@op` needs scenario-level `@unhappy`/`@edge`.
 D1, D2, D5, D7, D8, D9, protect-specs, deps-lock, secrets-scan, and arch-bound still **fail**.
 D6 warns when git diffs are unmatched (fail-closed in the Todo example).
-Complexity, mutation, and gherkin-mutation are verify gates. Zero domain
-mutants scores 100 (empty/health skeleton).
+Complexity, mutation, and gherkin-mutation are verify gates. CHANGE-2: empty
+mutants/sites never score 100% (fail, skipReason+expires, or differential soft-skip);
+template health keeps a non-empty mutation surface.
 
 ## Hard prohibitions (enforced)
 
