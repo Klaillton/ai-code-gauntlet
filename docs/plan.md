@@ -21,7 +21,7 @@ empilhar tudo de uma vez — cada item é um PR independente.
 - protect-specs, deps-lock, secrets-scan, no-cheat, spec-sync (D1–D3, D5–D8), D9
 - complexity max 10 em `src/domain`
 - arch-bound
-- mutation custom 80% no Todo (template opt-in); CRAP ≤ 8 em domain tocado
+- mutation custom 80% no Todo **e** no template (ambos no verify); CRAP ≤ 8 em domain tocado
 - spec-review skill
 - CI = `npm run verify`
 
@@ -32,8 +32,8 @@ empilhar tudo de uma vez — cada item é um PR independente.
 ### A1. Mutation 80%
 
 CI `mutation-report.json` (main, 2026-09-16): **100%** kill, 7/7, 0 timeout.
-Floor `mutation.threshold` **80%**. Template continua opt-in. Stryker oficial
-fica na faixa D.
+Floor `mutation.threshold` **80%**. Template mutation is wired fail-closed like
+Todo. Stryker oficial fica na faixa D.
 
 ### A3. CRAP ≤ 8
 
