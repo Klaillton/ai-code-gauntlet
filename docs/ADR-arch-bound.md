@@ -35,3 +35,25 @@ optional later; this gate is the local, agent-runnable stand-in.
 - `includeGitBranchDivergence()`: on GitHub `push` to `main`/`master`,
   protect-specs and deps-lock skip `origin/main...HEAD` so a merged PR is not
   re-litigated without labels.
+
+## Matching rules (fail-closed)
+
+Forbidden modules match the bare specifier **or any subpath** of a forbidden
+root (`specifier === mod` or `specifier.startsWith(mod + "/")`). Examples that
+fail: `node:fs`, `node:fs/promises`, `fs/promises`. Near-miss packages that
+only share a prefix without `/` (e.g. `fs-extra`, `fs-extra/esm`) do **not**
+match.
+
+Relative infra imports resolve against the importing file; a hit is any path
+equal to or under `src/api`, `src/web`, or `src/server` — including directory
+imports with no trailing slash or extension (`../api` → `src/api`).
+
+## Example / template mirror (Sonar duplication)
+
+`examples/todo/scripts/arch-bound.ts` and
+`templates/ts-node-web/scripts/arch-bound.ts` (and their unit tests) are
+**intentionally identical**. The kit ships adopt-ready copies under both trees;
+there is no shared package for gate scripts today. Sonar may report high
+duplication on new code when both mirrors change together — that is expected
+kit design, not accidental copy-paste. Keep them synced; do not extract a shared
+module unless adopt/CLI conventions gain a shared scripts package.
