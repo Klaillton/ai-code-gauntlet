@@ -22,7 +22,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "22"
       - run: node packages/gauntlet-gates/check.mjs
@@ -35,7 +35,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "22"
           cache: npm
@@ -49,7 +49,7 @@ jobs:
           mkdir -p sbom
           npm --prefix templates/ts-node-web sbom --sbom-format cyclonedx > sbom/template-cyclonedx.json
           npm --prefix examples/todo sbom --sbom-format cyclonedx > sbom/todo-cyclonedx.json
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: sbom
           path: sbom/
@@ -61,7 +61,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "22"
           cache: npm
@@ -81,7 +81,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "22"
       - name: Pack create-ai-gauntlet (bundles kit/)
@@ -133,7 +133,7 @@ jobs:
       - name: Detect secrets in git history
         run: gitleaks detect --source . --verbose --redact --exit-code 1 --report-path gitleaks-report.json --report-format json
       - if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: gitleaks
           path: gitleaks-report.json
@@ -152,7 +152,7 @@ jobs:
           fetch-depth: 0
       - name: Fetch main for spec diffs
         run: git fetch --no-tags origin main:refs/remotes/origin/main || git fetch origin main
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "22"
           cache: npm
@@ -169,7 +169,7 @@ jobs:
           HOLES_REVIEW_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'holes-approved') && '1' || '' }}
           SPEC_SYNC_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'spec-sync-approved') && '1' || '' }}
       - if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: gauntlet-template
           path: templates/ts-node-web/gauntlet-report.json
@@ -188,7 +188,7 @@ jobs:
           fetch-depth: 0
       - name: Fetch main for spec diffs
         run: git fetch --no-tags origin main:refs/remotes/origin/main || git fetch origin main
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "22"
           cache: npm
@@ -205,13 +205,13 @@ jobs:
           HOLES_REVIEW_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'holes-approved') && '1' || '' }}
           SPEC_SYNC_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'spec-sync-approved') && '1' || '' }}
       - if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: coverage-todo
           path: examples/todo/coverage/
           if-no-files-found: ignore
       - if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: gauntlet-todo
           path: |
