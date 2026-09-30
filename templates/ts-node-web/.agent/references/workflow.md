@@ -17,8 +17,10 @@ Agent implements (domain → api → ui → step defs)
     │
     ▼
 npm run verify
-  format → lint → typecheck → complexity → protect-specs → deps-lock
-  → no-cheat → spec-sync → docs → unit+cov → contract → e2e
+  format → lint → typecheck → complexity → arch-bound → protect-specs → deps-lock
+  → holes-review → spec-code → adr-lint → sdd-presence → secrets-scan
+  → no-cheat → spec-sync → docs → unit+cov → crap → mutation
+  → contract → e2e → gherkin-mutation
     │
     ├─ red → fix-until-green (max 5) → verify
     │
@@ -29,7 +31,7 @@ Human exploratory spot-check
 Done / PR
 ```
 
-Todo example also runs `mutation` after `unit`. Template keeps `npm run test:mutation` opt-in only.
+Todo and the template both run this order (`gauntlet.config.json`).
 
 ## CI
 
