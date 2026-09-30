@@ -116,7 +116,7 @@ function renderGauntlet(inventory: Inventory): string {
   ]);
   const expiries = [
     ...new Set((inventory.config.allowlist ?? []).map((entry) => entry.expires).filter(Boolean)),
-  ].sort();
+  ].sort((a, b) => a.localeCompare(b));
   const expiryLine =
     expiries.length > 0
       ? `- Seed allowlist entries expire **${expiries[0]}**; renew before that date (expired entries do not exempt)`

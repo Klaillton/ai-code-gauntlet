@@ -34,6 +34,21 @@ test("findKitRoot accepts a packed kit/ directory under the package", () => {
   }
 });
 
+test("adopt status lists crap among hardening gates", () => {
+  const dir = mkdtempSync(join(tmpdir(), "gauntlet-adopt-"));
+  try {
+    const bin = join(pkgRoot, "..", "bin", "create-ai-gauntlet.js");
+    const result = spawnSync(process.execPath, [bin, "adopt", dir], {
+      encoding: "utf8",
+    });
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    const status = readFileSync(join(dir, "ADOPT-STATUS.md"), "utf8");
+    assert.match(status, /Hardening gates always wired:.*\bcrap\b/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("create patches package name and gauntlet.md App line", () => {
   const dir = mkdtempSync(join(tmpdir(), "gauntlet-create-"));
   const target = join(dir, "my-smoke-app");

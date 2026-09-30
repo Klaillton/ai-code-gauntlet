@@ -7,8 +7,11 @@ templates/ts-node-web/openapi/openapi.yaml @Klaillton
 # Dependency manifests — human-owned. Agents need a deps-lock grant.
 # Leading / = repo root only; examples/* and templates/* stay scoped (not packages/**).
 /package.json @Klaillton
-/package-lock.json @Klaillton
 examples/*/package.json @Klaillton
 examples/*/package-lock.json @Klaillton
 templates/*/package.json @Klaillton
 templates/*/package-lock.json @Klaillton
+
+# CI / ownership metadata — human-owned (workflows can weaken the gauntlet).
+/.github/workflows/** @Klaillton
+/.github/CODEOWNERS @Klaillton

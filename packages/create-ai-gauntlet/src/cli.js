@@ -184,6 +184,7 @@ const HARDENING_GATE_IDS = [
   "no-cheat",
   "spec-sync",
   "docs",
+  "crap",
 ];
 
 function stripEnabledFlags(gates) {
