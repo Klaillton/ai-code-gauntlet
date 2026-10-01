@@ -21,7 +21,7 @@ Ship behavior that is:
 2. Contracted in human-approved **OpenAPI** (`openapi/openapi.yaml`)
 3. Proven by **two test streams**: unit (Vitest) + acceptance (Cucumber + Playwright)
 4. Shaped by **static gates**: TypeScript, ESLint, Prettier, coverage, complexity
-5. Kept honest by **spec-sync** (D1–D8, **D10**, **D11**, **D13**), **no-cheat** (D9), **protect-specs**,
+5. Kept honest by **spec-sync** (D1–D8, **D10**, **D11**, **D13**), **no-cheat** (D9), **cheat-scan** (D16), **protect-specs**,
    **deps-lock**, **secrets-scan**, **arch-bound**, and **policy-base** (CHANGE-4: policy from base)
 
 You implement. Humans defend the specs and dependency manifests.
@@ -29,6 +29,16 @@ You implement. Humans defend the specs and dependency manifests.
 ## Hard prohibitions (enforced)
 
 A prompt “please don’t” is not enough. These fail the gauntlet.
+
+### Narrow cheat scan — D16 (cheat-scan)
+
+TypeScript AST over `src/**` (not tests). **Fails**: `process.env.NODE_ENV` compared with
+`"test"` (any form, incl. switch / aliases), any `process.env.VITEST*`, `process.argv`
+inspected for test; assignment or `Object.defineProperty` / `Reflect.defineProperty` (and
+`assign` / `setPrototypeOf` / `Reflect.set`) on stdlib, globals or prototypes
+(`Math.random = …`, `Date = …`, `globalThis.x = …`, `X.prototype.y = …`). **Warns**:
+`equals`, `valueOf`, `toJSON`, `[Symbol.toPrimitive]` overrides. Human grant only:
+`CHEAT_SCAN_APPROVED=1` or label `cheat-scan-approved`. Fake timers in tests are fine.
 
 ### Policy read from base — CHANGE-4 (policy-base)
 
@@ -280,6 +290,7 @@ npm run protect-specs       # fail if specs changed without a human grant
 npm run deps-lock           # fail if package manifests changed without a grant
 npm run secrets-scan        # fail on credentials, private keys, high-confidence PII
 npm run no-cheat            # fail on skip/only, disabled gates, lowered floors
+npm run cheat-scan          # D16: src/** AST test-env detection / global patching
 npm run spec-sync           # D1–D8 + D10–D11 + D13 inventory drift
 npm run docs:generate       # write docs/generated/*
 npm run docs:check          # D7 freshness
@@ -298,14 +309,15 @@ npm run agent:loop          # re-run verify (max iterations via MAX_ITERATIONS)
 7. deps-lock
 8. secrets-scan
 9. no-cheat
-10. spec-sync
-11. docs (D7)
-12. Unit + coverage thresholds
-13. crap (touched domain)
-14. mutation
-15. OpenAPI contract (`check-openapi.ts`)
-16. Cucumber + Playwright E2E
-17. gherkin-mutation
+10. cheat-scan (D16)
+11. spec-sync
+12. docs (D7)
+13. Unit + coverage thresholds
+14. crap (touched domain)
+15. mutation
+16. OpenAPI contract (`check-openapi.ts`)
+17. Cucumber + Playwright E2E
+18. gherkin-mutation
 
 Root `npm run verify` runs the template then the example. Install browsers
 with `npm run prepare:browsers` first.

@@ -27,6 +27,7 @@
     "test:e2e": "tsx scripts/run-e2e.ts",
     "spec-sync": "tsx scripts/spec-sync.ts",
     "no-cheat": "tsx scripts/no-cheat.ts",
+    "cheat-scan": "tsx scripts/cheat-scan.ts",
     "protect-specs": "tsx scripts/protect-specs.ts",
     "deps-lock": "tsx scripts/deps-lock.ts",
     "holes-review": "tsx scripts/holes-review.ts",

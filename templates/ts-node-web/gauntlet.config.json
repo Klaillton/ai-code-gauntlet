@@ -79,6 +79,11 @@
       "args": ["run", "no-cheat"]
     },
     {
+      "id": "cheat-scan",
+      "command": "npm",
+      "args": ["run", "cheat-scan"]
+    },
+    {
       "id": "spec-sync",
       "command": "npm",
       "args": ["run", "spec-sync"]

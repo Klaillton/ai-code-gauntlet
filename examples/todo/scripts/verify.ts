@@ -60,6 +60,7 @@ function writeReport(config: GauntletConfig, gates: GateResult[], ok: boolean): 
     policyBase: readJson("policy-base-report.json"),
     specSync: readJson("spec-sync-report.json"),
     noCheat: readJson("no-cheat-report.json"),
+    cheatScan: readJson("cheat-scan-report.json"),
     protectSpecs: readJson("protect-specs-report.json"),
     complexity: readJson("complexity-report.json"),
     mutation: readJson("mutation-report.json"),

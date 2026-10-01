@@ -25,14 +25,15 @@ Built-in first step: `policy-base` (CHANGE-4) — policy read from the base bran
 11. `sdd-presence` (enabled) — `npm run sdd-presence`
 12. `secrets-scan` (enabled) — `npm run secrets-scan`
 13. `no-cheat` (enabled) — `npm run no-cheat`
-14. `spec-sync` (enabled) — `npm run spec-sync`
-15. `docs` (enabled) — `npm run docs:check`
-16. `unit` (enabled) — `npm run test:unit:coverage`
-17. `crap` (enabled) — `npm run crap`
-18. `mutation` (enabled) — `npm run test:mutation`
-19. `contract` (enabled) — `npm run test:contract`
-20. `e2e` (enabled) — `npm run test:e2e`
-21. `gherkin-mutation` (enabled) — `npm run gherkin-mutation`
+14. `cheat-scan` (enabled) — `npm run cheat-scan`
+15. `spec-sync` (enabled) — `npm run spec-sync`
+16. `docs` (enabled) — `npm run docs:check`
+17. `unit` (enabled) — `npm run test:unit:coverage`
+18. `crap` (enabled) — `npm run crap`
+19. `mutation` (enabled) — `npm run test:mutation`
+20. `contract` (enabled) — `npm run test:contract`
+21. `e2e` (enabled) — `npm run test:e2e`
+22. `gherkin-mutation` (enabled) — `npm run gherkin-mutation`
 
 ## Allowlist
 

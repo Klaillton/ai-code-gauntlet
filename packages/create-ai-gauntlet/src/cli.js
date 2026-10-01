@@ -182,6 +182,7 @@ const HARDENING_GATE_IDS = [
   "sdd-presence",
   "secrets-scan",
   "no-cheat",
+  "cheat-scan",
   "spec-sync",
   "docs",
   "crap",
@@ -267,6 +268,7 @@ function buildAdoptConfig(name, skeleton) {
     "deps-lock": { id: "deps-lock", command: "npm", args: ["run", "deps-lock"] },
     "secrets-scan": { id: "secrets-scan", command: "npm", args: ["run", "secrets-scan"] },
     "no-cheat": { id: "no-cheat", command: "npm", args: ["run", "no-cheat"] },
+    "cheat-scan": { id: "cheat-scan", command: "npm", args: ["run", "cheat-scan"] },
     "spec-sync": { id: "spec-sync", command: "npm", args: ["run", "spec-sync"] },
     docs: { id: "docs", command: "npm", args: ["run", "docs:check"] },
     unit: { id: "unit", command: "npm", args: ["run", "test:unit:coverage"] },
@@ -297,6 +299,7 @@ function buildAdoptConfig(name, skeleton) {
       defaults["sdd-presence"],
       defaults["secrets-scan"],
       defaults["no-cheat"],
+      defaults["cheat-scan"],
       defaults["spec-sync"],
       defaults.docs,
       defaults.unit,
@@ -326,7 +329,8 @@ function buildAdoptConfig(name, skeleton) {
     ensureGate(config.gates, defaults["sdd-presence"], "adr-lint");
     ensureGate(config.gates, defaults["secrets-scan"], "sdd-presence");
     ensureGate(config.gates, defaults["no-cheat"], "secrets-scan");
-    ensureGate(config.gates, defaults["spec-sync"], "no-cheat");
+    ensureGate(config.gates, defaults["cheat-scan"], "no-cheat");
+    ensureGate(config.gates, defaults["spec-sync"], "cheat-scan");
     ensureGate(config.gates, defaults.docs, "spec-sync");
     ensureGate(config.gates, defaults.unit, "docs");
     ensureGate(config.gates, defaults.crap, "unit");
@@ -388,6 +392,7 @@ function mergeGitignore(target, skeleton) {
     "no-cheat-report.json",
     "protect-specs-report.json",
     "policy-base-report.json",
+    "cheat-scan-report.json",
     "holes-review-report.json",
     "adr-lint-report.json",
     "sdd-presence-report.json",
@@ -572,6 +577,7 @@ function adoptProject(dir, { gates } = {}) {
       "test:e2e": "tsx scripts/run-e2e.ts",
       "spec-sync": "tsx scripts/spec-sync.ts",
       "no-cheat": "tsx scripts/no-cheat.ts",
+      "cheat-scan": "tsx scripts/cheat-scan.ts",
       "protect-specs": "tsx scripts/protect-specs.ts",
       "holes-review": "tsx scripts/holes-review.ts",
       "spec-code": "tsx scripts/spec-code.ts",

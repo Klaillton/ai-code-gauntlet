@@ -24,6 +24,7 @@ empilhar tudo de uma vez — cada item é um PR independente.
 - mutation custom 80% no Todo **e** no template (ambos no verify); CRAP ≤ 8 em domain tocado
 - spec-review skill
 - CI = `npm run verify`
+- D16 cheat-scan: AST em `src/**` (detecção de teste e patch de globais falham; overrides de igualdade avisam)
 - CHANGE-4 policy-base: política lida do base; diff de config/scripts/configs de teste/workflows exige `policy-change-approved` (residual: grant ainda não provado humano)
 
 ---

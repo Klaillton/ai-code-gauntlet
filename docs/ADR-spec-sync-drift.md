@@ -52,24 +52,25 @@ Todo seed (owner `klaillton`, expires **`2027-06-02`** — renew before that dat
 
 ## Drift catalog (implemented)
 
-| Id                | Rule                                                                                                                                   | Default                                                                                                                       |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| **D1**            | Route in `src/api/app.ts` not in OpenAPI                                                                                               | fail unless allowlisted (`exemptFrom: openapi`)                                                                               |
-| **D2**            | OpenAPI path+method has no matching route                                                                                              | fail                                                                                                                          |
-| **D3**            | `operationId` has no `@op:<operationId>` scenario                                                                                      | fail if `strict`, warn if `lenient`; skip if exempt `gherkin`                                                                 |
-| **D5**            | `src/domain` module with no unit test (same-stem or import)                                                                            | fail (unless internal allowlist exempts `unit`)                                                                               |
-| **D6**            | Changed `src/api` / `src/domain` without matching spec/unit in git diff                                                                | fail-closed in **strict** (including git missing); warn in **lenient**; empty diff = info                                     |
-| **D7**            | Committed `docs/generated/*` does not match a fresh generate                                                                           | fail                                                                                                                          |
-| **D8**            | `.feature` steps leak CSS, `data-testid`, or raw HTTP paths                                                                            | fail                                                                                                                          |
-| **D9**            | skip/only/pending, disabled gates, lowered coverage floors                                                                             | fail                                                                                                                          |
-| **D10**           | Gherkin/OpenAPI in the git diff without `docs/generated` in the same diff                                                              | fail (info if no SDD change)                                                                                                  |
-| **D11**           | `@op` with Gherkin but no exclusive scenario-level `@unhappy`/`@edge` (exactly one `@op` on that scenario)                             | **fail** in both strict and lenient                                                                                           |
-| **D12**           | `src/**` (implementation) in git diff without holes-review artifact or grant                                                           | **fail**; docs/specs-only diffs skip                                                                                          |
-| **D13**           | OpenAPI op (`operationId` or method+path) with zero `contract.cases` entries                                                           | **fail**; skip if OpenAPI absent/disabled; invalid case path/method fails; `caseAllowlist` needs committed config + `expires` |
-| **D14**           | New/changed `docs/adr/**` missing Context/Decision/Consequences/Discarded/Status, empty Discarded/Status, bad Status, or ADR delete    | **fail**; skip if diff does not touch `docs/adr/**`; Superseded needs existing `ADR-` ref                                     |
-| **D15**           | SDD-active app missing/empty `docs/sdd/Security.md` or `Observability.md` (or config paths), or file lacks heading + ≥1 requirement    | **fail**; skip if `sdd: false`                                                                                                |
-| **protect-specs** | git diff touches features/OpenAPI/`protectedGlobs` without a human grant                                                               | fail; also **fail** if git/`rev-parse` unavailable (`git required for this gate`)                                             |
-| **policy-base**   | `gauntlet.config.json` differs from base (any key; only `contract.cases` add/alter exempt), or `scripts/**` / test configs / workflows | **fail** without `POLICY_CHANGE_APPROVED` / `policy-change-approved`; **fail** if CI cannot resolve the base (CHANGE-4)       |
+| Id                | Rule                                                                                                                                                              | Default                                                                                                                               |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| **D1**            | Route in `src/api/app.ts` not in OpenAPI                                                                                                                          | fail unless allowlisted (`exemptFrom: openapi`)                                                                                       |
+| **D2**            | OpenAPI path+method has no matching route                                                                                                                         | fail                                                                                                                                  |
+| **D3**            | `operationId` has no `@op:<operationId>` scenario                                                                                                                 | fail if `strict`, warn if `lenient`; skip if exempt `gherkin`                                                                         |
+| **D5**            | `src/domain` module with no unit test (same-stem or import)                                                                                                       | fail (unless internal allowlist exempts `unit`)                                                                                       |
+| **D6**            | Changed `src/api` / `src/domain` without matching spec/unit in git diff                                                                                           | fail-closed in **strict** (including git missing); warn in **lenient**; empty diff = info                                             |
+| **D7**            | Committed `docs/generated/*` does not match a fresh generate                                                                                                      | fail                                                                                                                                  |
+| **D8**            | `.feature` steps leak CSS, `data-testid`, or raw HTTP paths                                                                                                       | fail                                                                                                                                  |
+| **D9**            | skip/only/pending, disabled gates, lowered coverage floors                                                                                                        | fail                                                                                                                                  |
+| **D10**           | Gherkin/OpenAPI in the git diff without `docs/generated` in the same diff                                                                                         | fail (info if no SDD change)                                                                                                          |
+| **D11**           | `@op` with Gherkin but no exclusive scenario-level `@unhappy`/`@edge` (exactly one `@op` on that scenario)                                                        | **fail** in both strict and lenient                                                                                                   |
+| **D12**           | `src/**` (implementation) in git diff without holes-review artifact or grant                                                                                      | **fail**; docs/specs-only diffs skip                                                                                                  |
+| **D13**           | OpenAPI op (`operationId` or method+path) with zero `contract.cases` entries                                                                                      | **fail**; skip if OpenAPI absent/disabled; invalid case path/method fails; `caseAllowlist` needs committed config + `expires`         |
+| **D14**           | New/changed `docs/adr/**` missing Context/Decision/Consequences/Discarded/Status, empty Discarded/Status, bad Status, or ADR delete                               | **fail**; skip if diff does not touch `docs/adr/**`; Superseded needs existing `ADR-` ref                                             |
+| **D16**           | `src/**` (TS AST): `NODE_ENV` vs "test", `process.env.VITEST*`, `process.argv` inspected for test; assignment / `defineProperty` on stdlib, globals or prototypes | **fail** without `CHEAT_SCAN_APPROVED` / `cheat-scan-approved`; `equals`/`valueOf`/`toJSON`/`[Symbol.toPrimitive]` overrides **warn** |
+| **D15**           | SDD-active app missing/empty `docs/sdd/Security.md` or `Observability.md` (or config paths), or file lacks heading + ≥1 requirement                               | **fail**; skip if `sdd: false`                                                                                                        |
+| **protect-specs** | git diff touches features/OpenAPI/`protectedGlobs` without a human grant                                                                                          | fail; also **fail** if git/`rev-parse` unavailable (`git required for this gate`)                                                     |
+| **policy-base**   | `gauntlet.config.json` differs from base (any key; only `contract.cases` add/alter exempt), or `scripts/**` / test configs / workflows                            | **fail** without `POLICY_CHANGE_APPROVED` / `policy-change-approved`; **fail** if CI cannot resolve the base (CHANGE-4)               |
 
 Scripts:
 
@@ -77,6 +78,7 @@ Scripts:
 - `scripts/spec-sync.ts` — D1-D6, D8, D10, D11, D13; exit 1 on fails
 - `scripts/no-cheat.ts` — D9; does **not** scan `scripts/` (self-match)
 - `scripts/policy-base.ts` — CHANGE-4 policy read from base + base→head policy diff (built-in first step of verify)
+- `scripts/cheat-scan.ts` — D16 narrow cheat scan on `src/**` (TypeScript compiler AST)
 - `scripts/protect-specs.ts` — spec-edit grant; `GITHUB_BASE_REF` in CI
 - `scripts/holes-review.ts` — D12 implementation requires holes-review artifact or grant
 - `scripts/adr-lint.ts` — D14 ADR template light gate (diff-based on `docs/adr/**`)
@@ -278,3 +280,36 @@ needs the grant). Allowing an unresolvable CI base to pass (silent bypass).
   hostile edit of `policy-base.ts` itself is caught only by the grant requirement plus
   CODEOWNERS / human review, not by the script.
 - `eslint.config.*`, `tsconfig.json` and `.prettierrc` are not in the CHANGE-4 path set.
+
+### Narrow cheat scan (D16)
+
+**Failure mode.** Production code can pass tests by detecting the test runner or by patching
+stdlib/globals so tests see a fake world. Regex D9 does not see this.
+
+**Decision.** Gate `cheat-scan` (`npm run cheat-scan`, after `no-cheat` in `gates[]`, both trees)
+parses `src/**` (`.ts/.tsx/.js/.jsx/.mts/.cts/.mjs/.cjs`, not `.d.ts`) with the TypeScript compiler
+API (`typescript`, already a devDependency). No regex over source text.
+
+- **FAIL — test-environment detection:** `process.env.NODE_ENV` (dot or bracket, or a
+  `const` / destructured alias) in a comparison whose expression or `switch` cases carry a test
+  literal (`===`, `!==`, `==`, `!=`, `case`, `startsWith`/`includes`, `[…].includes(…)`); any
+  `process.env.VITEST` / `VITEST_*` read or `"VITEST" in process.env`; `process.argv` in an
+  expression carrying a test literal (`test`, `vitest`, `jest`, `mocha` at a word start).
+- **FAIL — stdlib / global / prototype mutation:** any assignment operator whose target is a
+  known global (`Date = …`), a member of one (`Math.random = …`, `globalThis.x = …`,
+  `console.error = …`, `process.env.X = …`), or any `.prototype` / `__proto__` member
+  (`X.prototype.Y = …`); `Object.defineProperty` / `defineProperties` / `assign` /
+  `setPrototypeOf` and `Reflect.defineProperty` / `set` / `setPrototypeOf` on such a target.
+  A name declared in the file shadows the global; `node:*` imports (`import process from
+"node:process"`) stay global.
+- **WARN (printed, non-failing):** methods or function-valued members named `equals`,
+  `valueOf`, `toJSON`, or `[Symbol.toPrimitive]`.
+- **Override:** human grant only — `CHEAT_SCAN_APPROVED=1` or PR label `cheat-scan-approved`
+  (CI maps the label). No committed-config grant.
+
+**Out of scope.** Hardcoded literals that mirror tests; test helpers (fake timers are legitimate).
+
+**Residual.** Name-based, single-file analysis: aliases through other files, `const env =
+process.env` then `env.NODE_ENV`, `import.meta.env`, or a global reached through a renamed
+reference are not followed. `GAUNTLET_E2E` (the documented E2E harness switch) is not a D16
+pattern.

@@ -191,6 +191,7 @@ jobs:
           ALLOW_DEPS_EDIT: ${{ contains(github.event.pull_request.labels.*.name, 'deps-approved') && '1' || '' }}
           HOLES_REVIEW_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'holes-approved') && '1' || '' }}
           SPEC_SYNC_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'spec-sync-approved') && '1' || '' }}
+          CHEAT_SCAN_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'cheat-scan-approved') && '1' || '' }}
           POLICY_CHANGE_APPROVED: ${{ (contains(github.event.pull_request.labels.*.name, 'policy-change-approved') || steps.policy-grant.outputs.approved == '1') && '1' || '' }}
       - if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -243,6 +244,7 @@ jobs:
           ALLOW_DEPS_EDIT: ${{ contains(github.event.pull_request.labels.*.name, 'deps-approved') && '1' || '' }}
           HOLES_REVIEW_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'holes-approved') && '1' || '' }}
           SPEC_SYNC_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'spec-sync-approved') && '1' || '' }}
+          CHEAT_SCAN_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'cheat-scan-approved') && '1' || '' }}
           POLICY_CHANGE_APPROVED: ${{ (contains(github.event.pull_request.labels.*.name, 'policy-change-approved') || steps.policy-grant.outputs.approved == '1') && '1' || '' }}
       - if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

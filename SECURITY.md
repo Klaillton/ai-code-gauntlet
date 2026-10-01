@@ -73,6 +73,7 @@ Ordem relevante (após `protect-specs` / `deps-lock`):
 - **`policy-base`** (CHANGE-4, primeiro passo built-in do verify) — política lida do **base**; mudança em `gauntlet.config.json` (exceto add/alter de `contract.cases`), `scripts/**`, configs de teste/mutação ou `.github/workflows/**` exige `POLICY_CHANGE_APPROVED` / label `policy-change-approved`. Residual: o grant ainda não é verificável como humano (agentes usam a identidade do owner) — ver ADR
 - **`arch-bound`** — `src/domain` sem HTTP/UI/fs
 - **`no-cheat`** — skip/only, gate desligado, piso rebaixado
+- **`cheat-scan`** (D16) — AST em `src/**`: detecção de ambiente de teste e patch de stdlib/globais/protótipos falham (`CHEAT_SCAN_APPROVED` / `cheat-scan-approved`)
 
 Detalhe normativo: `docs/ADR-secrets-privacy.md`.
 

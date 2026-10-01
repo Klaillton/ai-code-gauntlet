@@ -47,6 +47,7 @@ D11 (edge inventory) **fails** in both apps when an `@op` has no scenario-level 
 D13 **fails** when an OpenAPI op has no `contract.cases` entry (unless non-expired `caseAllowlist`).
 D14 **fails** when new/changed `docs/adr/**` omit template sections or delete an ADR (mark Superseded only).
 D15 **fails** when SDD is active and `docs/sdd/Security.md` / `Observability.md` are missing, empty, or lack heading + ≥1 requirement (skip if `sdd: false`).
+D16 **fails** when `src/**` detects the test environment (`NODE_ENV === "test"`, `process.env.VITEST`, `process.argv`) or patches stdlib/globals/prototypes (grant `cheat-scan-approved`).
 CHANGE-2 **fails** when mutation/gherkin-mutation has zero sites (never score 100; skipReason+expires or differential soft-skip).
 CHANGE-3 **fails** when `src/**` changes without Gherkin/OpenAPI/holes-review in the same PR (or SPEC_SYNC_APPROVED grant).
 CHANGE-4 (`policy-base`, first step of verify) reads policy from the base (`origin/main` locally). A fresh repo without `origin/main` fails until you push the initial commit (`git push -u origin main` + `git fetch`), or a human sets `POLICY_CHANGE_APPROVED=1` for that local run. Config/`scripts/**`/test-config/workflow changes need `policy-change-approved`.

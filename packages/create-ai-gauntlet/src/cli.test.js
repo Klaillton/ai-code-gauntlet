@@ -44,6 +44,11 @@ test("adopt status lists crap among hardening gates", () => {
     assert.equal(result.status, 0, result.stderr || result.stdout);
     const status = readFileSync(join(dir, "ADOPT-STATUS.md"), "utf8");
     assert.match(status, /Hardening gates always wired:.*\bcrap\b/);
+    assert.match(status, /Hardening gates always wired:.*\bcheat-scan\b/);
+    const config = JSON.parse(readFileSync(join(dir, "gauntlet.config.json"), "utf8"));
+    const ids = config.gates.map((g) => g.id);
+    assert.equal(ids.indexOf("cheat-scan"), ids.indexOf("no-cheat") + 1);
+    assert.equal(existsSync(join(dir, "scripts", "cheat-scan.ts")), true);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

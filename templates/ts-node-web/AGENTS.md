@@ -18,7 +18,7 @@ Ship behavior that is:
 2. Contracted in human-approved **OpenAPI** (`openapi/openapi.yaml`)
 3. Proven by **two test streams**: unit (Vitest) + acceptance (Cucumber + Playwright)
 4. Shaped by **static gates**: TypeScript, ESLint, Prettier, coverage, complexity
-5. Kept honest by **spec-sync** (D1–D8, **D10**, **D11**, **D13**), **no-cheat** (D9), **protect-specs**,
+5. Kept honest by **spec-sync** (D1–D8, **D10**, **D11**, **D13**), **no-cheat** (D9), **cheat-scan** (D16), **protect-specs**,
    **deps-lock**, **secrets-scan**, **arch-bound**, and **policy-base** (CHANGE-4: policy from base)
 
 You implement. Humans defend the specs.
@@ -34,6 +34,16 @@ template health keeps a non-empty mutation surface.
 ## Hard prohibitions (enforced)
 
 A prompt “please don’t” is not enough. These fail the gauntlet.
+
+### Narrow cheat scan — D16 (cheat-scan)
+
+TypeScript AST over `src/**` (not tests). **Fails**: `process.env.NODE_ENV` compared with
+`"test"` (any form, incl. switch / aliases), any `process.env.VITEST*`, `process.argv`
+inspected for test; assignment or `Object.defineProperty` / `Reflect.defineProperty` (and
+`assign` / `setPrototypeOf` / `Reflect.set`) on stdlib, globals or prototypes
+(`Math.random = …`, `Date = …`, `globalThis.x = …`, `X.prototype.y = …`). **Warns**:
+`equals`, `valueOf`, `toJSON`, `[Symbol.toPrimitive]` overrides. Human grant only:
+`CHEAT_SCAN_APPROVED=1` or label `cheat-scan-approved`. Fake timers in tests are fine.
 
 ### Policy read from base — CHANGE-4 (policy-base)
 
@@ -227,6 +237,7 @@ npm run deps-lock
 npm run secrets-scan
 npm run arch-bound
 npm run no-cheat
+npm run cheat-scan          # D16: src/** AST test-env detection / global patching
 npm run spec-sync
 npm run complexity          # domain cyclomatic max 10
 npm run crap                # CRAP ≤ 8 on touched src/domain (needs coverage)
@@ -238,7 +249,7 @@ npm run prepare:browsers    # Playwright Chromium, once
 ```
 
 `npm run verify` order: policy-base (built-in, CHANGE-4), format, lint, typecheck, complexity, arch-bound,
-protect-specs, deps-lock, secrets-scan, no-cheat, spec-sync, docs, unit+coverage,
+protect-specs, deps-lock, secrets-scan, no-cheat, cheat-scan, spec-sync, docs, unit+coverage,
 crap, mutation, contract, e2e, gherkin-mutation.
 
 ## Coverage
