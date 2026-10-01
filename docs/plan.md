@@ -24,6 +24,7 @@ empilhar tudo de uma vez — cada item é um PR independente.
 - mutation custom 80% no Todo **e** no template (ambos no verify); CRAP ≤ 8 em domain tocado
 - spec-review skill
 - CI = `npm run verify`
+- CHANGE-4 policy-base: política lida do base; diff de config/scripts/configs de teste/tsconfig/eslint/`.github/**` exige `policy-change-approved`; enforcer autoritativo roda do base (`policy-base.yml`, `pull_request_target` + push) (residual: grant ainda não provado humano; required status pendente)
 
 ---
 

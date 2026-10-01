@@ -65,7 +65,7 @@ export function isProtectedDepPath(repoRelPath: string): boolean {
   return false;
 }
 
-/** Grants: env, committed config, or CI label — not a working-tree allow file. */
+/** Grants: env, CI label, or committed config already true in base (CHANGE-4) — not a working-tree allow file. */
 export function depsEditAllowed(
   cwd: string,
   allowDepsEdit: boolean,
@@ -74,7 +74,10 @@ export function depsEditAllowed(
     return { allowed: true, reason: "ALLOW_DEPS_EDIT=1" };
   }
   if (allowDepsEdit) {
-    return { allowed: true, reason: "gauntlet.config.json allowDepsEdit=true" };
+    return {
+      allowed: true,
+      reason: "base-branch gauntlet.config.json allowDepsEdit=true",
+    };
   }
   const eventPath = process.env.GITHUB_EVENT_PATH;
   if (eventPath && existsSync(eventPath)) {
@@ -160,7 +163,7 @@ export function runDepsLock(cwd = process.cwd()): {
     message:
       "deps-lock blocked package.json / package-lock.json edits without human grant: " +
       depChanges.join(", ") +
-      ". Set ALLOW_DEPS_EDIT=1, set allowDepsEdit: true in gauntlet.config.json, or label deps-approved.",
+      ". Set ALLOW_DEPS_EDIT=1, label deps-approved, or have allowDepsEdit: true already on the base branch (CHANGE-4).",
   });
   writeReport(cwd, false, findings);
   return { ok: false, findings };

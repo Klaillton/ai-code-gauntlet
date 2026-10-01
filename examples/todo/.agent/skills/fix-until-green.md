@@ -12,6 +12,9 @@ Use when verify/CI is red and the agent must restore the gauntlet.
    - e2e → fix app or step defs; **do not** edit `.feature` without permission
    - secrets-scan → remove the secret/PII; **do not** add allowlist entries or
      `git add -f .env`
+   - policy-base (CHANGE-4) → revert the `gauntlet.config.json` / `scripts/**` /
+     test-config / workflow edit, or stop and ask a human for `policy-change-approved`;
+     **never** apply a grant label yourself
 3. Apply the smallest fix
 4. Re-run the failed gate, then full `npm run verify`
 5. Repeat up to **5** cycles
@@ -23,6 +26,7 @@ Use when verify/CI is red and the agent must restore the gauntlet.
 - Asserts loosened without product reason? → revert
 - Feature file “fixed” to match buggy UI? → revert + ask human
 - Coverage threshold lowered? → revert
+- `gauntlet.config.json` policy, `scripts/**`, test/tsconfig/eslint configs or `.github/**` edited without a human grant? → revert
 
 ## Exit codes
 
