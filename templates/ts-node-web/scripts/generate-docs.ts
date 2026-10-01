@@ -20,7 +20,7 @@ function mdTable(headers: string[], rows: string[][]): string {
 }
 
 function cell(value: string): string {
-  return value.replace(/\|/g, "\\|") || "—";
+  return value.replace(/\\/g, "\\\\").replace(/\|/g, "\\|") || "—";
 }
 
 function renderApi(inventory: Inventory): string {
