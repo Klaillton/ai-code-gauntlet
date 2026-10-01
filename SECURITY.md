@@ -86,7 +86,9 @@ Workflow `.github/workflows/verify.yml` em push para `main`/`master`, em todo PR
 - **gates-sync** — scripts canônicos em `packages/gauntlet-gates` não divergem
 - verify do template, do Todo e smoke `create` + verify
 
-Permissions do workflow (nível do workflow, sem override por job): `contents: read` + `actions: write` + `pull-requests: read` (CHANGE-4: em push lê a label `policy-change-approved` do PR mergeado).
+Permissions do workflow (nível do workflow, sem override por job): `contents: read` + `pull-requests: read` (CHANGE-4: em push lê a label `policy-change-approved` do PR mergeado). `actions: write` foi removido (CHANGE-5: nenhum step usa; cache e artifacts usam o token de runtime).
+
+Concurrency (CHANGE-5): grupo `verify-<workflow>-<ref>`; `cancel-in-progress` só em `pull_request`. Runs de push em `main` sempre terminam — um run cancelado em `main` nunca conta como green.
 
 ### Supply chain / ownership
 

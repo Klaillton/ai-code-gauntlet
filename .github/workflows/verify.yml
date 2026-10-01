@@ -9,11 +9,11 @@ on:
 
 concurrency:
   group: verify-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # CHANGE-5: only PR runs cancel; push runs on main always finish (a cancelled main run is never green).
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
-  actions: write
   # CHANGE-4: push to main looks up the merged PR's policy-change-approved label.
   pull-requests: read
 
