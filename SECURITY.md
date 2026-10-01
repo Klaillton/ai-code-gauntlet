@@ -78,7 +78,7 @@ Detalhe normativo: `docs/ADR-secrets-privacy.md`.
 
 ### CI (Phase 3 — não substitui verify local)
 
-Workflow `.github/workflows/verify.yml` em push/PR para `main`/`master`:
+Workflow `.github/workflows/verify.yml` em push para `main`/`master`, em todo PR (qualquer base, inclusive eventos `labeled`/`unlabeled`) e via `workflow_dispatch`:
 
 - **gitleaks** `detect` no histórico completo (`fetch-depth: 0`), report redigido, config `.gitleaks.toml`
 - **SBOM** CycloneDX do template e do Todo (artifact)
@@ -86,12 +86,13 @@ Workflow `.github/workflows/verify.yml` em push/PR para `main`/`master`:
 - **gates-sync** — scripts canônicos em `packages/gauntlet-gates` não divergem
 - verify do template, do Todo e smoke `create` + verify
 
-Permissions do workflow: `contents: read` (checkout), `actions: write`, `pull-requests: read` (CHANGE-4: em push lê a label `policy-change-approved` do PR mergeado).
+Permissions do workflow (nível do workflow, sem override por job): `contents: read` + `actions: write` + `pull-requests: read` (CHANGE-4: em push lê a label `policy-change-approved` do PR mergeado).
 
 ### Supply chain / ownership
 
 - Actions pinadas por SHA no `verify.yml`
-- Dependabot: **somente** `github-actions` na raiz, weekly, máx. 5 PRs — **não** há update automático de npm
+- Dependabot **version updates**: somente `github-actions` na raiz, weekly, máx. 5 PRs (`.github/dependabot.yml`)
+- Dependabot **security updates** ligados nas settings do repo: alerta npm → PR de lockfile no template/Todo. Esses PRs passam pelo `deps-lock` como qualquer outro (label `deps-approved`). **Não** há version update de npm
 - CODEOWNERS em specs, `package.json` / lockfiles dos apps do kit, e `.github/workflows/**`
 
 ### SDD (presença, não hardening)
@@ -108,8 +109,8 @@ O exemplo Todo é in-memory + API fina. Não trate isso como auth de produção.
 
 - HTTPS/TLS, rate limit, brute-force no “login” (não há form login neste kit)
 - Spring Security, BCrypt, roles, CSRF, Flyway, S3, Docker user `brewer`
-- Dependabot Maven/npm
-- OSSAR / CodeQL / secret scanning nativo do GitHub como gate documentado aqui
+- Dependabot version updates de npm (só security updates) e qualquer coisa Maven
+- OSSAR / CodeQL / secret scanning nativo do GitHub como gate documentado aqui (CodeQL default setup está ligado nas settings e abre alertas, mas não é required check nem gate do kit)
 - Scan de ofuscação (`"AKIA" + "…"`, JWT genérico) no `secrets-scan` local
 - SLA de CVE em apps adoptados
 
