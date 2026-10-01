@@ -267,7 +267,8 @@ working-tree `gauntlet.config.json`. In the same diff an agent could drop a glob
    - `push` to main: a `git worktree` at `github.event.before` runs the base's enforcer with
      `--head $GITHUB_SHA`. The grant is the merged PR's label (`commits/{sha}/pulls`); a direct
      push through the owner bypass has no PR, so no grant, and main goes red.
-   - Hardening: permissions exactly `contents: read` + `pull-requests: read`, no secrets,
+   - Hardening: permissions exactly `contents: read` + `pull-requests: read` per job
+     (`permissions: {}` at workflow level), no secrets,
      `persist-credentials: false`, PR number and SHAs passed via `env` (never interpolated into
      `run:`), action SHAs pinned.
    - Adversarial integration test (`change4-policy-base.test.ts`, both trees): a head that

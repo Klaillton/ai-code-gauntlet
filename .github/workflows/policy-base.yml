@@ -18,9 +18,8 @@ on:
   push:
     branches: [main, master]
 
-permissions:
-  contents: read
-  pull-requests: read
+# Nothing at workflow level; each job gets exactly contents: read + pull-requests: read.
+permissions: {}
 
 concurrency:
   group: policy-base-${{ github.event.pull_request.number || github.ref }}
@@ -29,6 +28,9 @@ concurrency:
 jobs:
   enforce-pr:
     name: policy-base (base-run, PR)
+    permissions:
+      contents: read
+      pull-requests: read
     if: github.event_name == 'pull_request_target'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -72,6 +74,9 @@ jobs:
 
   enforce-push:
     name: policy-base (base-run, push)
+    permissions:
+      contents: read
+      pull-requests: read
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 10
