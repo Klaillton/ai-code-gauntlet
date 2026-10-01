@@ -26,7 +26,7 @@ Use when verify/CI is red and the agent must restore the gauntlet.
 - Asserts loosened without product reason? → revert
 - Feature file “fixed” to match buggy UI? → revert + ask human
 - Coverage threshold lowered? → revert
-- `gauntlet.config.json` policy, `scripts/**`, test configs or workflows edited without a human grant? → revert
+- `gauntlet.config.json` policy, `scripts/**`, test/tsconfig/eslint configs or `.github/**` edited without a human grant? → revert
 
 ## Exit codes
 

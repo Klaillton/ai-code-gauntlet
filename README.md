@@ -24,7 +24,7 @@ This repo is **not** only a Todo app. It is:
 Gherkin (human-owned)      -> behavior (protect-specs)
 OpenAPI (human-owned)      -> HTTP shape (protect-specs)
 package manifests          -> deps-lock (human grant)
-policy (CHANGE-4)          -> policy-base: config read from base; config/scripts/test configs/workflows diff needs policy-change-approved
+policy (CHANGE-4)          -> policy-base: config read from base; config/scripts/test+tsconfig+eslint configs/.github diff needs policy-change-approved
 secrets / PII              -> secrets-scan (fail-closed; no ALLOW_SECRETS)
 domain isolation           -> arch-bound (no HTTP/UI/fs in src/domain)
 Playwright drivers         -> acceptance
@@ -114,7 +114,9 @@ past the gauntlet.
 `verify` runs policy-base first (built-in, not in `gates[]`). Any added/removed/changed
 config key fails without a human grant, except adding or altering `contract.cases`
 entries (D13); removing one needs the grant. Edits to `scripts/**`, test/mutation
-configs and `.github/workflows/**` need the same grant: `POLICY_CHANGE_APPROVED=1`
+configs, `tsconfig*.json`, `eslint.config.*`, `.eslintrc*` and repo-root `.github/**`
+(workflows, composite actions, CODEOWNERS, dependabot.yml) need the same grant
+(`.prettierrc` is intentionally excluded, format only): `POLICY_CHANGE_APPROVED=1`
 or PR label `policy-change-approved`. A committed `allow*` counts only if already
 true in base. CI without a resolvable base fails; first adoption (config absent in
 base) needs the grant. The in-verify run is a local fast check (head code); the

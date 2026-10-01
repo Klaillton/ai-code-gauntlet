@@ -48,7 +48,9 @@ Do not, without a human grant:
   `gates`, `strictness`, thresholds, allowlists, `skipReason`/`expires`, new keys — deny by default).
   Only exception: adding or altering `contract.cases` entries (D13). Removing one needs the grant.
 - edit `scripts/**`, test/mutation runner configs (`vitest.config.*`, `stryker.*`, `jest.config.*`,
-  `playwright.config.*`, `cucumber.*`, `.c8rc*`, `.nycrc*`), or `.github/workflows/**`.
+  `playwright.config.*`, `cucumber.*`, `.c8rc*`, `.nycrc*`), `tsconfig*.json`, `eslint.config.*`,
+  `.eslintrc*`, or anything under the repo-root `.github/**` (workflows, composite actions,
+  CODEOWNERS, dependabot.yml). `.prettierrc` is intentionally not protected (format only).
 
 Grant (human-only): `POLICY_CHANGE_APPROVED=1` or PR label `policy-change-approved`.
 A committed `allow*` / `approved` flag counts only if it is already true in base. First adoption
