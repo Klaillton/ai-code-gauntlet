@@ -68,7 +68,7 @@ function matchGlob(rel: string, glob: string): boolean {
   return normalized === pattern || normalized.endsWith("/" + pattern);
 }
 
-/** Grants: env, committed config, or CI label — not a working-tree allow file. */
+/** Grants: env, CI label, or committed config already true in base (CHANGE-4) — not a working-tree allow file. */
 export function specEditAllowed(
   cwd: string,
   allowSpecEdit: boolean,
@@ -77,7 +77,10 @@ export function specEditAllowed(
     return { allowed: true, reason: "ALLOW_SPEC_EDIT=1" };
   }
   if (allowSpecEdit) {
-    return { allowed: true, reason: "gauntlet.config.json allowSpecEdit=true" };
+    return {
+      allowed: true,
+      reason: "base-branch gauntlet.config.json allowSpecEdit=true",
+    };
   }
   const eventPath = process.env.GITHUB_EVENT_PATH;
   if (eventPath && existsSync(eventPath)) {
@@ -168,7 +171,7 @@ export function runProtectSpecs(cwd = process.cwd()): {
     message:
       "protect-specs blocked spec edits without human grant: " +
       localChanges.join(", ") +
-      ". Set ALLOW_SPEC_EDIT=1, set allowSpecEdit: true in gauntlet.config.json, or label specs-approved.",
+      ". Set ALLOW_SPEC_EDIT=1, label specs-approved, or have allowSpecEdit: true already on the base branch (CHANGE-4).",
   });
   writeReport(cwd, false, findings);
   return { ok: false, findings };

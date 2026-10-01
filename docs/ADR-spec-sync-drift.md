@@ -52,29 +52,31 @@ Todo seed (owner `klaillton`, expires **`2027-06-02`** — renew before that dat
 
 ## Drift catalog (implemented)
 
-| Id                | Rule                                                                                                                                | Default                                                                                                                       |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| **D1**            | Route in `src/api/app.ts` not in OpenAPI                                                                                            | fail unless allowlisted (`exemptFrom: openapi`)                                                                               |
-| **D2**            | OpenAPI path+method has no matching route                                                                                           | fail                                                                                                                          |
-| **D3**            | `operationId` has no `@op:<operationId>` scenario                                                                                   | fail if `strict`, warn if `lenient`; skip if exempt `gherkin`                                                                 |
-| **D5**            | `src/domain` module with no unit test (same-stem or import)                                                                         | fail (unless internal allowlist exempts `unit`)                                                                               |
-| **D6**            | Changed `src/api` / `src/domain` without matching spec/unit in git diff                                                             | fail-closed in **strict** (including git missing); warn in **lenient**; empty diff = info                                     |
-| **D7**            | Committed `docs/generated/*` does not match a fresh generate                                                                        | fail                                                                                                                          |
-| **D8**            | `.feature` steps leak CSS, `data-testid`, or raw HTTP paths                                                                         | fail                                                                                                                          |
-| **D9**            | skip/only/pending, disabled gates, lowered coverage floors                                                                          | fail                                                                                                                          |
-| **D10**           | Gherkin/OpenAPI in the git diff without `docs/generated` in the same diff                                                           | fail (info if no SDD change)                                                                                                  |
-| **D11**           | `@op` with Gherkin but no exclusive scenario-level `@unhappy`/`@edge` (exactly one `@op` on that scenario)                          | **fail** in both strict and lenient                                                                                           |
-| **D12**           | `src/**` (implementation) in git diff without holes-review artifact or grant                                                        | **fail**; docs/specs-only diffs skip                                                                                          |
-| **D13**           | OpenAPI op (`operationId` or method+path) with zero `contract.cases` entries                                                        | **fail**; skip if OpenAPI absent/disabled; invalid case path/method fails; `caseAllowlist` needs committed config + `expires` |
-| **D14**           | New/changed `docs/adr/**` missing Context/Decision/Consequences/Discarded/Status, empty Discarded/Status, bad Status, or ADR delete | **fail**; skip if diff does not touch `docs/adr/**`; Superseded needs existing `ADR-` ref                                     |
-| **D15**           | SDD-active app missing/empty `docs/sdd/Security.md` or `Observability.md` (or config paths), or file lacks heading + ≥1 requirement | **fail**; skip if `sdd: false`                                                                                                |
-| **protect-specs** | git diff touches features/OpenAPI/`protectedGlobs` without a human grant                                                            | fail; also **fail** if git/`rev-parse` unavailable (`git required for this gate`)                                             |
+| Id                | Rule                                                                                                                                   | Default                                                                                                                       |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| **D1**            | Route in `src/api/app.ts` not in OpenAPI                                                                                               | fail unless allowlisted (`exemptFrom: openapi`)                                                                               |
+| **D2**            | OpenAPI path+method has no matching route                                                                                              | fail                                                                                                                          |
+| **D3**            | `operationId` has no `@op:<operationId>` scenario                                                                                      | fail if `strict`, warn if `lenient`; skip if exempt `gherkin`                                                                 |
+| **D5**            | `src/domain` module with no unit test (same-stem or import)                                                                            | fail (unless internal allowlist exempts `unit`)                                                                               |
+| **D6**            | Changed `src/api` / `src/domain` without matching spec/unit in git diff                                                                | fail-closed in **strict** (including git missing); warn in **lenient**; empty diff = info                                     |
+| **D7**            | Committed `docs/generated/*` does not match a fresh generate                                                                           | fail                                                                                                                          |
+| **D8**            | `.feature` steps leak CSS, `data-testid`, or raw HTTP paths                                                                            | fail                                                                                                                          |
+| **D9**            | skip/only/pending, disabled gates, lowered coverage floors                                                                             | fail                                                                                                                          |
+| **D10**           | Gherkin/OpenAPI in the git diff without `docs/generated` in the same diff                                                              | fail (info if no SDD change)                                                                                                  |
+| **D11**           | `@op` with Gherkin but no exclusive scenario-level `@unhappy`/`@edge` (exactly one `@op` on that scenario)                             | **fail** in both strict and lenient                                                                                           |
+| **D12**           | `src/**` (implementation) in git diff without holes-review artifact or grant                                                           | **fail**; docs/specs-only diffs skip                                                                                          |
+| **D13**           | OpenAPI op (`operationId` or method+path) with zero `contract.cases` entries                                                           | **fail**; skip if OpenAPI absent/disabled; invalid case path/method fails; `caseAllowlist` needs committed config + `expires` |
+| **D14**           | New/changed `docs/adr/**` missing Context/Decision/Consequences/Discarded/Status, empty Discarded/Status, bad Status, or ADR delete    | **fail**; skip if diff does not touch `docs/adr/**`; Superseded needs existing `ADR-` ref                                     |
+| **D15**           | SDD-active app missing/empty `docs/sdd/Security.md` or `Observability.md` (or config paths), or file lacks heading + ≥1 requirement    | **fail**; skip if `sdd: false`                                                                                                |
+| **protect-specs** | git diff touches features/OpenAPI/`protectedGlobs` without a human grant                                                               | fail; also **fail** if git/`rev-parse` unavailable (`git required for this gate`)                                             |
+| **policy-base**   | `gauntlet.config.json` differs from base (any key; only `contract.cases` add/alter exempt), or `scripts/**` / test configs / workflows | **fail** without `POLICY_CHANGE_APPROVED` / `policy-change-approved`; **fail** if CI cannot resolve the base (CHANGE-4)       |
 
 Scripts:
 
 - `scripts/inventory.ts` — routes, OpenAPI via `js-yaml`, feature tags, domain/unit
 - `scripts/spec-sync.ts` — D1-D6, D8, D10, D11, D13; exit 1 on fails
 - `scripts/no-cheat.ts` — D9; does **not** scan `scripts/` (self-match)
+- `scripts/policy-base.ts` — CHANGE-4 policy read from base + base→head policy diff (built-in first step of verify)
 - `scripts/protect-specs.ts` — spec-edit grant; `GITHUB_BASE_REF` in CI
 - `scripts/holes-review.ts` — D12 implementation requires holes-review artifact or grant
 - `scripts/adr-lint.ts` — D14 ADR template light gate (diff-based on `docs/adr/**`)
@@ -84,7 +86,7 @@ Scripts:
 - `scripts/deps-lock.ts` — package manifest grant (see ADR-phase2-deps-spec-review.md)
 - `scripts/generate-docs.ts` — `docs/generated/{api,behaviors,gauntlet,gaps}.md`
 - `scripts/check-docs-fresh.ts` — D7 content compare
-- `scripts/verify.ts` — ordered gates + `gauntlet-report.json`; `enabled:false` fails
+- `scripts/verify.ts` — built-in policy-base, then ordered gates from the base-branch `gates[]` + `gauntlet-report.json`; `enabled:false` fails
 
 `scripts/check-openapi.ts` remains the **runtime** contract gate. Spec-sync is static drift.
 
@@ -93,7 +95,7 @@ Scripts:
 Verify fails if the diff includes protected globs unless one of:
 
 1. `ALLOW_SPEC_EDIT=1` (document in the PR; do **not** bake this into CI as a permanent env)
-2. `allowSpecEdit: true` in config (default **false**; committed human config; keep fail-closed)
+2. `allowSpecEdit: true` in the **base-branch** config (default **false**; committed human config; a PR that flips it gets nothing — CHANGE-4)
 3. GitHub PR label `specs-approved`
 
 On `pull_request`, `.github/workflows/verify.yml` exports `ALLOW_SPEC_EDIT=1`
@@ -216,3 +218,63 @@ When the git diff touches implementation globs (default `src/**`):
 
 No working-tree allow-file. Artifact paths are in `protectedGlobs` (protect-specs).
 Docs/specs-only diffs without `src/` skip D12 (not a false pass for implementation).
+
+### CHANGE-4 — policy read from base (policy-base)
+
+**Failure mode.** Gates read `protectedGlobs`, `allowSpecEdit`, `gates[]`, … from the
+working-tree `gauntlet.config.json`. In the same diff an agent could drop a glob, set
+`allow*: true`, or delete a gate, and the gate passed.
+
+**Decision.**
+
+1. Policy is read from the **base**: `git show <base>:<app>/gauntlet.config.json`.
+   Base = `origin/$GITHUB_BASE_REF` on `pull_request`, `github.event.before` on `push`,
+   otherwise `origin/main` (local). Every gate loads config through `loadConfig` →
+   `loadPolicyConfig` (`scripts/policy-base.ts`): base config plus head `contract.cases`.
+   `verify.ts`, `check-openapi.ts` and `agent-loop.ts` use the same loader, so `gates[]`,
+   `strictness`, thresholds, allowlists and `skipReason`/`expires` are base values.
+2. Grants come only from env or label: `POLICY_CHANGE_APPROVED=1` or PR label
+   `policy-change-approved` (CI maps the label to the env; on `push` it reads the label of the
+   merged PR that produced the commit). With the grant, gates read the head config. A committed
+   `allow*` / `approved` flag counts only if it is already true in base, with or without the grant.
+3. Semantic JSON diff base→head, **deny by default**: any added, removed or changed key needs
+   the grant. No list of protected keys. Single exception: adding or altering
+   `contract.cases` entries (D13 requires it). Entries are positional: a shorter array, a deleted
+   `cases` key, or a non-object entry is a removal and needs the grant.
+4. `scripts/**`, test/mutation runner configs (`vitest|vite|jest|playwright|stryker` config,
+   `vitest.workspace.*`, `cucumber.*`, `.c8rc*`, `.nycrc*`, `.strykerrc*`, `.mocharc*`) inside the
+   app tree, and repo `.github/workflows/**`, changed base→head (plus index, working tree and
+   untracked files), need the same grant.
+5. policy-base is a **built-in first step** of `verify.ts`, not a `gates[]` entry, so removing it
+   from config does nothing. It also runs standalone: `npx tsx scripts/policy-base.ts`.
+
+**Fail-closed rules.** No git → fail. CI (`CI`/`GITHUB_ACTIONS`) that cannot resolve the base
+→ fail, even with the grant. Local without `origin/main` → fail unless the human env grant
+`POLICY_CHANGE_APPROVED=1` is set (head policy, committed grants still false).
+**First adoption** (config absent in base) → fail unless the grant is present; with it, head
+policy is used and every committed `allow*` / `approved` stays false. Unreadable base config → fail.
+
+**Consequences.** Any PR that touches gate scripts, workflows, test configs or config policy
+(including Dependabot action bumps) needs `policy-change-approved`. The `smoke-create` job gives
+the scaffold its own base (first commit pushed to a local bare `origin`) and runs verify without
+the kit's event context. The policy diff ignores JSON formatting and object key order; array
+order counts (gate order matters).
+
+**Discarded.** A protected-keys list (a new key escapes it). Reading the grant from committed
+config (self-grant). Treating `push` to main as already reviewed (the merge is exactly what
+needs the grant). Allowing an unresolvable CI base to pass (silent bypass).
+
+**Known residual.**
+
+- **Grant identity.** Agents run `gh` as `Klaillton`, the same identity as the human owner and the
+  only ruleset bypass actor. A grant label (`specs-approved`, `deps-approved`,
+  `holes-approved`, `spec-sync-approved`, `policy-change-approved`) can therefore be applied by an
+  agent, and env/label grants are not yet verifiable as human. Planned fix, pending Dante's
+  decision: (a) a separate agent identity (GitHub App or bot user) outside the bypass, plus the
+  gates accepting a grant label only when its `labeled` event actor is not the agent identity,
+  plus `require_code_owner_review` on the CHANGE-4 paths; or (b) manual merge by Dante on
+  protected paths. Not implemented yet; rulesets and branch protection are unchanged.
+- **Head code runs the check.** On a PR the gate scripts and workflow come from the head. A
+  hostile edit of `policy-base.ts` itself is caught only by the grant requirement plus
+  CODEOWNERS / human review, not by the script.
+- `eslint.config.*`, `tsconfig.json` and `.prettierrc` are not in the CHANGE-4 path set.

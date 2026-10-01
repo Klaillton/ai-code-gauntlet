@@ -387,6 +387,7 @@ function mergeGitignore(target, skeleton) {
     "spec-sync-report.json",
     "no-cheat-report.json",
     "protect-specs-report.json",
+    "policy-base-report.json",
     "holes-review-report.json",
     "adr-lint-report.json",
     "sdd-presence-report.json",

@@ -70,6 +70,7 @@ Ordem relevante (após `protect-specs` / `deps-lock`):
   - allowlist **não** dispensa `forbidden-path` / PEM
 - **`deps-lock`** — manifesto de dependência é grant humano (`ALLOW_DEPS_EDIT` / label `deps-approved` no PR)
 - **`protect-specs`** — Gherkin + OpenAPI humanos (`ALLOW_SPEC_EDIT` / `specs-approved`)
+- **`policy-base`** (CHANGE-4, primeiro passo built-in do verify) — política lida do **base**; mudança em `gauntlet.config.json` (exceto add/alter de `contract.cases`), `scripts/**`, configs de teste/mutação ou `.github/workflows/**` exige `POLICY_CHANGE_APPROVED` / label `policy-change-approved`. Residual: o grant ainda não é verificável como humano (agentes usam a identidade do owner) — ver ADR
 - **`arch-bound`** — `src/domain` sem HTTP/UI/fs
 - **`no-cheat`** — skip/only, gate desligado, piso rebaixado
 
@@ -85,7 +86,7 @@ Workflow `.github/workflows/verify.yml` em push/PR para `main`/`master`:
 - **gates-sync** — scripts canônicos em `packages/gauntlet-gates` não divergem
 - verify do template, do Todo e smoke `create` + verify
 
-Permissions do workflow: `contents: read` (mínimo para checkout).
+Permissions do workflow: `contents: read` (checkout), `actions: write`, `pull-requests: read` (CHANGE-4: em push lê a label `policy-change-approved` do PR mergeado).
 
 ### Supply chain / ownership
 

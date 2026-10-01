@@ -14,6 +14,8 @@ concurrency:
 permissions:
   contents: read
   actions: write
+  # CHANGE-4: push to main looks up the merged PR's policy-change-approved label.
+  pull-requests: read
 
 jobs:
   gates-sync:
@@ -108,7 +110,13 @@ jobs:
           git config user.name "gauntlet-ci"
           git add -A
           git commit -m "smoke scaffold"
-          npm run verify
+          # CHANGE-4: the scaffold is its own repo. Its policy base is its first commit
+          # (origin/main via a local bare remote), not the kit's PR/push event context.
+          git init --bare -q "$RUNNER_TEMP/gauntlet-smoke-origin.git"
+          git remote add origin "$RUNNER_TEMP/gauntlet-smoke-origin.git"
+          git push -q origin HEAD:main
+          git fetch -q origin main
+          env -u GITHUB_BASE_REF -u GITHUB_EVENT_NAME -u GITHUB_EVENT_PATH npm run verify
 
   gitleaks:
     name: gitleaks (history extra)
@@ -159,15 +167,31 @@ jobs:
           cache-dependency-path: templates/ts-node-web/package-lock.json
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      # CHANGE-4: on push the policy base is github.event.before; the only grant is the
+      # human label policy-change-approved on the PR that produced this commit.
+      - name: Policy grant from merged PR label (push only)
+        id: policy-grant
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          labels=$(gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/pulls" \
+            --jq '[.[] | select(.merged_at != null) | .labels[].name] | join(",")' || true)
+          case ",$labels," in
+            *,policy-change-approved,*) echo "approved=1" >> "$GITHUB_OUTPUT" ;;
+            *) echo "approved=" >> "$GITHUB_OUTPUT" ;;
+          esac
       - run: npm run verify
         env:
           CI: true
           GAUNTLET_E2E: "1"
-          # PR labels only. Push to main skips origin/main...HEAD inside the gates.
+          # PR labels only. Push to main skips origin/main...HEAD inside the diff gates;
+          # policy-base (CHANGE-4) diffs github.event.before..HEAD on push.
           ALLOW_SPEC_EDIT: ${{ contains(github.event.pull_request.labels.*.name, 'specs-approved') && '1' || '' }}
           ALLOW_DEPS_EDIT: ${{ contains(github.event.pull_request.labels.*.name, 'deps-approved') && '1' || '' }}
           HOLES_REVIEW_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'holes-approved') && '1' || '' }}
           SPEC_SYNC_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'spec-sync-approved') && '1' || '' }}
+          POLICY_CHANGE_APPROVED: ${{ (contains(github.event.pull_request.labels.*.name, 'policy-change-approved') || steps.policy-grant.outputs.approved == '1') && '1' || '' }}
       - if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -195,15 +219,31 @@ jobs:
           cache-dependency-path: examples/todo/package-lock.json
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      # CHANGE-4: on push the policy base is github.event.before; the only grant is the
+      # human label policy-change-approved on the PR that produced this commit.
+      - name: Policy grant from merged PR label (push only)
+        id: policy-grant
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          labels=$(gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/pulls" \
+            --jq '[.[] | select(.merged_at != null) | .labels[].name] | join(",")' || true)
+          case ",$labels," in
+            *,policy-change-approved,*) echo "approved=1" >> "$GITHUB_OUTPUT" ;;
+            *) echo "approved=" >> "$GITHUB_OUTPUT" ;;
+          esac
       - run: npm run verify
         env:
           CI: true
           GAUNTLET_E2E: "1"
-          # PR labels only. Push to main skips origin/main...HEAD inside the gates.
+          # PR labels only. Push to main skips origin/main...HEAD inside the diff gates;
+          # policy-base (CHANGE-4) diffs github.event.before..HEAD on push.
           ALLOW_SPEC_EDIT: ${{ contains(github.event.pull_request.labels.*.name, 'specs-approved') && '1' || '' }}
           ALLOW_DEPS_EDIT: ${{ contains(github.event.pull_request.labels.*.name, 'deps-approved') && '1' || '' }}
           HOLES_REVIEW_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'holes-approved') && '1' || '' }}
           SPEC_SYNC_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'spec-sync-approved') && '1' || '' }}
+          POLICY_CHANGE_APPROVED: ${{ (contains(github.event.pull_request.labels.*.name, 'policy-change-approved') || steps.policy-grant.outputs.approved == '1') && '1' || '' }}
       - if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

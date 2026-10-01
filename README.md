@@ -24,6 +24,7 @@ This repo is **not** only a Todo app. It is:
 Gherkin (human-owned)      -> behavior (protect-specs)
 OpenAPI (human-owned)      -> HTTP shape (protect-specs)
 package manifests          -> deps-lock (human grant)
+policy (CHANGE-4)          -> policy-base: config read from base; config/scripts/test configs/workflows diff needs policy-change-approved
 secrets / PII              -> secrets-scan (fail-closed; no ALLOW_SECRETS)
 domain isolation           -> arch-bound (no HTTP/UI/fs in src/domain)
 Playwright drivers         -> acceptance
@@ -95,7 +96,7 @@ protect-specs, deps-lock, secrets-scan, arch-bound, holes-review (D12), and no-c
 cannot edit `features/**` or `openapi/openapi.yaml` without a protect-specs
 grant, cannot edit `package.json` / `package-lock.json` (root, examples,
 templates) without a deps-lock grant (`ALLOW_DEPS_EDIT=1`, committed
-`allowDepsEdit: true`, or PR label `deps-approved` — working-tree
+`allowDepsEdit: true` already on the base branch, or PR label `deps-approved` — working-tree
 `.gauntlet/allow-*` files are **not** grants; no usable git → these gates
 **fail**), and cannot land
 credentials / private keys / high-confidence PII dumps (there is **no**
@@ -106,6 +107,19 @@ credentials / private keys / high-confidence PII dumps (there is **no**
 Apps use `gauntlet.config.json` to order gates. Mainline verify is **fail-closed**:
 `enabled: false` on a gate fails no-cheat / verify. Do not use that flag to sneak
 past the gauntlet.
+
+**CHANGE-4 (policy-base):** gates read policy from the **base** branch
+(`git show <base>:<app>/gauntlet.config.json`; `origin/$GITHUB_BASE_REF` on PRs,
+`github.event.before` on push, else `origin/main`), never from the working tree.
+`verify` runs policy-base first (built-in, not in `gates[]`). Any added/removed/changed
+config key fails without a human grant, except adding or altering `contract.cases`
+entries (D13); removing one needs the grant. Edits to `scripts/**`, test/mutation
+configs and `.github/workflows/**` need the same grant: `POLICY_CHANGE_APPROVED=1`
+or PR label `policy-change-approved`. A committed `allow*` counts only if already
+true in base. CI without a resolvable base fails; first adoption (config absent in
+base) needs the grant. **Known residual:** agents run `gh` as the owner identity,
+so grant labels are not yet provable as human — see the CHANGE-4 entry in
+[ADR-spec-sync-drift.md](./docs/ADR-spec-sync-drift.md).
 
 Todo is `strict` (D3 fail). The template is `lenient` (D3 warn).
 
@@ -129,6 +143,7 @@ Todo is `strict` (D3 fail). The template is `lenient` (D3 warn).
 - OpenAPI ↔ `contract.cases` inventory is **D13** (every op needs a case; invalid cases fail; `caseAllowlist` + mandatory `expires`).
 - ADR template light gate is **D14** (new/changed `docs/adr/**`; Discarded + Status; deletes fail — mark Superseded).
 - Security + Observability presence is **D15** (`docs/sdd/*.md` heading + ≥1 requirement; skip if `sdd: false`; lorem/TODO still passes).
+- Policy read from base is **CHANGE-4** (`policy-base`, built-in first step of verify; grant `policy-change-approved`).
 
 Remaining (not default kit gates):
 
