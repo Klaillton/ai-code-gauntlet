@@ -258,7 +258,9 @@ export function diffPolicy(base: Json, head: Json, path = ""): ConfigChange[] {
   if (baseObj && headObj) {
     const a = (base ?? {}) as Record<string, unknown>;
     const b = (head ?? {}) as Record<string, unknown>;
-    const keys = [...new Set([...Object.keys(a), ...Object.keys(b)])].sort();
+    const keys = [...new Set([...Object.keys(a), ...Object.keys(b)])].sort((x, y) =>
+      x.localeCompare(y),
+    );
     return keys.flatMap((key) => diffPolicy(a[key], b[key], joinPath(path, key)));
   }
   if (Array.isArray(base) && Array.isArray(head)) {
