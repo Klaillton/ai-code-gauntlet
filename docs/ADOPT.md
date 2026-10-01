@@ -126,8 +126,13 @@ vem do PR mergeado porque policy-base diffa `github.event.before..HEAD`. Detalhe
 
 Não há grant por config commitada. **Primeira adoção** (config ausente no base): falha sem esse grant;
 com ele, vale o config do head e todo `allow*` / `approved` fica `false`. Local sem `origin/main`:
-falha, salvo `POLICY_CHANGE_APPROVED=1` humano. Residual conhecido: agentes usam a identidade
-do owner no `gh`, então label/env ainda não provam origem humana (ver ADR, CHANGE-4).
+falha, salvo `POLICY_CHANGE_APPROVED=1` humano. O policy-base dentro do `verify` é só check local
+rápido (código do head). O **enforcer autoritativo** é o job do base
+`.github/workflows/policy-base.yml` (`pull_request_target` + push em main): checkout e deps do
+base, head só como dado (`git fetch`), `scripts/policy-base.ts --head <sha>` do base. Em push,
+`git worktree` em `github.event.before`. Residual conhecido: agentes usam a identidade do owner
+no `gh`, então label/env ainda não provam origem humana, e o job só bloqueia de verdade quando
+for status required no ruleset (ver ADR, CHANGE-4).
 
 ### Secrets (`secrets-scan`)
 

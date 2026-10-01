@@ -117,8 +117,12 @@ entries (D13); removing one needs the grant. Edits to `scripts/**`, test/mutatio
 configs and `.github/workflows/**` need the same grant: `POLICY_CHANGE_APPROVED=1`
 or PR label `policy-change-approved`. A committed `allow*` counts only if already
 true in base. CI without a resolvable base fails; first adoption (config absent in
-base) needs the grant. **Known residual:** agents run `gh` as the owner identity,
-so grant labels are not yet provable as human — see the CHANGE-4 entry in
+base) needs the grant. The in-verify run is a local fast check (head code); the
+**authoritative enforcer** is the base-run job `.github/workflows/policy-base.yml`
+(`pull_request_target` + push to main): base checkout, base deps, PR head fetched as
+data only, base `scripts/policy-base.ts --head <sha>`. **Known residual:** agents run `gh` as the owner identity,
+so grant labels are not yet provable as human, and the job only truly blocks once it is a
+required status — see the CHANGE-4 entry in
 [ADR-spec-sync-drift.md](./docs/ADR-spec-sync-drift.md).
 
 Todo is `strict` (D3 fail). The template is `lenient` (D3 warn).

@@ -41,7 +41,7 @@ See [ADR-spec-sync-drift.md](./ADR-spec-sync-drift.md).
 - **D15**: SDD-active apps need non-empty `docs/sdd/Security.md` + `Observability.md` (heading + ≥1 requirement; skip if `sdd: false`)
 - **CHANGE-2**: mutation / gherkin-mutation empty surface fails (never 100%); skipReason+expires or differential soft-skip
 - **CHANGE-3**: `src/**` PRs must also touch protected spec or human SPEC_SYNC_APPROVED grant
-- **CHANGE-4**: policy read from base; config / `scripts/**` / test configs / workflows diff needs human `policy-change-approved` grant
+- **CHANGE-4**: policy read from base; config / `scripts/**` / test configs / workflows diff needs human `policy-change-approved` grant; authoritative enforcer runs base code (`policy-base.yml`, `pull_request_target`)
 - ESLint + Prettier + TypeScript
 - AGENTS.md + skills
 - CI = the same gates
