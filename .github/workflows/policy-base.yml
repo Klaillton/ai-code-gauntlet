@@ -1,0 +1,132 @@
+name: policy-base
+
+# CHANGE-4 authoritative enforcer. Runs BASE code only; the head is data.
+# - pull_request_target: runs this workflow file from the base branch, checks out the BASE
+#   (default ref for pull_request_target), installs BASE deps, fetches the PR head as a ref
+#   only (git fetch; no checkout, no npm ci, no execution) and runs the base's
+#   scripts/policy-base.ts against base...head.
+# - push to main: git worktree at github.event.before runs the base enforcer against the
+#   pushed commit; the grant is the merged PR's label (commits/{sha}/pulls), so a direct
+#   push through the owner bypass has no grant and goes red.
+# Hardening: no secrets, persist-credentials: false, read-only token, head-controlled values
+# only via env (never interpolated into run:). The in-head policy-base inside `npm run verify`
+# is a local fast check; this job is the one that counts.
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: policy-base-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request_target' }}
+
+jobs:
+  enforce-pr:
+    name: policy-base (base-run, PR)
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the BASE (never the PR head)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - name: Install BASE deps only (no lifecycle scripts)
+        run: |
+          for tree in templates/ts-node-web examples/todo; do
+            npm --prefix "$tree" ci --ignore-scripts --no-audit --no-fund
+          done
+      - name: Fetch the PR head as data (no checkout)
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git fetch --no-tags origin "+refs/pull/${PR_NUMBER}/head:refs/remotes/pr/head"
+          git cat-file -e "${HEAD_SHA}^{commit}"
+      - name: Enforce with the BASE enforcer against base...head
+        env:
+          CI: "true"
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        # Grant: the policy-change-approved label, read by the script from the event payload.
+        run: |
+          status=0
+          for tree in templates/ts-node-web examples/todo; do
+            if [ ! -f "$tree/scripts/policy-base.ts" ]; then
+              echo "::error::$tree: base has no scripts/policy-base.ts; cannot enforce (fail closed)"
+              status=1
+              continue
+            fi
+            (cd "$tree" && npx --no-install tsx scripts/policy-base.ts --head "$HEAD_SHA") || status=1
+          done
+          exit "$status"
+
+  enforce-push:
+    name: policy-base (base-run, push)
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - name: Policy grant from the merged PR label (none on a direct push)
+        id: policy-grant
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          labels=$(gh api "repos/${REPO}/commits/${SHA}/pulls" \
+            --jq '[.[] | select(.merged_at != null) | .labels[].name] | join(",")' || true)
+          case ",$labels," in
+            *,policy-change-approved,*) echo "approved=1" >> "$GITHUB_OUTPUT" ;;
+            *) echo "approved=" >> "$GITHUB_OUTPUT" ;;
+          esac
+      - name: Base worktree at github.event.before
+        env:
+          BEFORE: ${{ github.event.before }}
+          BASE_DIR: ${{ runner.temp }}/policy-base-base
+        run: |
+          case "$BEFORE" in
+            "" | 0000000000000000000000000000000000000000)
+              echo "::error::no usable github.event.before; cannot resolve the base (fail closed)"
+              exit 1 ;;
+          esac
+          git worktree add --detach "$BASE_DIR" "$BEFORE"
+      - name: Enforce with the BASE enforcer against the pushed commit
+        env:
+          CI: "true"
+          HEAD_SHA: ${{ github.sha }}
+          BASE_DIR: ${{ runner.temp }}/policy-base-base
+          POLICY_CHANGE_APPROVED: ${{ steps.policy-grant.outputs.approved }}
+        run: |
+          status=0
+          for tree in templates/ts-node-web examples/todo; do
+            if [ ! -f "$BASE_DIR/$tree/scripts/policy-base.ts" ]; then
+              # Bootstrap (the push that introduces CHANGE-4): no base enforcer exists yet.
+              if [ "$POLICY_CHANGE_APPROVED" = "1" ]; then
+                echo "::notice::$tree: bootstrap; base has no enforcer, merged PR carries policy-change-approved"
+                continue
+              fi
+              echo "::error::$tree: base has no scripts/policy-base.ts and no grant (fail closed)"
+              status=1
+              continue
+            fi
+            npm --prefix "$BASE_DIR/$tree" ci --ignore-scripts --no-audit --no-fund
+            (cd "$BASE_DIR/$tree" && npx --no-install tsx scripts/policy-base.ts --head "$HEAD_SHA") || status=1
+          done
+          exit "$status"
