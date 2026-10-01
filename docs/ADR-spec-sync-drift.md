@@ -76,7 +76,7 @@ Scripts:
 - `scripts/inventory.ts` — routes, OpenAPI via `js-yaml`, feature tags, domain/unit
 - `scripts/spec-sync.ts` — D1-D6, D8, D10, D11, D13; exit 1 on fails
 - `scripts/no-cheat.ts` — D9; does **not** scan `scripts/` (self-match)
-- `scripts/policy-base.ts` — CHANGE-4 policy read from base + base→head policy diff (built-in first step of verify)
+- `scripts/policy-base.ts` — CHANGE-4 policy read from base + base→head policy diff (built-in first step of verify = local fast check; `--head <sha>` = base-run enforcer mode used by `.github/workflows/policy-base.yml`, the authoritative check)
 - `scripts/protect-specs.ts` — spec-edit grant; `GITHUB_BASE_REF` in CI
 - `scripts/holes-review.ts` — D12 implementation requires holes-review artifact or grant
 - `scripts/adr-lint.ts` — D14 ADR template light gate (diff-based on `docs/adr/**`)
@@ -244,9 +244,30 @@ working-tree `gauntlet.config.json`. In the same diff an agent could drop a glob
 4. `scripts/**`, test/mutation runner configs (`vitest|vite|jest|playwright|stryker` config,
    `vitest.workspace.*`, `cucumber.*`, `.c8rc*`, `.nycrc*`, `.strykerrc*`, `.mocharc*`) inside the
    app tree, and repo `.github/workflows/**`, changed base→head (plus index, working tree and
-   untracked files), need the same grant.
+   untracked files in the local, non-`--head` mode), need the same grant.
 5. policy-base is a **built-in first step** of `verify.ts`, not a `gates[]` entry, so removing it
-   from config does nothing. It also runs standalone: `npx tsx scripts/policy-base.ts`.
+   from config does nothing. It also runs standalone: `npx tsx scripts/policy-base.ts`. This
+   in-head run is a **local fast check only**: on a PR it is head code (a PR can rewrite
+   `runPolicyBase()` or drop the `verify` step, and `pull_request` runs the head's workflow).
+6. **The authoritative enforcer runs from the base**: `.github/workflows/policy-base.yml`.
+   - `pull_request_target` (types `opened`, `synchronize`, `reopened`, `labeled`,
+     `unlabeled`): GitHub runs the workflow file from the base branch. The job checks out the
+     base, runs `npm ci --ignore-scripts` from the base only, fetches the PR head as data
+     (`git fetch origin refs/pull/<n>/head`; no checkout, no `npm ci`, no head code executed)
+     and runs the base's `scripts/policy-base.ts --head <head sha>` per tree. In `--head` mode the
+     head config is read with `git show <head>:<app>/gauntlet.config.json`, and only the
+     `base...head` diff counts (working tree/index ignored). Grant: the PR label from the event
+     payload.
+   - `push` to main: a `git worktree` at `github.event.before` runs the base's enforcer with
+     `--head $GITHUB_SHA`. The grant is the merged PR's label (`commits/{sha}/pulls`); a direct
+     push through the owner bypass has no PR, so no grant, and main goes red.
+   - Hardening: permissions exactly `contents: read` + `pull-requests: read`, no secrets,
+     `persist-credentials: false`, PR number and SHAs passed via `env` (never interpolated into
+     `run:`), action SHAs pinned.
+   - Adversarial integration test (`change4-policy-base.test.ts`, both trees): a head that
+     replaces `runPolicyBase()` with `return { ok: true }` and removes the `npm run verify` step
+     is still failed by the base enforcer run from a base worktree, citing `scripts/**` and the
+     workflow; it passes only with the human grant.
 
 **Fail-closed rules.** No git → fail. CI (`CI`/`GITHUB_ACTIONS`) that cannot resolve the base
 → fail, even with the grant. Local without `origin/main` → fail unless the human env grant
@@ -274,7 +295,15 @@ needs the grant). Allowing an unresolvable CI base to pass (silent bypass).
   gates accepting a grant label only when its `labeled` event actor is not the agent identity,
   plus `require_code_owner_review` on the CHANGE-4 paths; or (b) manual merge by Dante on
   protected paths. Not implemented yet; rulesets and branch protection are unchanged.
-- **Head code runs the check.** On a PR the gate scripts and workflow come from the head. A
-  hostile edit of `policy-base.ts` itself is caught only by the grant requirement plus
-  CODEOWNERS / human review, not by the script.
+- **Required status.** The base-run `policy-base` job only truly blocks a merge once it is a
+  required status check in the ruleset. That is pending the same identity decision (the owner
+  bypass actor can merge past it today).
+- **Bootstrap.** The PR that introduces CHANGE-4 (#61) cannot be enforced by
+  `policy-base.yml`, because the base workflow does not have it yet. The human
+  `policy-change-approved` label on #61 is the bootstrap grant. The push job treats a base
+  without `scripts/policy-base.ts` as bootstrap: it passes only if the merged PR carries the label.
+- **Generated docs under a grant.** `gates[]` is read from the base unless the grant is set. A
+  granted PR that changes `gates[]` must regenerate `docs/generated` with the grant set
+  (`POLICY_CHANGE_APPROVED=1 npm run docs:generate`). Otherwise `docs/generated` keeps the
+  base `gates[]` and `docs-fresh` fails once the change lands in base.
 - `eslint.config.*`, `tsconfig.json` and `.prettierrc` are not in the CHANGE-4 path set.

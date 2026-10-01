@@ -1,12 +1,13 @@
-import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   diffPolicy,
   isProtectedPolicyPath,
   loadPolicyConfig,
+  parseHeadArg,
   runPolicyBase,
 } from "../../scripts/policy-base.js";
 
@@ -341,5 +342,103 @@ describe("CHANGE-4 helpers", () => {
     expect(isProtectedPolicyPath("app/.c8rc.json", "app/")).toBe(true);
     expect(isProtectedPolicyPath("app/src/domain/todo.ts", "app/")).toBe(false);
     expect(isProtectedPolicyPath("scripts/x.ts", "")).toBe(true);
+  });
+});
+
+const WORKFLOW_WITH_VERIFY = "name: verify\njobs:\n  t:\n    steps:\n      - run: npm run verify\n";
+const REAL_ENFORCER = resolve("scripts", "policy-base.ts");
+const TSX = resolve("node_modules", ".bin", "tsx");
+
+/** Base = real enforcer + workflow with a verify step; head neutralises both (adversarial). */
+function neutralisedHead(): { root: string; app: string; headSha: string } {
+  const { root, app } = fixture();
+  git(root, ["checkout", "-q", "main"]);
+  copyFileSync(REAL_ENFORCER, join(app, "scripts", "policy-base.ts"));
+  write(join(root, ".github", "workflows", "verify.yml"), WORKFLOW_WITH_VERIFY);
+  commitAll(root, "base with enforcer");
+  git(root, ["update-ref", "refs/remotes/origin/main", "HEAD"]);
+  git(root, ["checkout", "-q", "-B", "feature"]);
+  write(
+    join(app, "scripts", "policy-base.ts"),
+    "export function runPolicyBase() {\n  return { ok: true, findings: [] };\n}\n",
+  );
+  write(join(root, ".github", "workflows", "verify.yml"), "name: verify\njobs: {}\n");
+  commitAll(root, "neutralise the enforcer and drop the verify step");
+  return { root, app, headSha: git(root, ["rev-parse", "HEAD"]).trim() };
+}
+
+/** Run the BASE enforcer from a base worktree (what policy-base.yml does) against the head. */
+function runBaseEnforcer(root: string, headSha: string, extraEnv: NodeJS.ProcessEnv = {}) {
+  const baseDir = join(mkdtempSync(join(tmpdir(), "policy-base-wt-")), "base");
+  temps.push(dirname(baseDir));
+  git(root, ["worktree", "add", "-q", "--detach", baseDir, "origin/main"]);
+  const run = spawnSync(TSX, ["scripts/policy-base.ts", "--head", headSha], {
+    cwd: join(baseDir, "app"),
+    encoding: "utf8",
+    env: { PATH: process.env.PATH, CI: "true", GITHUB_BASE_REF: "main", ...extraEnv },
+  });
+  return { status: run.status, output: `${run.stdout}${run.stderr}`, baseDir };
+}
+
+describe("CHANGE-4 base-run enforcer (--head, pull_request_target model)", () => {
+  it("catchesAHeadThatNeutralisesPolicyBaseAndDropsTheVerifyStep", () => {
+    const { root, headSha } = neutralisedHead();
+    const { status, output, baseDir } = runBaseEnforcer(root, headSha);
+    expect(status).toBe(1);
+    expect(output).toContain("app/scripts/policy-base.ts");
+    expect(output).toContain(".github/workflows/verify.yml");
+    // The enforcer ran from base code: the worktree still holds the real script.
+    expect(readFileSync(join(baseDir, "app", "scripts", "policy-base.ts"), "utf8")).toContain(
+      "parseHeadArg",
+    );
+  }, 60_000);
+
+  it("passesTheSameNeutralisingHeadOnlyWithTheHumanGrant", () => {
+    const { root, headSha } = neutralisedHead();
+    const { status } = runBaseEnforcer(root, headSha, { POLICY_CHANGE_APPROVED: "1" });
+    expect(status).toBe(0);
+  }, 60_000);
+
+  it("readsTheHeadConfigFromTheCommitNotTheWorkingTree", () => {
+    const { app, root } = fixture();
+    const head = clone();
+    head.agent.protectedGlobs = [];
+    writeConfig(app, head);
+    commitAll(root, "drop globs");
+    const headSha = git(root, ["rev-parse", "HEAD"]).trim();
+    git(root, ["checkout", "-q", "--detach", "origin/main"]);
+    const result = runPolicyBase(app, LOCAL, { headRef: headSha });
+    expect(result.ok).toBe(false);
+    expect(failText(result)).toContain("agent.protectedGlobs[0] (removed)");
+  });
+
+  it("ignoresWorkingTreeEditsInHeadMode", () => {
+    const { app, root } = fixture();
+    write(join(app, "README.md"), "docs only\n");
+    commitAll(root, "docs");
+    const headSha = git(root, ["rev-parse", "HEAD"]).trim();
+    write(join(app, "scripts", "verify.ts"), "process.exit(0);\n");
+    expect(runPolicyBase(app, LOCAL).ok).toBe(false);
+    expect(runPolicyBase(app, LOCAL, { headRef: headSha }).ok).toBe(true);
+  });
+
+  it("failsClosedOnAnUnknownHeadOrAHeadWithoutConfig", () => {
+    const { app, root } = fixture();
+    const unknown = runPolicyBase(app, LOCAL, { headRef: "0".repeat(40) });
+    expect(unknown.ok).toBe(false);
+    expect(failText(unknown)).toContain("is not a commit");
+    rmSync(join(app, "gauntlet.config.json"));
+    commitAll(root, "delete config");
+    const sha = git(root, ["rev-parse", "HEAD"]).trim();
+    const missing = runPolicyBase(app, GRANT_ENV, { headRef: sha });
+    expect(missing.ok).toBe(false);
+    expect(failText(missing)).toContain("not found in head");
+  });
+
+  it("parsesTheHeadArgument", () => {
+    expect(parseHeadArg([])).toBeUndefined();
+    expect(parseHeadArg(["--head", "abc123"])).toBe("abc123");
+    expect(() => parseHeadArg(["--head"])).toThrow("--head requires");
+    expect(() => parseHeadArg(["--head", "--x"])).toThrow("--head requires");
   });
 });

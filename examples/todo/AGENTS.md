@@ -50,8 +50,15 @@ A committed `allow*` / `approved` flag counts only if it is already true in base
 (config absent in base) fails unless that grant is present. Without a base locally, only the env
 grant lets verify proceed; CI never does.
 
+The in-verify policy-base is a local fast check (on a PR it is head code). The authoritative
+enforcer is the base-run CI job (kit: `.github/workflows/policy-base.yml`, on
+`pull_request_target` and push): it checks out the base, installs base deps, reads the head only
+as git data and runs the base `scripts/policy-base.ts --head <sha>`. Neutralising the script or
+the workflow in a PR does not bypass it.
+
 Known residual: agents run `gh` as the owner identity, so a grant label (or env) is not yet
-provable as human. Never apply grant labels yourself. See the CHANGE-4 ADR entry.
+provable as human, and the base-run job only truly blocks once it is a required status.
+Never apply grant labels yourself. See the CHANGE-4 ADR entry.
 
 ### Specs — protect-specs
 

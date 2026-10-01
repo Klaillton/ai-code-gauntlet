@@ -12,6 +12,10 @@
  *   base→head need the same grant.
  * - Grant: `POLICY_CHANGE_APPROVED=1` or PR label `policy-change-approved`.
  *   A committed `allow*` / `approved` flag counts only when it is already true in base.
+ *
+ * Authoritative enforcement is the BASE-run CI job (`.github/workflows/policy-base.yml`,
+ * `pull_request_target` + push): base checkout, base deps, `--head <sha>` read as data.
+ * The in-head run inside `npm run verify` is only a local fast check (head code can be edited).
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
@@ -31,7 +35,8 @@ export type PolicyFinding = {
 };
 
 export type PolicyBase =
-  { ok: true; ref: string; range: string; via: string } | { ok: false; reason: string };
+  | { ok: true; ref: string; sep: "..." | ".."; range: string; via: string }
+  | { ok: false; reason: string };
 
 export type BaseConfig =
   | { status: "present"; config: Record<string, unknown> }
@@ -112,7 +117,7 @@ export function resolvePolicyBase(cwd: string, env: NodeJS.ProcessEnv = process.
   if (baseRef) {
     const ref = `origin/${baseRef}`;
     return commitOf(cwd, ref)
-      ? { ok: true, ref, range: `${ref}...HEAD`, via: "GITHUB_BASE_REF" }
+      ? { ok: true, ref, sep: "...", range: `${ref}...HEAD`, via: "GITHUB_BASE_REF" }
       : {
           ok: false,
           reason: `GITHUB_BASE_REF=${baseRef} but ${ref} is not available (fetch it)`,
@@ -130,6 +135,7 @@ export function resolvePolicyBase(cwd: string, env: NodeJS.ProcessEnv = process.
       ? {
           ok: true,
           ref: before,
+          sep: "..",
           range: `${before}..HEAD`,
           via: "github.event.before",
         }
@@ -142,6 +148,7 @@ export function resolvePolicyBase(cwd: string, env: NodeJS.ProcessEnv = process.
     ? {
         ok: true,
         ref: "origin/main",
+        sep: "...",
         range: "origin/main...HEAD",
         via: "origin/main",
       }
@@ -322,8 +329,20 @@ export function effectivePolicy(
   return clampGrants(merged, base) as Record<string, unknown>;
 }
 
-function readHeadConfig(cwd: string): Record<string, unknown> {
-  const parsed = JSON.parse(readFileSync(resolve(cwd, CONFIG_FILE), "utf8")) as unknown;
+/** Head config: working tree, or `git show <headRef>:<prefix>gauntlet.config.json` (data only). */
+function readHeadConfig(cwd: string, headRef?: string): Record<string, unknown> {
+  let raw: string;
+  if (headRef === undefined) {
+    raw = readFileSync(resolve(cwd, CONFIG_FILE), "utf8");
+  } else {
+    const spec = `${headRef}:${repoPrefix(cwd) ?? ""}${CONFIG_FILE}`;
+    const shown = git(cwd, ["show", spec]);
+    if (shown === undefined) {
+      throw new Error(`${spec} not found in head`);
+    }
+    raw = shown;
+  }
+  const parsed = JSON.parse(raw) as unknown;
   if (!isObj(parsed)) {
     throw new Error(`${CONFIG_FILE} must be a JSON object`);
   }
@@ -370,10 +389,14 @@ export function isProtectedPolicyPath(repoRel: string, prefix: string): boolean 
   return TEST_CONFIG_RES.some((re) => re.test(name));
 }
 
-function changedFiles(cwd: string, range: string): string[] | undefined {
+function changedFiles(cwd: string, range: string, headRef?: string): string[] | undefined {
   const committed = gitLines(cwd, ["diff", "--name-only", range]);
   if (committed === undefined) {
     return undefined;
+  }
+  if (headRef !== undefined) {
+    // Base-run enforcer: the working tree is the base checkout; only base→head counts.
+    return [...new Set(committed)].sort((a, b) => a.localeCompare(b));
   }
   const root = gitLines(cwd, ["rev-parse", "--show-toplevel"])?.[0] ?? cwd;
   return [
@@ -448,10 +471,21 @@ function checkBase(
   return { base, baseConfig: baseConfig.config, findings: [] };
 }
 
+export type PolicyRunOptions = {
+  /**
+   * Base-run enforcer mode (CHANGE-4 CI job): compare against this head commit as data
+   * (`git show` / `git diff <base>...<head>`), never the working tree. Without it the
+   * gate checks the working tree (local fast check inside `npm run verify`).
+   */
+  headRef?: string;
+};
+
 export function runPolicyBase(
   cwd = process.cwd(),
   env: NodeJS.ProcessEnv = process.env,
+  options: PolicyRunOptions = {},
 ): { ok: boolean; findings: PolicyFinding[] } {
+  const { headRef } = options;
   const done = (findings: PolicyFinding[]) => {
     const ok = findings.every((finding) => finding.severity !== "fail");
     writeReport(cwd, ok, findings);
@@ -463,9 +497,12 @@ export function runPolicyBase(
       fail("policy-base: git required for this gate (rev-parse failed or not a git checkout)."),
     ]);
   }
+  if (headRef !== undefined && !commitOf(cwd, headRef)) {
+    return done([fail(`policy-base: head ${headRef} is not a commit in this checkout.`)]);
+  }
   let head: Record<string, unknown>;
   try {
-    head = readHeadConfig(cwd);
+    head = readHeadConfig(cwd, headRef);
   } catch (error) {
     return done([fail(`policy-base: cannot read ${CONFIG_FILE}: ${(error as Error).message}`)]);
   }
@@ -496,11 +533,10 @@ export function runPolicyBase(
     );
   }
 
-  const files = changedFiles(cwd, base.range);
+  const range = `${base.ref}${base.sep}${headRef ?? "HEAD"}`;
+  const files = changedFiles(cwd, range, headRef);
   if (files === undefined) {
-    findings.push(
-      fail(`policy-base: git diff ${base.range} failed; cannot prove protected paths.`),
-    );
+    findings.push(fail(`policy-base: git diff ${range} failed; cannot prove protected paths.`));
     return done(findings);
   }
   const touched = files.filter((file) => isProtectedPolicyPath(file, prefix));
@@ -554,8 +590,22 @@ function isDirectRun(): boolean {
   return fileURLToPath(import.meta.url) === resolve(entry);
 }
 
+/** `--head <ref>` selects the base-run enforcer mode. */
+export function parseHeadArg(argv: string[]): string | undefined {
+  const index = argv.indexOf("--head");
+  if (index === -1) {
+    return undefined;
+  }
+  const value = argv[index + 1];
+  if (!value || value.startsWith("-")) {
+    throw new Error("--head requires a commit-ish");
+  }
+  return value;
+}
+
 if (isDirectRun()) {
-  const result = runPolicyBase();
+  const headRef = parseHeadArg(process.argv.slice(2));
+  const result = runPolicyBase(process.cwd(), process.env, headRef ? { headRef } : {});
   printPolicyFindings(result);
   if (!result.ok) {
     process.exitCode = 1;

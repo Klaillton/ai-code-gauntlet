@@ -70,7 +70,7 @@ Ordem relevante (após `protect-specs` / `deps-lock`):
   - allowlist **não** dispensa `forbidden-path` / PEM
 - **`deps-lock`** — manifesto de dependência é grant humano (`ALLOW_DEPS_EDIT` / label `deps-approved` no PR)
 - **`protect-specs`** — Gherkin + OpenAPI humanos (`ALLOW_SPEC_EDIT` / `specs-approved`)
-- **`policy-base`** (CHANGE-4, primeiro passo built-in do verify) — política lida do **base**; mudança em `gauntlet.config.json` (exceto add/alter de `contract.cases`), `scripts/**`, configs de teste/mutação ou `.github/workflows/**` exige `POLICY_CHANGE_APPROVED` / label `policy-change-approved`. Residual: o grant ainda não é verificável como humano (agentes usam a identidade do owner) — ver ADR
+- **`policy-base`** (CHANGE-4, primeiro passo built-in do verify) — política lida do **base**; mudança em `gauntlet.config.json` (exceto add/alter de `contract.cases`), `scripts/**`, configs de teste/mutação ou `.github/workflows/**` exige `POLICY_CHANGE_APPROVED` / label `policy-change-approved`. **Enforcer autoritativo roda do base**: workflow `.github/workflows/policy-base.yml` (`pull_request_target` + push em main) faz checkout do base, instala deps do base (`npm ci --ignore-scripts`), busca o head só como dado (`git fetch origin refs/pull/<n>/head`, sem checkout/`npm ci`/execução) e roda o `scripts/policy-base.ts` do base com `--head <sha>`; em push, `git worktree` em `github.event.before`. O policy-base dentro do `npm run verify` é só check local rápido (é código do head). Residual: o grant ainda não é verificável como humano (agentes usam a identidade do owner) e o job só bloqueia de verdade quando for status required no ruleset (pendente da decisão de identidade) — ver ADR
 - **`arch-bound`** — `src/domain` sem HTTP/UI/fs
 - **`no-cheat`** — skip/only, gate desligado, piso rebaixado
 
@@ -88,9 +88,11 @@ Workflow `.github/workflows/verify.yml` em push para `main`/`master`, em todo PR
 
 Permissions do workflow (nível do workflow, sem override por job): `contents: read` + `actions: write` + `pull-requests: read` (CHANGE-4: em push lê a label `policy-change-approved` do PR mergeado).
 
+Workflow `.github/workflows/policy-base.yml` (CHANGE-4, enforcer do base): `pull_request_target` (opened, synchronize, reopened, labeled, unlabeled) + push em `main`/`master`. Permissions exatamente `contents: read` + `pull-requests: read`, sem secrets, `persist-credentials: false`, número do PR e SHAs só via `env` (nada controlado pelo head interpolado em `run:`), nenhum código do head executado. Bootstrap: o PR que introduz o CHANGE-4 (#61) não é coberto por esse job (o workflow ainda não existe no base); a label humana `policy-change-approved` no #61 é o grant de bootstrap.
+
 ### Supply chain / ownership
 
-- Actions pinadas por SHA no `verify.yml`
+- Actions pinadas por SHA no `verify.yml` e no `policy-base.yml`
 - Dependabot **version updates**: somente `github-actions` na raiz, weekly, máx. 5 PRs (`.github/dependabot.yml`)
 - Dependabot **security updates** ligados nas settings do repo: alerta npm → PR de lockfile no template/Todo. Esses PRs passam pelo `deps-lock` como qualquer outro (label `deps-approved`). **Não** há version update de npm
 - CODEOWNERS em specs, `package.json` / lockfiles dos apps do kit, e `.github/workflows/**`
@@ -130,6 +132,7 @@ O exemplo Todo é in-memory + API fina. Não trate isso como auth de produção.
 - `docs/sdd/Security.md`
 - `.gitleaks.toml`
 - `.github/workflows/verify.yml`
+- `.github/workflows/policy-base.yml`
 - `.github/dependabot.yml`
 - `.github/CODEOWNERS`
 - `examples/todo/AGENTS.md` / `templates/ts-node-web/AGENTS.md` (seção secrets)
