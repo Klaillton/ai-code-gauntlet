@@ -25,7 +25,7 @@ empilhar tudo de uma vez — cada item é um PR independente.
 - spec-review skill
 - CI = `npm run verify`
 - D16 cheat-scan: AST em `src/**` (detecção de teste e patch de globais falham; overrides de igualdade avisam)
-- CHANGE-4 policy-base: política lida do base; diff de config/scripts/configs de teste/workflows exige `policy-change-approved`; enforcer autoritativo roda do base (`policy-base.yml`, `pull_request_target` + push) (residual: grant ainda não provado humano; required status pendente)
+- CHANGE-4 policy-base: política lida do base; diff de config/scripts/configs de teste/tsconfig/eslint/`.github/**` exige `policy-change-approved`; enforcer autoritativo roda do base (`policy-base.yml`, `pull_request_target` + push) (residual: grant ainda não provado humano; required status pendente)
 
 ---
 

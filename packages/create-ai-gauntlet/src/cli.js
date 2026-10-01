@@ -632,7 +632,7 @@ Hardening gates always wired: ${hardeningList.join(", ")}.
 - [ ] Run \`npm run docs:generate\` then \`npm run verify\` until green
 - [ ] Use human grants for protected edits (see docs/ADOPT.md): \`specs-approved\`, \`deps-approved\`, \`ALLOW_SPEC_EDIT\`, \`ALLOW_DEPS_EDIT\`
 - [ ] Add CI workflow from kit (.github/workflows/verify.yml)
-- [ ] CHANGE-4: add the base-run enforcer from kit (.github/workflows/policy-base.yml, pull_request_target) and make it a required status check
+- [ ] CHANGE-4: add the base-run enforcer from kit (.github/workflows/policy-base.yml, pull_request_target) and make it a required status check (protects config policy, scripts/**, test/tsconfig/eslint configs, .github/**)
 
 See kit docs: docs/ADOPT.md
 `,
