@@ -343,6 +343,31 @@ describe("CHANGE-4 helpers", () => {
     expect(isProtectedPolicyPath("app/src/domain/todo.ts", "app/")).toBe(false);
     expect(isProtectedPolicyPath("scripts/x.ts", "")).toBe(true);
   });
+
+  it("protectsTsconfigEslintAndAllOfDotGithubButNotPrettierrc", () => {
+    for (const path of [
+      "app/tsconfig.json",
+      "app/tsconfig.build.json",
+      "app/e2e/tsconfig.json",
+      "app/eslint.config.js",
+      "app/eslint.config.mjs",
+      "app/.eslintrc",
+      "app/.eslintrc.cjs",
+      "app/.eslintrc.json",
+      ".github/actions/setup/action.yml",
+      ".github/CODEOWNERS",
+      ".github/dependabot.yml",
+      ".github/workflows/verify.yml",
+    ]) {
+      expect(isProtectedPolicyPath(path, "app/"), path).toBe(true);
+    }
+    expect(isProtectedPolicyPath("app/.prettierrc", "app/")).toBe(false);
+    expect(isProtectedPolicyPath("app/.prettierrc.json", "app/")).toBe(false);
+    expect(isProtectedPolicyPath("other/tsconfig.json", "app/")).toBe(false);
+    expect(isProtectedPolicyPath("app/node_modules/x/tsconfig.json", "app/")).toBe(false);
+    expect(isProtectedPolicyPath("app/src/tsconfig-helper.ts", "app/")).toBe(false);
+    expect(isProtectedPolicyPath("docs/.github/x.yml", "")).toBe(false);
+  });
 });
 
 const WORKFLOW_WITH_VERIFY = "name: verify\njobs:\n  t:\n    steps:\n      - run: npm run verify\n";
@@ -441,4 +466,118 @@ describe("CHANGE-4 base-run enforcer (--head, pull_request_target model)", () =>
     expect(() => parseHeadArg(["--head"])).toThrow("--head requires");
     expect(() => parseHeadArg(["--head", "--x"])).toThrow("--head requires");
   });
+});
+
+const TSCONFIG_STRICT = `${JSON.stringify({ compilerOptions: { strict: true } }, null, 2)}\n`;
+const TSCONFIG_LOOSE = `${JSON.stringify({ compilerOptions: { strict: false } }, null, 2)}\n`;
+const ESLINT_BASE = 'export default [{ rules: { "no-unused-vars": "error" } }];\n';
+const ESLINT_OFF = 'export default [{ rules: { "no-unused-vars": "off" } }];\n';
+const ACTION_BASE =
+  "runs:\n  using: composite\n  steps:\n    - run: npm run verify\n      shell: bash\n";
+const ACTION_OFF =
+  "runs:\n  using: composite\n  steps:\n    - run: echo skipped\n      shell: bash\n";
+
+/** Fixture whose committed base (origin/main) also holds tsconfig, eslint, a composite action, CODEOWNERS, dependabot. */
+function toolingFixture(): { root: string; app: string } {
+  const { root, app } = fixture();
+  git(root, ["checkout", "-q", "main"]);
+  write(join(app, "tsconfig.json"), TSCONFIG_STRICT);
+  write(join(app, "eslint.config.js"), ESLINT_BASE);
+  write(join(root, ".github", "actions", "verify", "action.yml"), ACTION_BASE);
+  write(join(root, ".github", "CODEOWNERS"), "/app/scripts/ @owner\n");
+  write(join(root, ".github", "dependabot.yml"), "version: 2\nupdates: []\n");
+  commitAll(root, "tooling in base");
+  git(root, ["update-ref", "refs/remotes/origin/main", "HEAD"]);
+  git(root, ["checkout", "-q", "-B", "feature"]);
+  return { root, app };
+}
+
+/** Head-mode run from a detached base checkout (in-process twin of policy-base.yml). */
+function headMode(root: string, app: string, env: NodeJS.ProcessEnv) {
+  const headSha = git(root, ["rev-parse", "HEAD"]).trim();
+  git(root, ["checkout", "-q", "--detach", "origin/main"]);
+  try {
+    return runPolicyBase(app, env, { headRef: headSha });
+  } finally {
+    git(root, ["checkout", "-q", "feature"]);
+  }
+}
+
+describe("CHANGE-4 protected tooling paths (tsconfig, eslint, .github/**)", () => {
+  it("failsOnTsconfigStrictFalseWithoutGrantAndPassesWithIt", () => {
+    const { root, app } = toolingFixture();
+    write(join(app, "tsconfig.json"), TSCONFIG_LOOSE);
+    commitAll(root, "strict: false");
+    expect(failText(runPolicyBase(app, LOCAL))).toContain("app/tsconfig.json");
+    expect(runPolicyBase(app, GRANT_ENV).ok).toBe(true);
+    const head = headMode(root, app, { CI: "true", GITHUB_BASE_REF: "main" });
+    expect(head.ok).toBe(false);
+    expect(failText(head)).toContain("app/tsconfig.json");
+    expect(headMode(root, app, { ...GRANT_ENV, CI: "true", GITHUB_BASE_REF: "main" }).ok).toBe(
+      true,
+    );
+  });
+
+  it("failsOnEslintConfigChangeOrNewEslintrcWithoutGrant", () => {
+    const { root, app } = toolingFixture();
+    write(join(app, "eslint.config.js"), ESLINT_OFF);
+    write(join(app, "src", ".eslintrc.json"), '{ "root": true, "rules": {} }\n');
+    commitAll(root, "disable a lint rule");
+    const text = failText(runPolicyBase(app, LOCAL));
+    expect(text).toContain("app/eslint.config.js");
+    expect(text).toContain("app/src/.eslintrc.json");
+    expect(failText(headMode(root, app, { CI: "true", GITHUB_BASE_REF: "main" }))).toContain(
+      "app/eslint.config.js",
+    );
+    expect(runPolicyBase(app, GRANT_ENV).ok).toBe(true);
+  });
+
+  it("failsOnModifiedCompositeActionWithoutGrant", () => {
+    const { root, app } = toolingFixture();
+    write(join(root, ".github", "actions", "verify", "action.yml"), ACTION_OFF);
+    commitAll(root, "composite action skips verify");
+    expect(failText(runPolicyBase(app, LOCAL))).toContain(".github/actions/verify/action.yml");
+    expect(failText(headMode(root, app, { CI: "true", GITHUB_BASE_REF: "main" }))).toContain(
+      ".github/actions/verify/action.yml",
+    );
+    expect(runPolicyBase(app, GRANT_ENV).ok).toBe(true);
+  });
+
+  it("failsOnCodeownersOrDependabotEditWithoutGrant", () => {
+    const { root, app } = toolingFixture();
+    write(join(root, ".github", "CODEOWNERS"), "# ownership removed\n");
+    write(
+      join(root, ".github", "dependabot.yml"),
+      "version: 2\nupdates:\n  - package-ecosystem: npm\n",
+    );
+    commitAll(root, "drop codeowners, widen dependabot");
+    const text = failText(runPolicyBase(app, LOCAL));
+    expect(text).toContain(".github/CODEOWNERS");
+    expect(text).toContain(".github/dependabot.yml");
+    expect(runPolicyBase(app, GRANT_ENV).ok).toBe(true);
+  });
+
+  it("ignoresPrettierrcChanges", () => {
+    const { root, app } = toolingFixture();
+    write(join(app, ".prettierrc"), '{ "printWidth": 120 }\n');
+    commitAll(root, "format only");
+    expect(runPolicyBase(app, LOCAL).ok).toBe(true);
+  });
+
+  it("baseWorktreeEnforcerCatchesTsconfigAndCompositeActionInTheHead", () => {
+    const { root, app } = toolingFixture();
+    git(root, ["checkout", "-q", "main"]);
+    copyFileSync(REAL_ENFORCER, join(app, "scripts", "policy-base.ts"));
+    commitAll(root, "real enforcer in base");
+    git(root, ["update-ref", "refs/remotes/origin/main", "HEAD"]);
+    git(root, ["checkout", "-q", "-B", "feature"]);
+    write(join(app, "tsconfig.json"), TSCONFIG_LOOSE);
+    write(join(root, ".github", "actions", "verify", "action.yml"), ACTION_OFF);
+    commitAll(root, "weaken typecheck and the composite action");
+    const headSha = git(root, ["rev-parse", "HEAD"]).trim();
+    const { status, output } = runBaseEnforcer(root, headSha);
+    expect(status).toBe(1);
+    expect(output).toContain("app/tsconfig.json");
+    expect(output).toContain(".github/actions/verify/action.yml");
+  }, 60_000);
 });

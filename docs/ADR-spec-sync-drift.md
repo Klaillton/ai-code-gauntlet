@@ -69,7 +69,7 @@ Todo seed (owner `klaillton`, expires **`2027-06-02`** — renew before that dat
 | **D14**           | New/changed `docs/adr/**` missing Context/Decision/Consequences/Discarded/Status, empty Discarded/Status, bad Status, or ADR delete    | **fail**; skip if diff does not touch `docs/adr/**`; Superseded needs existing `ADR-` ref                                     |
 | **D15**           | SDD-active app missing/empty `docs/sdd/Security.md` or `Observability.md` (or config paths), or file lacks heading + ≥1 requirement    | **fail**; skip if `sdd: false`                                                                                                |
 | **protect-specs** | git diff touches features/OpenAPI/`protectedGlobs` without a human grant                                                               | fail; also **fail** if git/`rev-parse` unavailable (`git required for this gate`)                                             |
-| **policy-base**   | `gauntlet.config.json` differs from base (any key; only `contract.cases` add/alter exempt), or `scripts/**` / test configs / workflows | **fail** without `POLICY_CHANGE_APPROVED` / `policy-change-approved`; **fail** if CI cannot resolve the base (CHANGE-4)       |
+| **policy-base**   | `gauntlet.config.json` ≠ base (any key; `contract.cases` add/alter exempt), or `scripts/**`, test/tsconfig/eslint config, `.github/**` | **fail** without `POLICY_CHANGE_APPROVED` / `policy-change-approved`; **fail** if CI cannot resolve the base (CHANGE-4)       |
 
 Scripts:
 
@@ -243,8 +243,12 @@ working-tree `gauntlet.config.json`. In the same diff an agent could drop a glob
    `cases` key, or a non-object entry is a removal and needs the grant.
 4. `scripts/**`, test/mutation runner configs (`vitest|vite|jest|playwright|stryker` config,
    `vitest.workspace.*`, `cucumber.*`, `.c8rc*`, `.nycrc*`, `.strykerrc*`, `.mocharc*`) inside the
-   app tree, and repo `.github/workflows/**`, changed base→head (plus index, working tree and
-   untracked files in the local, non-`--head` mode), need the same grant.
+   app tree, `tsconfig*.json`, `eslint.config.*` and `.eslintrc*` inside the app tree (a
+   `strict: false` or a disabled lint rule weakens typecheck/lint), and everything under the
+   repo-root `.github/**` (workflows, composite actions in `.github/actions/**` that a step can
+   call, `CODEOWNERS`, `dependabot.yml`), changed base→head (plus index, working tree and
+   untracked files in the local, non-`--head` mode), need the same grant. `.prettierrc` is
+   intentionally excluded (formatting only).
 5. policy-base is a **built-in first step** of `verify.ts`, not a `gates[]` entry, so removing it
    from config does nothing. It also runs standalone: `npx tsx scripts/policy-base.ts`. This
    in-head run is a **local fast check only**: on a PR it is head code (a PR can rewrite
@@ -275,8 +279,10 @@ working-tree `gauntlet.config.json`. In the same diff an agent could drop a glob
 **First adoption** (config absent in base) → fail unless the grant is present; with it, head
 policy is used and every committed `allow*` / `approved` stays false. Unreadable base config → fail.
 
-**Consequences.** Any PR that touches gate scripts, workflows, test configs or config policy
-(including Dependabot action bumps) needs `policy-change-approved`. The `smoke-create` job gives
+**Consequences.** Any PR that touches gate scripts, `.github/**`, test/tsconfig/eslint configs
+or config policy needs `policy-change-approved`. Dependabot version updates for the
+github-actions ecosystem always touch `.github/**`, so every such bump requires the label;
+this is intentional. The `smoke-create` job gives
 the scaffold its own base (first commit pushed to a local bare `origin`) and runs verify without
 the kit's event context. The policy diff ignores JSON formatting and object key order; array
 order counts (gate order matters).
@@ -306,4 +312,7 @@ needs the grant). Allowing an unresolvable CI base to pass (silent bypass).
   granted PR that changes `gates[]` must regenerate `docs/generated` with the grant set
   (`POLICY_CHANGE_APPROVED=1 npm run docs:generate`). Otherwise `docs/generated` keeps the
   base `gates[]` and `docs-fresh` fails once the change lands in base.
-- `eslint.config.*`, `tsconfig.json` and `.prettierrc` are not in the CHANGE-4 path set.
+- **Fork and Dependabot PRs.** Under `pull_request_target` they get a read-only token and no
+  secrets, which the job does not need. This path is only exercised after #61 merges; Nightly
+  will confirm it on the first Dependabot PR.
+- `.prettierrc` is intentionally excluded (format only).

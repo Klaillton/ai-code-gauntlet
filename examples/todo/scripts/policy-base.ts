@@ -8,8 +8,9 @@
  * - Semantic JSON diff base→head, deny by default: any added/removed/changed key needs
  *   the human grant. Only exception: adding or altering `contract.cases` entries
  *   (D13 requires it). Removing a `contract.cases` entry needs the grant.
- * - `scripts/**`, test/mutation runner configs and `.github/workflows/**` changed
- *   base→head need the same grant.
+ * - `scripts/**`, test/mutation runner configs, `tsconfig*.json`, `eslint.config.*`,
+ *   `.eslintrc*` (tree-relative) and repo-root `.github/**` changed base→head need the
+ *   same grant. `.prettierrc` is intentionally excluded (formatting only).
  * - Grant: `POLICY_CHANGE_APPROVED=1` or PR label `policy-change-approved`.
  *   A committed `allow*` / `approved` flag counts only when it is already true in base.
  *
@@ -368,10 +369,20 @@ const TEST_CONFIG_RES = [
   /^\.(?:c8|nyc|stryker|mocha)rc(?:\.[\w-]+)?$/,
 ];
 
-/** scripts/**, test + mutation runner configs (tree-relative), .github/workflows/** (repo-relative). */
+/** Typecheck/lint configs: `strict: false` or a disabled rule weakens a gate. */
+const TOOL_CONFIG_RES = [
+  /^tsconfig[\w.-]*\.json$/,
+  /^eslint\.config\.[\w.]+$/,
+  /^\.eslintrc(?:\.[\w.]+)?$/,
+];
+
+/**
+ * scripts/**, test + mutation runner configs, tsconfig/eslint configs (tree-relative) and
+ * .github/** (repo root: workflows, composite actions, CODEOWNERS, dependabot.yml).
+ */
 export function isProtectedPolicyPath(repoRel: string, prefix: string): boolean {
   const normalized = repoRel.replace(/\\/g, "/");
-  if (normalized.startsWith(".github/workflows/")) {
+  if (normalized.startsWith(".github/")) {
     return true;
   }
   const scope = prefix.replace(/\/$/, "");
@@ -386,7 +397,7 @@ export function isProtectedPolicyPath(repoRel: string, prefix: string): boolean 
     return false;
   }
   const name = basename(treeRel);
-  return TEST_CONFIG_RES.some((re) => re.test(name));
+  return [...TEST_CONFIG_RES, ...TOOL_CONFIG_RES].some((re) => re.test(name));
 }
 
 function changedFiles(cwd: string, range: string, headRef?: string): string[] | undefined {

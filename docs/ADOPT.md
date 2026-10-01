@@ -61,7 +61,7 @@ Greenfield `create` continua a copiar o template inteiro (já hardenado).
 
 | Gate            | Script                  | Função                                                                                              |
 | --------------- | ----------------------- | --------------------------------------------------------------------------------------------------- |
-| `policy-base`   | built-in no `verify`    | CHANGE-4: política lida do base; diff de config/`scripts/**`/configs de teste/workflows exige grant |
+| `policy-base`   | built-in no `verify`    | CHANGE-4: política do base; diff de config, `scripts/**`, teste/ts/eslint, `.github/**` exige grant |
 | `complexity`    | `npm run complexity`    | Cyclomatic max 10 em `src/domain`                                                                   |
 | `crap`          | `npm run crap`          | CRAP ≤ 8 em `src/domain` tocado (depois de unit+coverage)                                           |
 | `arch-bound`    | `npm run arch-bound`    | `src/domain` não importa HTTP/UI/fs                                                                 |
@@ -93,7 +93,7 @@ diff (`docs:generate`). Reabrir spec fechada: grant protect-specs + skill
 
 **CHANGE-3:** PRs com `src/**` precisam de Gherkin/OpenAPI/holes-review no mesmo PR, ou grant `SPEC_SYNC_APPROVED` / label `spec-sync-approved`.
 
-**CHANGE-4:** a política vem do **base** (`git show <base>:<app>/gauntlet.config.json`; `origin/$GITHUB_BASE_REF` em PR, `github.event.before` em push, senão `origin/main`). Qualquer chave adicionada/removida/alterada no config falha sem grant (deny by default), exceto add/alter de `contract.cases` (D13); remover um case exige grant. `scripts/**`, configs de teste/mutação e `.github/workflows/**` idem. CI sem base resolvível falha.
+**CHANGE-4:** a política vem do **base** (`git show <base>:<app>/gauntlet.config.json`; `origin/$GITHUB_BASE_REF` em PR, `github.event.before` em push, senão `origin/main`). Qualquer chave adicionada/removida/alterada no config falha sem grant (deny by default), exceto add/alter de `contract.cases` (D13); remover um case exige grant. `scripts/**`, configs de teste/mutação, `tsconfig*.json`, `eslint.config.*`, `.eslintrc*` e `.github/**` na raiz (workflows, composite actions, CODEOWNERS, dependabot.yml) idem; `.prettierrc` fica de fora de propósito (só formatação). Bumps do Dependabot do ecossistema github-actions tocam `.github/**` e sempre exigem `policy-change-approved` (intencional). CI sem base resolvível falha.
 
 ## Grants humanos (não bakear no CI)
 
