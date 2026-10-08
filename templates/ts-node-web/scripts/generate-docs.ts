@@ -20,7 +20,11 @@ function mdTable(headers: string[], rows: string[][]): string {
 }
 
 function cell(value: string): string {
-  return value.replace(/\|/g, "\\|") || "—";
+  // Backslash first, then pipe, every occurrence. Escaping only "|" leaves a
+  // preceding "\" able to unescape the pipe (CodeQL js/incomplete-sanitization).
+  // String patterns: the same global replace as a regex, without the
+  // typescript:S7781/S7780 smells Sonar raises on a one-line change.
+  return value.replaceAll("\\", String.raw`\\`).replaceAll("|", String.raw`\|`) || "—";
 }
 
 function renderApi(inventory: Inventory): string {
