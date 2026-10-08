@@ -5,6 +5,7 @@ import process from "node:process";
 import Ajv from "ajv";
 import addFormats from "ajv-formats";
 import yaml from "js-yaml";
+import { loadPolicyConfig } from "./policy-base.js";
 
 type JsonSchema = Record<string, unknown>;
 
@@ -49,8 +50,9 @@ type GauntletConfig = {
   };
 };
 
+/** CHANGE-4: base-branch policy; head contract.cases (policy-base.ts). */
 function loadConfig(): GauntletConfig {
-  return JSON.parse(readFileSync(resolve("gauntlet.config.json"), "utf8")) as GauntletConfig;
+  return loadPolicyConfig(process.cwd()) as unknown as GauntletConfig;
 }
 
 function loadOpenApi(openapiPath: string): OpenApiDoc {

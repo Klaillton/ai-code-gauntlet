@@ -10,6 +10,8 @@
 
 ## Gates
 
+Built-in first step: `policy-base` (CHANGE-4) — policy read from the base branch; not in `gates[]`, so config cannot drop it.
+
 1. `format` (enabled) — `npm run format`
 2. `lint` (enabled) — `npm run lint`
 3. `typecheck` (enabled) — `npm run typecheck`

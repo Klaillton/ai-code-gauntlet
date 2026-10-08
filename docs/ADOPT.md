@@ -5,15 +5,15 @@
 Não exija green total no dia 1. Adote por **camadas** de trabalho humano, mas o
 **config gerado é fail-closed**: `verify` não aceita `enabled: false` (D9 / verify).
 
-| Camada    | O quê                                                                                                                                                                                                     | Dia 1?                 |
-| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
-| 0         | `AGENTS.md` + skills                                                                                                                                                                                      | Sim                    |
-| 1         | format / lint / typecheck                                                                                                                                                                                 | Ideal                  |
-| Hardening | protect-specs, secrets-scan, arch-bound, no-cheat, holes-review (D12), spec-code (CHANGE-3), adr-lint (D14), sdd-presence (D15), spec-sync, docs, complexity, crap, mutation (+ deps-lock se no template) | Sim (sempre no config) |
-| 2         | unit + coverage                                                                                                                                                                                           | Ideal                  |
-| 3         | OpenAPI contract                                                                                                                                                                                          | Se houver API          |
-| 4         | Gherkin + Playwright E2E                                                                                                                                                                                  | Poucos fluxos críticos |
-| 5         | CI = verify                                                                                                                                                                                               | Quando local estável   |
+| Camada    | O quê                                                                                                                                                                                                                                       | Dia 1?                 |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| 0         | `AGENTS.md` + skills                                                                                                                                                                                                                        | Sim                    |
+| 1         | format / lint / typecheck                                                                                                                                                                                                                   | Ideal                  |
+| Hardening | policy-base (CHANGE-4, built-in), protect-specs, secrets-scan, arch-bound, no-cheat, holes-review (D12), spec-code (CHANGE-3), adr-lint (D14), sdd-presence (D15), spec-sync, docs, complexity, crap, mutation (+ deps-lock se no template) | Sim (sempre no config) |
+| 2         | unit + coverage                                                                                                                                                                                                                             | Ideal                  |
+| 3         | OpenAPI contract                                                                                                                                                                                                                            | Se houver API          |
+| 4         | Gherkin + Playwright E2E                                                                                                                                                                                                                    | Poucos fluxos críticos |
+| 5         | CI = verify                                                                                                                                                                                                                                 | Quando local estável   |
 
 ## CLI
 
@@ -39,7 +39,7 @@ node packages/create-ai-gauntlet/bin/create-ai-gauntlet.js adopt . --gates stati
   `no-cheat.ts`, `spec-sync.ts`, `complexity.ts`, `mutation.ts`,
   `generate-docs.ts`, `check-docs-fresh.ts`, `inventory.ts`, `verify.ts`,
   `deps-lock.ts`, `holes-review.ts`, `secrets-scan.ts`, `arch-bound.ts`, `crap.ts`,
-  `gherkin-mutation.ts`, …)
+  `gherkin-mutation.ts`, `policy-base.ts`, …)
 - Inclui o gate `deps-lock` quando o template tem `scripts/deps-lock.ts`
 - Escreve `gauntlet.config.json` alinhado a `templates/ts-node-web`:
   - lista completa de gates (sem `enabled: false`), incluindo `complexity`
@@ -59,22 +59,23 @@ Greenfield `create` continua a copiar o template inteiro (já hardenado).
 
 ## Hardening gates
 
-| Gate            | Script                  | Função                                                                                          |
-| --------------- | ----------------------- | ----------------------------------------------------------------------------------------------- |
-| `complexity`    | `npm run complexity`    | Cyclomatic max 10 em `src/domain`                                                               |
-| `crap`          | `npm run crap`          | CRAP ≤ 8 em `src/domain` tocado (depois de unit+coverage)                                       |
-| `arch-bound`    | `npm run arch-bound`    | `src/domain` não importa HTTP/UI/fs                                                             |
-| `protect-specs` | `npm run protect-specs` | Diff em features/OpenAPI/`protectedGlobs` exige grant humano                                    |
-| `deps-lock`     | `npm run deps-lock`     | Diff em `package.json` / lockfile exige grant (só se no template)                               |
-| `secrets-scan`  | `npm run secrets-scan`  | Credenciais, PEM, tokens de alta confiança, PII em fixtures — fail-closed; sem `ALLOW_SECRETS`  |
-| `no-cheat`      | `npm run no-cheat`      | D9: skip/only/pending, `enabled:false`, coverage floors                                         |
-| `spec-sync`     | `npm run spec-sync`     | Drift D1–D6, D8, D10, **D11** (edge), **D13** (OpenAPI ↔ contract.cases)                        |
-| `adr-lint`      | `npm run adr-lint`      | **D14** ADR template on new/changed `docs/adr/**`                                               |
-| `sdd-presence`  | `npm run sdd-presence`  | **D15** `docs/sdd/Security.md` + `Observability.md` presence (heading + ≥1 requirement)         |
-| `docs`          | `npm run docs:check`    | D7: `docs/generated/*` fresco                                                                   |
-| `mutation`      | `npm run test:mutation` | Kill-score floor on domain (Todo and adopt template); CHANGE-2: empty surface fails, never 100% |
+| Gate            | Script                  | Função                                                                                              |
+| --------------- | ----------------------- | --------------------------------------------------------------------------------------------------- |
+| `policy-base`   | built-in no `verify`    | CHANGE-4: política do base; diff de config, `scripts/**`, teste/ts/eslint, `.github/**` exige grant |
+| `complexity`    | `npm run complexity`    | Cyclomatic max 10 em `src/domain`                                                                   |
+| `crap`          | `npm run crap`          | CRAP ≤ 8 em `src/domain` tocado (depois de unit+coverage)                                           |
+| `arch-bound`    | `npm run arch-bound`    | `src/domain` não importa HTTP/UI/fs                                                                 |
+| `protect-specs` | `npm run protect-specs` | Diff em features/OpenAPI/`protectedGlobs` exige grant humano                                        |
+| `deps-lock`     | `npm run deps-lock`     | Diff em `package.json` / lockfile exige grant (só se no template)                                   |
+| `secrets-scan`  | `npm run secrets-scan`  | Credenciais, PEM, tokens de alta confiança, PII em fixtures — fail-closed; sem `ALLOW_SECRETS`      |
+| `no-cheat`      | `npm run no-cheat`      | D9: skip/only/pending, `enabled:false`, coverage floors                                             |
+| `spec-sync`     | `npm run spec-sync`     | Drift D1–D6, D8, D10, **D11** (edge), **D13** (OpenAPI ↔ contract.cases)                            |
+| `adr-lint`      | `npm run adr-lint`      | **D14** ADR template on new/changed `docs/adr/**`                                                   |
+| `sdd-presence`  | `npm run sdd-presence`  | **D15** `docs/sdd/Security.md` + `Observability.md` presence (heading + ≥1 requirement)             |
+| `docs`          | `npm run docs:check`    | D7: `docs/generated/*` fresco                                                                       |
+| `mutation`      | `npm run test:mutation` | Kill-score floor on domain (Todo and adopt template); CHANGE-2: empty surface fails, never 100%     |
 
-Ordem típica (template): format → lint → typecheck → complexity → arch-bound →
+Ordem típica (template): policy-base (built-in) → format → lint → typecheck → complexity → arch-bound →
 protect-specs → [`deps-lock`] → holes-review → spec-code → adr-lint → sdd-presence → secrets-scan → no-cheat → spec-sync → docs → unit →
 crap → mutation → contract → e2e → gherkin-mutation.
 
@@ -92,6 +93,8 @@ diff (`docs:generate`). Reabrir spec fechada: grant protect-specs + skill
 
 **CHANGE-3:** PRs com `src/**` precisam de Gherkin/OpenAPI/holes-review no mesmo PR, ou grant `SPEC_SYNC_APPROVED` / label `spec-sync-approved`.
 
+**CHANGE-4:** a política vem do **base** (`git show <base>:<app>/gauntlet.config.json`; `origin/$GITHUB_BASE_REF` em PR, `github.event.before` em push, senão `origin/main`). Qualquer chave adicionada/removida/alterada no config falha sem grant (deny by default), exceto add/alter de `contract.cases` (D13); remover um case exige grant. `scripts/**`, configs de teste/mutação, `tsconfig*.json`, `eslint.config.*`, `.eslintrc*` e `.github/**` na raiz (workflows, composite actions, CODEOWNERS, dependabot.yml) idem; `.prettierrc` fica de fora de propósito (só formatação). Bumps do Dependabot do ecossistema github-actions tocam `.github/**` e sempre exigem `policy-change-approved` (intencional). CI sem base resolvível falha.
+
 ## Grants humanos (não bakear no CI)
 
 ### Specs (`protect-specs`)
@@ -99,21 +102,37 @@ diff (`docs:generate`). Reabrir spec fechada: grant protect-specs + skill
 Verify falha se o diff tocar specs protegidos **a menos que** um destes exista:
 
 1. `ALLOW_SPEC_EDIT=1` (documentar no PR; **não** env permanente no CI)
-2. `allowSpecEdit: true` no config (default **false**; config commitada)
+2. `allowSpecEdit: true` já no config do **base** (default **false**; flipar no PR não vale — CHANGE-4)
 3. Label de PR **`specs-approved`** — o workflow exporta `ALLOW_SPEC_EDIT=1` só nesse caso
 
 ### Deps (`deps-lock`, quando presente)
 
 1. `ALLOW_DEPS_EDIT=1`
-2. `allowDepsEdit: true` no config (default **false**; config commitada)
+2. `allowDepsEdit: true` já no config do **base** (default **false**; flipar no PR não vale — CHANGE-4)
 3. Label de PR **`deps-approved`**
 
 Pushes a `main` e PRs sem label continuam fail-closed no **working tree**.
 Em evento `push` para `main`/`master`, protect-specs e deps-lock **não**
 relitigam `origin/main...HEAD` (o merge já aconteceu). Labels de PR continuam
-valendo só em `pull_request`. Detalhes:
+valendo só em `pull_request` — exceto `policy-change-approved` (CHANGE-4), que em push
+vem do PR mergeado porque policy-base diffa `github.event.before..HEAD`. Detalhes:
 [`ADR-spec-sync-drift.md`](./ADR-spec-sync-drift.md) e
 [`ADR-phase2-deps-spec-review.md`](./ADR-phase2-deps-spec-review.md).
+
+### Política (`policy-base`, CHANGE-4)
+
+1. `POLICY_CHANGE_APPROVED=1`
+2. Label de PR **`policy-change-approved`** — o workflow exporta `POLICY_CHANGE_APPROVED=1`; em push lê a label do PR mergeado
+
+Não há grant por config commitada. **Primeira adoção** (config ausente no base): falha sem esse grant;
+com ele, vale o config do head e todo `allow*` / `approved` fica `false`. Local sem `origin/main`:
+falha, salvo `POLICY_CHANGE_APPROVED=1` humano. O policy-base dentro do `verify` é só check local
+rápido (código do head). O **enforcer autoritativo** é o job do base
+`.github/workflows/policy-base.yml` (`pull_request_target` + push em main): checkout e deps do
+base, head só como dado (`git fetch`), `scripts/policy-base.ts --head <sha>` do base. Em push,
+`git worktree` em `github.event.before`. Residual conhecido: agentes usam a identidade do owner
+no `gh`, então label/env ainda não provam origem humana, e o job só bloqueia de verdade quando
+for status required no ruleset (ver ADR, CHANGE-4).
 
 ### Secrets (`secrets-scan`)
 
@@ -137,7 +156,7 @@ Detalhes: [`ADR-secrets-privacy.md`](./ADR-secrets-privacy.md).
 4. `npm run docs:generate` e então `npm run verify` até green
 5. **Não** desligar gates com `enabled: false` — remova um gate do array só com
    decisão humana consciente (e espere D9/no-cheat se algo ficar inconsistente)
-6. Colocar CI com `npm run verify` (+ labels de grant no workflow do kit)
+6. Colocar CI com `npm run verify` (+ labels de grant no workflow do kit). O primeiro PR que adiciona o gauntlet é primeira adoção: exige `policy-change-approved`
 
 ## Apps não-TypeScript
 

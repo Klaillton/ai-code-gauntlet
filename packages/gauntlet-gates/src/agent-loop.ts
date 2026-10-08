@@ -7,16 +7,18 @@
  * Agents should implement fixes between iterations (this script only re-runs verify).
  * For fully autonomous loops, wrap with your agent harness calling this after each edit.
  */
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { spawn } from "node:child_process";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
+import { loadPolicyConfig } from "./policy-base.js";
 
 export function readConfiguredMax(cwd = process.cwd()): number | undefined {
   try {
-    const raw = readFileSync(join(cwd, "gauntlet.config.json"), "utf8");
-    const n = (JSON.parse(raw) as { agent?: { maxVerifyCycles?: unknown } }).agent?.maxVerifyCycles;
+    // CHANGE-4: maxVerifyCycles is policy, read from the base-branch config.
+    const config = loadPolicyConfig(cwd) as {
+      agent?: { maxVerifyCycles?: unknown };
+    };
+    const n = config.agent?.maxVerifyCycles;
     if (typeof n === "number" && Number.isInteger(n) && n >= 1) return n;
   } catch {
     /* missing/invalid config → fall through */

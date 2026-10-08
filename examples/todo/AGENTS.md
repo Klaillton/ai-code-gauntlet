@@ -22,13 +22,45 @@ Ship behavior that is:
 3. Proven by **two test streams**: unit (Vitest) + acceptance (Cucumber + Playwright)
 4. Shaped by **static gates**: TypeScript, ESLint, Prettier, coverage, complexity
 5. Kept honest by **spec-sync** (D1–D8, **D10**, **D11**, **D13**), **no-cheat** (D9), **protect-specs**,
-   **deps-lock**, **secrets-scan**, and **arch-bound**
+   **deps-lock**, **secrets-scan**, **arch-bound**, and **policy-base** (CHANGE-4: policy from base)
 
 You implement. Humans defend the specs and dependency manifests.
 
 ## Hard prohibitions (enforced)
 
 A prompt “please don’t” is not enough. These fail the gauntlet.
+
+### Policy read from base — CHANGE-4 (policy-base)
+
+`npm run verify` always runs **policy-base** first (built-in, not in `gates[]`, so config
+cannot drop it). Policy comes from the **base** branch, not the working tree:
+`git show <base>:<app>/gauntlet.config.json`. Base = `origin/$GITHUB_BASE_REF` on PRs,
+`github.event.before` on push, otherwise `origin/main`. CI that cannot resolve the base **fails**.
+
+Do not, without a human grant:
+
+- change, add, or remove **any** key in `gauntlet.config.json` (`protectedGlobs`, `allow*`,
+  `gates`, `strictness`, thresholds, allowlists, `skipReason`/`expires`, new keys — deny by default).
+  Only exception: adding or altering `contract.cases` entries (D13). Removing one needs the grant.
+- edit `scripts/**`, test/mutation runner configs (`vitest.config.*`, `stryker.*`, `jest.config.*`,
+  `playwright.config.*`, `cucumber.*`, `.c8rc*`, `.nycrc*`), `tsconfig*.json`, `eslint.config.*`,
+  `.eslintrc*`, or anything under the repo-root `.github/**` (workflows, composite actions,
+  CODEOWNERS, dependabot.yml). `.prettierrc` is intentionally not protected (format only).
+
+Grant (human-only): `POLICY_CHANGE_APPROVED=1` or PR label `policy-change-approved`.
+A committed `allow*` / `approved` flag counts only if it is already true in base. First adoption
+(config absent in base) fails unless that grant is present. Without a base locally, only the env
+grant lets verify proceed; CI never does.
+
+The in-verify policy-base is a local fast check (on a PR it is head code). The authoritative
+enforcer is the base-run CI job (kit: `.github/workflows/policy-base.yml`, on
+`pull_request_target` and push): it checks out the base, installs base deps, reads the head only
+as git data and runs the base `scripts/policy-base.ts --head <sha>`. Neutralising the script or
+the workflow in a PR does not bypass it.
+
+Known residual: agents run `gh` as the owner identity, so a grant label (or env) is not yet
+provable as human, and the base-run job only truly blocks once it is a required status.
+Never apply grant labels yourself. See the CHANGE-4 ADR entry.
 
 ### Specs — protect-specs
 
@@ -44,7 +76,7 @@ The gate inspects `git diff` for `HEAD`, the index, `origin/main...HEAD`,
 If those files change, verify **fails** unless a **human grant** exists:
 
 1. `ALLOW_SPEC_EDIT=1` (document why in the PR; do **not** bake this into CI as a permanent env)
-2. `allowSpecEdit: true` in `gauntlet.config.json` (default **false**; committed human config; do not flip it)
+2. `allowSpecEdit: true` already in the **base-branch** `gauntlet.config.json` (default **false**; committed human config; flipping it in a PR does nothing — CHANGE-4)
 3. GitHub pull_request label `specs-approved`
 
 On GitHub Actions `pull_request` jobs, `.github/workflows/verify.yml` exports
@@ -66,7 +98,7 @@ Do not edit without a human grant:
 Same git-diff surfaces as protect-specs. Grants:
 
 1. `ALLOW_DEPS_EDIT=1` (document in the PR; do **not** bake into CI permanently)
-2. `allowDepsEdit: true` in `gauntlet.config.json` (default **false**; committed human config)
+2. `allowDepsEdit: true` already in the **base-branch** `gauntlet.config.json` (default **false**; committed human config — CHANGE-4)
 3. GitHub pull_request label `deps-approved`
 
 CI exports `ALLOW_DEPS_EDIT=1` **only if** the PR has label `deps-approved`.
@@ -252,6 +284,7 @@ npm run arch-bound          # domain must not import HTTP/UI/fs infra
 npm run crap                # CRAP ≤ 8 on touched src/domain (needs coverage)
 npm run test:mutation       # mutation kill-score ≥ 80% (in Todo verify)
 npm run gherkin-mutation    # mutate Gherkin examples; e2e must still fail them
+npx tsx scripts/policy-base.ts # CHANGE-4: policy vs base (verify runs it first)
 npm run protect-specs       # fail if specs changed without a human grant
 npm run deps-lock           # fail if package manifests changed without a grant
 npm run secrets-scan        # fail on credentials, private keys, high-confidence PII
@@ -263,7 +296,7 @@ npm run verify              # FULL gauntlet — required before "done"
 npm run agent:loop          # re-run verify (max iterations via MAX_ITERATIONS)
 ```
 
-`npm run verify` order:
+`npm run verify` order (after built-in **policy-base**, CHANGE-4):
 
 1. Prettier check
 2. ESLint

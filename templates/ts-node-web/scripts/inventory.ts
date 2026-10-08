@@ -3,6 +3,7 @@ import { basename, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import process from "node:process";
 import yaml from "js-yaml";
+import { loadPolicyConfig } from "./policy-base.js";
 
 export const HTTP_METHODS = ["get", "post", "put", "patch", "delete", "options", "head"] as const;
 export type HttpMethod = (typeof HTTP_METHODS)[number];
@@ -239,9 +240,13 @@ function walkFiles(dir: string): string[] {
   return out.sort((a, b) => a.localeCompare(b));
 }
 
+/**
+ * CHANGE-4: effective policy read from the base branch (`git show <base>:gauntlet.config.json`),
+ * head `contract.cases` only; committed allow* / approved flags count only when already true in base.
+ * See `policy-base.ts`.
+ */
 export function loadConfig(cwd = process.cwd()): GauntletConfig {
-  const path = resolve(cwd, "gauntlet.config.json");
-  return JSON.parse(readFileSync(path, "utf8")) as GauntletConfig;
+  return loadPolicyConfig(cwd) as unknown as GauntletConfig;
 }
 
 export type SddOptions = Exclude<NonNullable<GauntletConfig["sdd"]>, false>;

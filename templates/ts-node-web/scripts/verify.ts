@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { spawn } from "node:child_process";
 import process from "node:process";
+import { loadPolicyConfig, printPolicyFindings, runPolicyBase } from "./policy-base.js";
 
 type Gate = {
   id: string;
@@ -24,9 +25,9 @@ type GateResult = {
   skipped?: boolean;
 };
 
+/** CHANGE-4: gates[] / strictness come from the base-branch config (policy-base.ts). */
 function loadConfig(): GauntletConfig {
-  const path = resolve(process.cwd(), "gauntlet.config.json");
-  return JSON.parse(readFileSync(path, "utf8")) as GauntletConfig;
+  return loadPolicyConfig(process.cwd()) as unknown as GauntletConfig;
 }
 
 function runStep(gate: Gate): Promise<number> {
@@ -56,6 +57,7 @@ function writeReport(config: GauntletConfig, gates: GateResult[], ok: boolean): 
     strictness: config.strictness ?? "strict",
     ok,
     gates,
+    policyBase: readJson("policy-base-report.json"),
     specSync: readJson("spec-sync-report.json"),
     noCheat: readJson("no-cheat-report.json"),
     protectSpecs: readJson("protect-specs-report.json"),
@@ -76,6 +78,24 @@ async function main(): Promise<void> {
   const title = config.name ?? "gauntlet";
   console.info(`AI Code Gauntlet — verify pipeline (${title})`);
   const results: GateResult[] = [];
+
+  // CHANGE-4: built-in first step; not in gates[] so a head edit cannot drop it.
+  console.info("\n=== GATE: policy-base (built-in) ===");
+  const policyStarted = Date.now();
+  const policy = runPolicyBase();
+  printPolicyFindings(policy);
+  results.push({
+    id: "policy-base",
+    ok: policy.ok,
+    exitCode: policy.ok ? 0 : 1,
+    durationMs: Date.now() - policyStarted,
+  });
+  if (!policy.ok) {
+    writeReport(config, results, false);
+    console.error("\nGate failed: policy-base (exit 1)");
+    process.exitCode = 1;
+    return;
+  }
 
   for (const gate of config.gates) {
     if (gate.enabled === false) {

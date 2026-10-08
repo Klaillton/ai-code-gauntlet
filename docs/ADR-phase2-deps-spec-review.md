@@ -39,7 +39,7 @@ It **fails** when any of these change without a grant:
 ### Grants (human-only)
 
 1. `ALLOW_DEPS_EDIT=1` (document in the PR; do **not** bake into CI permanently)
-2. `allowDepsEdit: true` in `gauntlet.config.json` (default **false**; committed human config)
+2. `allowDepsEdit: true` in the **base-branch** `gauntlet.config.json` (default **false**; committed human config; a PR flipping it gets nothing — CHANGE-4)
 3. GitHub PR label `deps-approved`
 
 On `pull_request`, `.github/workflows/verify.yml` exports `ALLOW_DEPS_EDIT=1`
