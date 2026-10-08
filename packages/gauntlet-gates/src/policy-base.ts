@@ -19,7 +19,7 @@
  * The in-head run inside `npm run verify` is only a local fast check (head code can be edited).
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { basename, resolve } from "node:path";
+import { basename, delimiter, join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import process from "node:process";
@@ -51,11 +51,31 @@ export type ConfigChange = {
   exempt: boolean;
 };
 
-type Json = unknown;
+let gitBinary: string | undefined;
+
+/** Absolute git binary. execFile of a bare "git" searches PATH (Sonar typescript:S4036). */
+function gitExecutable(): string {
+  if (gitBinary !== undefined) {
+    return gitBinary;
+  }
+  const name = process.platform === "win32" ? "git.exe" : "git";
+  for (const dir of (process.env.PATH ?? "").split(delimiter)) {
+    if (dir.length === 0) {
+      continue;
+    }
+    const candidate = join(dir, name);
+    if (existsSync(candidate)) {
+      gitBinary = candidate;
+      return candidate;
+    }
+  }
+  gitBinary = name;
+  return gitBinary;
+}
 
 function git(cwd: string, args: string[]): string | undefined {
   try {
-    return execFileSync("git", args, {
+    return execFileSync(gitExecutable(), args, {
       cwd,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
@@ -185,11 +205,11 @@ export function readBaseConfig(cwd: string, ref: string): BaseConfig {
   }
 }
 
-function isObj(value: Json): value is Record<string, unknown> {
+function isObj(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function deepEqual(a: Json, b: Json): boolean {
+function deepEqual(a: unknown, b: unknown): boolean {
   if (a === b) {
     return true;
   }
@@ -207,7 +227,7 @@ function joinPath(path: string, key: string): string {
   return path.length === 0 ? key : `${path}.${key}`;
 }
 
-function diffCases(base: Json, head: Json): ConfigChange[] {
+function diffCases(base: unknown, head: unknown): ConfigChange[] {
   const before = base === undefined ? [] : base;
   const after = head === undefined ? [] : head;
   if (!Array.isArray(before) || !Array.isArray(after)) {
@@ -241,7 +261,7 @@ function diffCases(base: Json, head: Json): ConfigChange[] {
   return changes;
 }
 
-function kindOf(base: Json, head: Json): ConfigChange["kind"] {
+function kindOf(base: unknown, head: unknown): ConfigChange["kind"] {
   if (base === undefined) {
     return "added";
   }
@@ -249,7 +269,7 @@ function kindOf(base: Json, head: Json): ConfigChange["kind"] {
 }
 
 /** Semantic JSON diff, deny by default. Arrays are ordered (gate order matters). */
-export function diffPolicy(base: Json, head: Json, path = ""): ConfigChange[] {
+export function diffPolicy(base: unknown, head: unknown, path = ""): ConfigChange[] {
   if (path === CASES_PATH) {
     return diffCases(base, head);
   }
@@ -288,7 +308,7 @@ function isGrantKey(key: string): boolean {
 }
 
 /** A committed allow* / approved flag is true only when it is already true in base. */
-export function clampGrants(head: Json, base: Json): Json {
+export function clampGrants(head: unknown, base: unknown): unknown {
   if (Array.isArray(head)) {
     return head.map((item, index) =>
       clampGrants(item, Array.isArray(base) ? base[index] : undefined),
@@ -383,7 +403,7 @@ const TOOL_CONFIG_RES = [
  * .github/** (repo root: workflows, composite actions, CODEOWNERS, dependabot.yml).
  */
 export function isProtectedPolicyPath(repoRel: string, prefix: string): boolean {
-  const normalized = repoRel.replace(/\\/g, "/");
+  const normalized = repoRel.replaceAll("\\", "/");
   if (normalized.startsWith(".github/")) {
     return true;
   }
@@ -581,10 +601,20 @@ function writeReport(cwd: string, ok: boolean, findings: PolicyFinding[]): void 
   }
 }
 
+function findingMark(severity: PolicyFinding["severity"]): string {
+  if (severity === "fail") {
+    return "x";
+  }
+  if (severity === "warn") {
+    return "!";
+  }
+  return "i";
+}
+
 export function printPolicyFindings(result: { ok: boolean; findings: PolicyFinding[] }): void {
   console.info(`policy-base — ${result.findings.length} finding(s)`);
   for (const finding of result.findings) {
-    const mark = finding.severity === "fail" ? "x" : finding.severity === "warn" ? "!" : "i";
+    const mark = findingMark(finding.severity);
     const log = finding.severity === "fail" ? console.error : console.info;
     log(`  ${mark} [${finding.id}/${finding.severity}] ${finding.message}`);
   }

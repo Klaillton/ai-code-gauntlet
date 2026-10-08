@@ -11,15 +11,14 @@ concurrency:
   group: verify-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: read
-  actions: write
-  # CHANGE-4: push to main looks up the merged PR's policy-change-approved label.
-  pull-requests: read
+# Nothing at workflow level (githubactions:S8264). Each job sets its own token scope.
+permissions: {}
 
 jobs:
   gates-sync:
     name: Gate scripts in sync
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -33,6 +32,9 @@ jobs:
 
   sbom:
     name: SBOM
+    permissions:
+      contents: read
+      actions: write
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -59,6 +61,8 @@ jobs:
 
   audit:
     name: npm audit
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -77,6 +81,8 @@ jobs:
 
   smoke-create:
     name: Smoke create + verify
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -120,6 +126,9 @@ jobs:
 
   gitleaks:
     name: gitleaks (history extra)
+    permissions:
+      contents: read
+      actions: write
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -149,6 +158,10 @@ jobs:
 
   template:
     name: Template ts-node-web
+    permissions:
+      contents: read
+      actions: write
+      pull-requests: read
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -201,6 +214,10 @@ jobs:
 
   example-todo:
     name: Example Todo
+    permissions:
+      contents: read
+      actions: write
+      pull-requests: read
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
