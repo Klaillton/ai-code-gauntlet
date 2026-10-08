@@ -20,7 +20,9 @@ function mdTable(headers: string[], rows: string[][]): string {
 }
 
 function cell(value: string): string {
-  return value.replace(/\|/g, "\\|") || "—";
+  // Backslash first, then pipe, every occurrence. Escaping only "|" leaves a
+  // preceding "\" able to unescape the pipe (CodeQL js/incomplete-sanitization).
+  return value.replaceAll(/\\/g, "\\\\").replaceAll(/\|/g, "\\|") || "—";
 }
 
 function renderApi(inventory: Inventory): string {
