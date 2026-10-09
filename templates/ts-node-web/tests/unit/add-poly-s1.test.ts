@@ -8,6 +8,7 @@ import {
   enumerateModules,
   parseSurefireXml,
   pomGuard,
+  stripComments,
 } from "../../scripts/maven.js";
 
 const temps: string[] = [];
@@ -121,6 +122,12 @@ describe("ADD-POLY S1: maven parsing (no mvn needed)", () => {
     expect(messages.some((m) => m.includes("<maven.test.skip>"))).toBe(true);
     expect(messages.some((m) => m.includes("<jacoco.minimum>"))).toBe(true);
     expect(messages.some((m) => m.includes("<skipTests>"))).toBe(false);
+  });
+
+  it("strips every XML comment, including unclosed ones", () => {
+    expect(stripComments("a<!-- x -->b<!-- y -->c")).toBe("abc");
+    expect(stripComments("a<!-- <skipTests>")).toBe("a");
+    expect(stripComments("<!--<!-- -->--><skip>")).toBe("--><skip>");
   });
 
   it("clean pom has no findings", () => {

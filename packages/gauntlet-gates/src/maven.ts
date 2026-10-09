@@ -45,8 +45,22 @@ const FORCED_PROPS = [
 
 export type MavenModule = { dir: string; packaging: string; pom: string };
 
-function stripComments(xml: string): string {
-  return xml.replace(/<!--[\s\S]*?-->/g, "");
+/** Drops XML comments by scanning (no regex); an unclosed comment drops the rest. */
+export function stripComments(xml: string): string {
+  let out = "";
+  let from = 0;
+  for (;;) {
+    const open = xml.indexOf("<!--", from);
+    if (open === -1) {
+      return out + xml.slice(from);
+    }
+    out += xml.slice(from, open);
+    const close = xml.indexOf("-->", open + 4);
+    if (close === -1) {
+      return out;
+    }
+    from = close + 3;
+  }
 }
 
 function posix(path: string): string {
