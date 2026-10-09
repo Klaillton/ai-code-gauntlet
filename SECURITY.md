@@ -19,12 +19,12 @@ O que **não** cobre:
 
 Branch default: **`main`**. Correções de segurança entram só aí.
 
-| Superfície                         | Suportada |
-| ---------------------------------- | --------- |
-| `main`                             | Sim       |
-| Tags / releases pontuais           | Não (sem SLA de backport) |
-| Branches de feature, forks, adopt  | Não       |
-| Apps gerados a partir do template  | Responsabilidade do dono do app |
+| Superfície                        | Suportada                       |
+| --------------------------------- | ------------------------------- |
+| `main`                            | Sim                             |
+| Tags / releases pontuais          | Não (sem SLA de backport)       |
+| Branches de feature, forks, adopt | Não                             |
+| Apps gerados a partir do template | Responsabilidade do dono do app |
 
 ## Reportando uma vulnerabilidade
 
@@ -125,7 +125,7 @@ O exemplo Todo é in-memory + API fina. Não trate isso como auth de produção.
 3. Agent não adiciona `secretsScan.allowPaths`. Para se humano.
 4. Não desligar gate no `gauntlet.config.json` para “ficar verde”.
 5. Grants (`ALLOW_SPEC_EDIT`, `ALLOW_DEPS_EDIT`, labels `*-approved`) são humanos. Workflow que afrouxa isso é mudança de segurança — CODEOWNERS em `.github/workflows/**`.
-6. App gerado: copie esta política e **apague** o que for só do kit; adicione auth/TLS do *seu* runtime.
+6. App gerado: copie esta política e **apague** o que for só do kit; adicione auth/TLS do _seu_ runtime.
 
 ## Referências no repo
 
