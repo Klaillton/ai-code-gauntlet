@@ -1,5 +1,6 @@
 {
   "name": "todo-example",
+  "stack": "npm",
   "strictness": "strict",
   "allowSpecEdit": false,
   "allowDepsEdit": false,

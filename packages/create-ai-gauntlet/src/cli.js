@@ -1,5 +1,15 @@
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync, appendFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+  writeFileSync,
+  appendFileSync,
+} from "node:fs";
+import { execFileSync } from "node:child_process";
+import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -30,7 +40,7 @@ function printHelp() {
 
 Usage:
   create-ai-gauntlet create <dir> [--sample todo]
-  create-ai-gauntlet adopt [dir] [--gates static,unit,contract,e2e]
+  create-ai-gauntlet adopt [dir] [--gates static,unit,contract,e2e] [--stack npm|maven] [--kit-ref <sha>]
   create-ai-gauntlet help
 
 Examples:
@@ -38,10 +48,13 @@ Examples:
   npx create-ai-gauntlet create my-app --sample todo
   npx create-ai-gauntlet adopt .
   npx create-ai-gauntlet adopt . --gates static,unit
+  npx create-ai-gauntlet adopt . --stack maven
 
 Notes:
   adopt writes a fail-closed gauntlet.config.json matching templates/ts-node-web
   (full gate list; never enabled:false). --gates only guides scaffolding + ADOPT-STATUS.
+  --stack maven (ADD-POLY S1 walking skeleton): no package.json, no scripts/ copied;
+  the pinned kit runner runs compile + surefire + freshness (see ADOPT-STATUS.md).
 `);
 }
 
@@ -117,10 +130,7 @@ function createProject(dir, { sample } = {}) {
         continue;
       }
       const raw = readFileSync(full, "utf8");
-      writeFileSync(
-        full,
-        raw.replace(/("name"\s*:\s*)"[^"]*"/, `$1${JSON.stringify(pkgName)}`),
-      );
+      writeFileSync(full, raw.replace(/("name"\s*:\s*)"[^"]*"/, `$1${JSON.stringify(pkgName)}`));
     }
     // Keep committed D7 docs honest after the name patch (no npm install yet).
     const gauntletMd = join(target, "docs/generated/gauntlet.md");
@@ -150,7 +160,10 @@ function defaultGates(list) {
   if (!list) {
     return ["format", "lint", "typecheck", "unit"];
   }
-  return list.split(",").map((s) => s.trim()).filter(Boolean);
+  return list
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
 function gateEnabled(id, enabledIds) {
@@ -242,13 +255,21 @@ function buildAdoptConfig(name, skeleton) {
         ],
       },
       agent: {
-        protectedGlobs: ["features/**/*.feature", "openapi/openapi.yaml", "docs/holes-review/**/*.md"],
+        protectedGlobs: [
+          "features/**/*.feature",
+          "openapi/openapi.yaml",
+          "docs/holes-review/**/*.md",
+        ],
         maxVerifyCycles: 5,
       },
     };
   }
 
   config.name = name;
+  // ADD-POLY: fail-closed stack (template ships "npm"; older templates may not).
+  if (!config.stack) {
+    config = { name, stack: "npm", ...config };
+  }
   if (config.allowSpecEdit === undefined) config.allowSpecEdit = false;
   if (!config.strictness) config.strictness = "lenient";
   config.gates = Array.isArray(config.gates) ? [...config.gates] : [];
@@ -344,7 +365,11 @@ function buildAdoptConfig(name, skeleton) {
 
   if (!config.agent) {
     config.agent = {
-      protectedGlobs: ["features/**/*.feature", "openapi/openapi.yaml", "docs/holes-review/**/*.md"],
+      protectedGlobs: [
+        "features/**/*.feature",
+        "openapi/openapi.yaml",
+        "docs/holes-review/**/*.md",
+      ],
       maxVerifyCycles: 5,
     };
   }
@@ -399,6 +424,7 @@ function mergeGitignore(target, skeleton) {
     "crap-report.json",
     "deps-lock-report.json",
     "secrets-scan-report.json",
+    "maven-report.json",
     ".gauntlet/allow-spec-edit",
     ".gauntlet/allow-deps-edit",
     ".gauntlet/allow-secrets-paths",
@@ -423,7 +449,6 @@ function mergeGitignore(target, skeleton) {
   }
 }
 
-
 const SDD_PRESENCE_DOCS = ["docs/sdd/Security.md", "docs/sdd/Observability.md"];
 
 function sddPresenceDocOk(markdown) {
@@ -445,9 +470,7 @@ function ensureSddPresenceDocs(target, skeleton) {
     const from = join(skeleton, rel);
     if (!existsSync(to)) {
       if (!existsSync(from)) {
-        throw new Error(
-          `adopt failed (D15): missing ${rel} and template has no copy to install`,
-        );
+        throw new Error(`adopt failed (D15): missing ${rel} and template has no copy to install`);
       }
       mkdirSync(dirname(to), { recursive: true });
       cpSync(from, to);
@@ -463,6 +486,261 @@ function ensureSddPresenceDocs(target, skeleton) {
       );
     }
   }
+}
+
+export const ADOPT_STACKS = ["npm", "maven"];
+
+/**
+ * ADD-POLY S1: maven walking skeleton. The consumer gets config + agent docs only; the kit
+ * runner (pinned checkout) owns every command. No package.json, no scripts/ in the consumer.
+ */
+export const L0_GATE_IDS = [
+  "protect-specs",
+  "holes-review",
+  "spec-code",
+  "adr-lint",
+  "sdd-presence",
+  "secrets-scan",
+  "spec-sync",
+];
+
+/** gauntlet-gates spec-code DEFAULT_SPEC_GLOBS (build files excluded on purpose). */
+const SPEC_GLOBS = [
+  "features/**/*.feature",
+  "openapi/openapi.yaml",
+  "openapi/**/*.yaml",
+  "openapi/**/*.yml",
+  "docs/holes-review/**/*.md",
+];
+
+/** Drops XML comments by scanning (no regex); an unclosed comment drops the rest. */
+function stripXmlComments(xml) {
+  let out = "";
+  let from = 0;
+  for (;;) {
+    const open = xml.indexOf("<!--", from);
+    if (open === -1) return out + xml.slice(from);
+    out += xml.slice(from, open);
+    const close = xml.indexOf("-->", open + 4);
+    if (close === -1) return out;
+    from = close + 3;
+  }
+}
+
+/** Reactor module dirs from pom.xml <modules> (recursive), relative to the root. */
+export function mavenModuleDirs(root, dir = "") {
+  const pom = join(root, dir, "pom.xml");
+  if (!existsSync(pom)) return [];
+  const xml = stripXmlComments(readFileSync(pom, "utf8"));
+  const out = [];
+  for (const match of xml.matchAll(/<module>([^<]*)<\/module>/g)) {
+    const child = [dir, (match[1] ?? "").trim()].filter(Boolean).join("/");
+    out.push(child, ...mavenModuleDirs(root, child));
+  }
+  return out;
+}
+
+/** Absolute git from PATH (a bare "git" is a PATH lookup at exec time, Sonar S4036). */
+function gitBinary() {
+  const name = process.platform === "win32" ? "git.exe" : "git";
+  for (const dir of (process.env.PATH ?? "").split(delimiter)) {
+    if (dir && existsSync(join(dir, name))) return join(dir, name);
+  }
+  return name;
+}
+
+/** Kit commit the consumer pins: --kit-ref, else this kit checkout's HEAD. 40-hex or FAIL. */
+function resolveKitRef(explicit) {
+  let ref = explicit;
+  if (!ref) {
+    try {
+      ref = execFileSync(gitBinary(), ["rev-parse", "HEAD"], {
+        cwd: kitRoot(),
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      }).trim();
+    } catch {
+      ref = "";
+    }
+  }
+  if (!/^[0-9a-f]{40}$/.test(ref)) {
+    throw new Error(
+      "adopt --stack maven: cannot pin the kit (pass --kit-ref <40-hex commit SHA>; fail closed)",
+    );
+  }
+  return ref;
+}
+
+/** Base-run policy-base workflow for the consumer (same hardening as the kit's own). */
+function writePolicyWorkflow(target, kitRef) {
+  const to = join(target, ".github", "workflows", "policy-base.yml");
+  if (existsSync(to)) {
+    console.log("! keep existing .github/workflows/policy-base.yml (compare with the kit's)");
+    return;
+  }
+  const template = readFileSync(join(__dirname, "maven-policy-base.yml"), "utf8");
+  mkdirSync(dirname(to), { recursive: true });
+  writeFileSync(to, template.replace("__KIT_SHA__", kitRef));
+  console.log(`+ .github/workflows/policy-base.yml (pinned kit ${kitRef})`);
+}
+
+function adoptMaven(target, { kitRef: explicitRef } = {}) {
+  if (!existsSync(join(target, "pom.xml"))) {
+    throw new Error(`adopt --stack maven: ${join(target, "pom.xml")} not found (fail closed)`);
+  }
+  if (existsSync(join(target, "package.json"))) {
+    throw new Error(
+      "adopt --stack maven: package.json is also present; S1 supports one stack per tree (fail closed)",
+    );
+  }
+  const kitRef = resolveKitRef(explicitRef);
+  const skeleton = templatePath(null);
+  for (const [rel, from] of [
+    [".agent", join(skeleton, ".agent")],
+    ["AGENTS.md", join(skeleton, "AGENTS.md")],
+  ]) {
+    const to = join(target, rel);
+    if (!existsSync(from)) continue;
+    if (statSync(from).isDirectory()) {
+      copyDir(from, to, { skip: [] });
+      console.log(`+ ${rel}/`);
+    } else if (!existsSync(to)) {
+      cpSync(from, to);
+      console.log(`+ ${rel}`);
+    } else {
+      console.log(`keep existing ${rel}`);
+    }
+  }
+  const skillsFrom = skillsSrc();
+  if (existsSync(skillsFrom)) {
+    copyDir(skillsFrom, join(target, ".agent", "skills"), { skip: [] });
+    console.log("+ .agent/skills/ (canonical)");
+  }
+  ensureSddPresenceDocs(target, skeleton);
+  mergeGitignore(target, skeleton);
+
+  const modules = mavenModuleDirs(target);
+  const rootPom = stripXmlComments(readFileSync(join(target, "pom.xml"), "utf8"));
+  const rootIsAggregator = /<packaging>\s*pom\s*<\/packaging>/.test(
+    rootPom.replace(/<parent>[^]*?<\/parent>/g, ""),
+  );
+  const implementationGlobs = [
+    ...(rootIsAggregator ? [] : ["src/main/**"]),
+    ...modules.map((dir) => `${dir}/src/main/**`),
+  ];
+  const configPath = join(target, "gauntlet.config.json");
+  const config = {
+    name: pkgNameFromDir(target),
+    stack: "maven",
+    strictness: "strict",
+    allowSpecEdit: false,
+    allowDepsEdit: false,
+    // L0 core (ids only; the pinned runner owns every command). Missing one = FAIL.
+    gates: L0_GATE_IDS.map((id) => ({ id })),
+    agent: {
+      // Maven build files are NOT listed: policy-base protects them (policy-change-approved
+      // only); listing them here would also demand specs-approved. l0-config enforces both.
+      protectedGlobs: [
+        "features/**/*.feature",
+        "openapi/openapi.yaml",
+        "docs/holes-review/**/*.md",
+      ],
+    },
+    allowHolesReviewSkip: false,
+    holesReview: { implementationGlobs, artifactGlob: "docs/holes-review/**/*.md" },
+    adrLint: { glob: "docs/adr/**/*.md" },
+    allowSpecCodeSkip: false,
+    // specGlobs pinned so a pom/.mvn touch never counts as the spec half of spec-code.
+    specCode: { implementationGlobs, specGlobs: SPEC_GLOBS },
+  };
+  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
+  console.log("+ gauntlet.config.json (stack: maven, L0 gate ids, runner-owned commands)");
+
+  writePolicyWorkflow(target, kitRef);
+
+  writeFileSync(
+    join(target, "ADOPT-STATUS.md"),
+    `# Gauntlet adopt status (stack: maven, ADD-POLY S1)
+
+Generated by \`create-ai-gauntlet adopt --stack maven\`. Pinned kit: \`${kitRef}\`.
+
+## How it runs
+No package.json and no scripts/ in this repo. The kit is a pinned runner:
+
+\`\`\`bash
+git clone https://github.com/Klaillton/ai-code-gauntlet kit && git -C kit checkout ${kitRef}
+npm ci --prefix kit/packages/gauntlet-gates --ignore-scripts
+node kit/packages/gauntlet-gates/run.mjs --root .
+\`\`\`
+
+Needs JDK 21, Maven (\`mvn\` on PATH) and git with \`origin/main\` fetched.
+
+## What S1 checks (fail closed)
+- policy-base (built-in): gauntlet.config.json policy comes from the base branch. The
+  authoritative copy is \`.github/workflows/policy-base.yml\` (base-run, pinned kit).
+- stack: \`stack\` must be \`maven\` and pom.xml must be the only build file.
+- l0-config: every L0 gate id must be in \`gates[]\` (${L0_GATE_IDS.join(", ")}).
+- L0 gates, run from the pinned kit: protect-specs, holes-review, spec-code, adr-lint,
+  sdd-presence, secrets-scan, spec-sync \`--l0\` (D11 Gherkin edge inventory + D13 OpenAPI vs
+  contract.cases; both skip when features/ or openapi/ are absent).
+- pom guard: skips, filters, report/output redirects and pom-owned thresholds are FAIL.
+- Build files are protected as whole files by policy-base (\`**/pom.xml\`, \`.mvn/**\`,
+  \`mvnw\`, \`mvnw.cmd\`): any change needs \`policy-change-approved\` only. In S2 the semantic
+  pom diff splits dependency changes (\`deps-approved\`) from policy changes.
+- l0-config also FAILs when a reactor module's \`src/main/**\` is not covered by
+  \`holesReview\`/\`specCode\` implementationGlobs: adding a module means adding its glob
+  (a policy change).
+- One reactor run in a tmp copy outside the workspace: \`process-test-classes\` + the pinned
+  surefire coordinate, with a core-chosen \`-Dmaven.repo.local\`.
+- Every jar module needs a surefire report; total tests == 0 is FAIL; reports must match the
+  compiled test classes of the same module; failed, errored or skipped tests are FAIL.
+
+## Not yet (S2-S4)
+JaCoCo coverage, no-cheat Java, semantic pom diff, PIT, CRAP, ArchUnit,
+Cucumber/Testcontainers, openapi-diff, Gradle. gitleaks history scan is not in the runner.
+
+## Checklist
+- [ ] Commit gauntlet.config.json and .github/workflows/policy-base.yml on main first
+- [ ] Make \`policy-base (base-run, PR)\` a required status check
+- [ ] Review AGENTS.md
+- [ ] Confirm \`docs/sdd/Security.md\` and \`docs/sdd/Observability.md\` (D15)
+- [ ] CI verify: copy the \`maven-skeleton\` job idea from the kit's .github/workflows/verify.yml
+`,
+  );
+  console.log("+ ADOPT-STATUS.md");
+  console.log(`\n✅ Adopted gauntlet (stack: maven, S1 skeleton) into ${target}`);
+}
+
+/** ADD-POLY: validate --stack and dispatch; npm keeps the original adopt path. */
+function adoptStack(dir, { gates, stack, kitRef }) {
+  if (!ADOPT_STACKS.includes(stack)) {
+    throw new Error(
+      `adopt --stack ${stack}: not supported (S1: ${ADOPT_STACKS.join(", ")}; gradle comes later)`,
+    );
+  }
+  if (stack !== "maven") {
+    adoptProject(dir, { gates });
+    return;
+  }
+  const target = resolve(process.cwd(), dir || ".");
+  if (!existsSync(target)) {
+    throw new Error(`Directory not found: ${target}`);
+  }
+  adoptMaven(target, { kitRef });
+}
+
+/** `adopt [dir] [--gates a,b] [--stack npm|maven]` */
+function parseAdoptArgs(rest) {
+  const valued = new Set(["--gates", "--stack", "--kit-ref"]);
+  const dir = rest.find((a, i) => !a.startsWith("--") && !valued.has(rest[i - 1])) || ".";
+  const flag = (name) => {
+    const idx = rest.indexOf(`--${name}`);
+    if (idx >= 0) return rest[idx + 1] ?? "";
+    return rest.find((a) => a.startsWith(`--${name}=`))?.split("=")[1];
+  };
+  const stack = flag("stack") ?? "npm";
+  if (!stack) throw new Error("--stack requires a value (npm | maven)");
+  return { dir, gates: flag("gates"), stack, kitRef: flag("kit-ref") };
 }
 
 function adoptProject(dir, { gates } = {}) {
@@ -658,13 +936,8 @@ export async function main(argv) {
   }
 
   if (cmd === "adopt") {
-    const dir = rest.find((a) => !a.startsWith("--")) || ".";
-    const gatesIdx = rest.indexOf("--gates");
-    const gates =
-      gatesIdx >= 0
-        ? rest[gatesIdx + 1]
-        : rest.find((a) => a.startsWith("--gates="))?.split("=")[1];
-    adoptProject(dir, { gates });
+    const args = parseAdoptArgs(rest);
+    adoptStack(args.dir, args);
     return;
   }
 

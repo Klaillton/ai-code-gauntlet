@@ -8,8 +8,8 @@
  * - Semantic JSON diff base→head, deny by default: any added/removed/changed key needs
  *   the human grant. Only exception: adding or altering `contract.cases` entries
  *   (D13 requires it). Removing a `contract.cases` entry needs the grant.
- * - `scripts/**`, test/mutation runner configs, `tsconfig*.json`, `eslint.config.*`,
- *   `.eslintrc*` (tree-relative) and repo-root `.github/**` changed base→head need the
+ * - `scripts/**`, Maven build files (`pom.xml`, `.mvn/**`, `mvnw*`), test/mutation runner
+ *   configs, `tsconfig*.json`, `eslint.config.*`, `.eslintrc*` (tree-relative) and repo-root `.github/**` changed base→head need the
  *   same grant. `.prettierrc` is intentionally excluded (formatting only).
  * - Grant: `POLICY_CHANGE_APPROVED=1` or PR label `policy-change-approved`.
  *   A committed `allow*` / `approved` flag counts only when it is already true in base.
@@ -399,8 +399,23 @@ const TOOL_CONFIG_RES = [
 ];
 
 /**
- * scripts/**, test + mutation runner configs, tsconfig/eslint configs (tree-relative) and
- * .github/** (repo root: workflows, composite actions, CODEOWNERS, dependabot.yml).
+ * ADD-POLY: Maven build files as whole files (any `pom.xml`, `.mvn/**`, `mvnw`, `mvnw.cmd`).
+ * A pom plugin bound before the test goal could forge a surefire report; until S2's semantic
+ * pom diff, any change to them needs the policy grant.
+ */
+export function isMavenBuildPath(treeRel: string): boolean {
+  return (
+    basename(treeRel) === "pom.xml" ||
+    treeRel.startsWith(".mvn/") ||
+    treeRel === "mvnw" ||
+    treeRel === "mvnw.cmd"
+  );
+}
+
+/**
+ * scripts/**, Maven build files, test + mutation runner configs, tsconfig/eslint configs
+ * (tree-relative) and .github/** (repo root: workflows, composite actions, CODEOWNERS,
+ * dependabot.yml).
  */
 export function isProtectedPolicyPath(repoRel: string, prefix: string): boolean {
   const normalized = repoRel.replaceAll("\\", "/");
@@ -412,7 +427,7 @@ export function isProtectedPolicyPath(repoRel: string, prefix: string): boolean 
     return false;
   }
   const treeRel = scope.length > 0 ? normalized.slice(scope.length + 1) : normalized;
-  if (treeRel.startsWith("scripts/")) {
+  if (treeRel.startsWith("scripts/") || isMavenBuildPath(treeRel)) {
     return true;
   }
   if (treeRel.split("/").includes("node_modules")) {

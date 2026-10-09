@@ -19,12 +19,12 @@ O que **não** cobre:
 
 Branch default: **`main`**. Correções de segurança entram só aí.
 
-| Superfície                         | Suportada |
-| ---------------------------------- | --------- |
-| `main`                             | Sim       |
-| Tags / releases pontuais           | Não (sem SLA de backport) |
-| Branches de feature, forks, adopt  | Não       |
-| Apps gerados a partir do template  | Responsabilidade do dono do app |
+| Superfície                        | Suportada                       |
+| --------------------------------- | ------------------------------- |
+| `main`                            | Sim                             |
+| Tags / releases pontuais          | Não (sem SLA de backport)       |
+| Branches de feature, forks, adopt | Não                             |
+| Apps gerados a partir do template | Responsabilidade do dono do app |
 
 ## Reportando uma vulnerabilidade
 
@@ -70,7 +70,9 @@ Ordem relevante (após `protect-specs` / `deps-lock`):
   - allowlist **não** dispensa `forbidden-path` / PEM
 - **`deps-lock`** — manifesto de dependência é grant humano (`ALLOW_DEPS_EDIT` / label `deps-approved` no PR)
 - **`protect-specs`** — Gherkin + OpenAPI humanos (`ALLOW_SPEC_EDIT` / `specs-approved`)
-- **`policy-base`** (CHANGE-4, primeiro passo built-in do verify) — política lida do **base**; mudança em `gauntlet.config.json` (exceto add/alter de `contract.cases`), `scripts/**`, configs de teste/mutação, `tsconfig*.json`, `eslint.config.*`, `.eslintrc*` ou qualquer coisa em `.github/**` na raiz (workflows, composite actions, CODEOWNERS, dependabot.yml) exige `POLICY_CHANGE_APPROVED` / label `policy-change-approved`. **Enforcer autoritativo roda do base**: workflow `.github/workflows/policy-base.yml` (`pull_request_target` + push em main) faz checkout do base, instala deps do base (`npm ci --ignore-scripts`), busca o head só como dado (`git fetch origin refs/pull/<n>/head`, sem checkout/`npm ci`/execução) e roda o `scripts/policy-base.ts` do base com `--head <sha>`; em push, `git worktree` em `github.event.before`. O policy-base dentro do `npm run verify` é só check local rápido (é código do head). Residual: o grant ainda não é verificável como humano (agentes usam a identidade do owner) e o job só bloqueia de verdade quando for status required no ruleset (pendente da decisão de identidade) — ver ADR
+- **`policy-base`** (CHANGE-4, primeiro passo built-in do verify) — política lida do **base**; mudança em `gauntlet.config.json` (exceto add/alter de `contract.cases`), `scripts/**`, ficheiros de build Maven (qualquer `pom.xml`, `.mvn/**`, `mvnw`, `mvnw.cmd`), configs de teste/mutação, `tsconfig*.json`, `eslint.config.*`, `.eslintrc*` ou qualquer coisa em `.github/**` na raiz (workflows, composite actions, CODEOWNERS, dependabot.yml) exige `POLICY_CHANGE_APPROVED` / label `policy-change-approved`. **Enforcer autoritativo roda do base**: workflow `.github/workflows/policy-base.yml` (`pull_request_target` + push em main) faz checkout do base, instala deps do base (`npm ci --ignore-scripts`), busca o head só como dado (`git fetch origin refs/pull/<n>/head`, sem checkout/`npm ci`/execução) e roda o `scripts/policy-base.ts` do base com `--head <sha>`; em push, `git worktree` em `github.event.before`. O policy-base dentro do `npm run verify` é só check local rápido (é código do head). Residual: o grant ainda não é verificável como humano (agentes usam a identidade do owner) e o job só bloqueia de verdade quando for status required no ruleset (pendente da decisão de identidade) — ver ADR
+- **`stack`** (ADD-POLY S1, segundo passo built-in) — `stack` do config do base tem de existir e bater com os ficheiros de build (`package.json` / `pom.xml`); `gradle` ainda não implementado = FAIL
+- **Maven (ADD-POLY S1, walking skeleton)** — runner fixado (`packages/gauntlet-gates/run.mjs`), sem package.json no consumidor. Uma invocação de reactor (`process-test-classes` + surefire por coordenada fixada, `-Dmaven.repo.local` do core) numa cópia tmp fora do workspace (sem `target/`, `.mvn/`, `.git`), módulos enumerados pelo core, relatórios lidos por módulo no dir tmp do core, módulo sem relatório surefire = FAIL, total == 0 = FAIL, relatórios cruzados com as classes de teste compiladas, pom guard para skip/threshold. Gates L0 (protect-specs, holes-review, spec-code, adr-lint, sdd-presence, secrets-scan, spec-sync D11/D13) correm do kit fixado; `l0-config` falha se faltar algum L0 em `gates[]` (todos os stacks, npm incluído). `adopt --stack maven` escreve `.github/workflows/policy-base.yml` (base-run, mesmo hardening do kit, kit por SHA). Ficheiros de build (qualquer `pom.xml`, `.mvn/**`, `mvnw*`) protegidos como ficheiro inteiro pelo policy-base até S2: só `policy-change-approved` (fora do `protectedGlobs`, nunca `specs-approved`; no S2 o diff semântico separa `deps-approved` de `policy-change-approved`); fecha o relatório forjado por plugin do pom. `l0-config` (maven) falha se o policy-base não proteger esses 4 paths, se o `protectedGlobs` os listar, e nomeando o módulo do reactor cujo `src/main/**` não está nos globs de holes-review/spec-code. **Ainda não**: JaCoCo, PIT, ArchUnit, no-cheat Java, diff semântico do pom (S2-S4)
 - **`arch-bound`** — `src/domain` sem HTTP/UI/fs
 - **`no-cheat`** — skip/only, gate desligado, piso rebaixado
 
@@ -85,6 +87,7 @@ Workflow `.github/workflows/verify.yml` em push para `main`/`master`, em todo PR
 - **npm audit** com `--audit-level=critical` no template e no Todo
 - **gates-sync** — scripts canônicos em `packages/gauntlet-gates` não divergem
 - verify do template, do Todo e smoke `create` + verify
+- **maven-skeleton** — JDK 21 (temurin) + Maven 3.9.11 com sha512; corre as fixtures Maven (4 verdes incluindo reactor com dependência entre módulos e o skeleton adotado com L0, 8 adversariais) pelo runner fixado
 
 Permissions do `verify.yml` ficam em cada job (`permissions: {}` no nível do workflow). Todo job tem `contents: read`. `actions: write` só nos jobs que publicam artifact (SBOM, gitleaks, template, Todo). `pull-requests: read` só no template e no Todo, para o passo de push ler a label `policy-change-approved` do PR mergeado.
 
@@ -111,7 +114,8 @@ O exemplo Todo é in-memory + API fina. Não trate isso como auth de produção.
 
 - HTTPS/TLS, rate limit, brute-force no “login” (não há form login neste kit)
 - Spring Security, BCrypt, roles, CSRF, Flyway, S3, Docker user `brewer`
-- Dependabot version updates de npm (só security updates) e qualquer coisa Maven
+- Dependabot version updates de npm (só security updates) e qualquer coisa Maven (dependabot, pom diff, Enforcer); o suporte Maven é só o walking skeleton do ADD-POLY S1
+- O enforcer base-run (`policy-base.yml`) ainda só cobre os dois trees npm; `packages/gauntlet-gates/fixtures/**` não é tree de policy
 - OSSAR / CodeQL / secret scanning nativo do GitHub como gate documentado aqui (CodeQL default setup está ligado nas settings e abre alertas, mas não é required check nem gate do kit)
 - Scan de ofuscação (`"AKIA" + "…"`, JWT genérico) no `secrets-scan` local
 - SLA de CVE em apps adoptados
@@ -123,7 +127,7 @@ O exemplo Todo é in-memory + API fina. Não trate isso como auth de produção.
 3. Agent não adiciona `secretsScan.allowPaths`. Para se humano.
 4. Não desligar gate no `gauntlet.config.json` para “ficar verde”.
 5. Grants (`ALLOW_SPEC_EDIT`, `ALLOW_DEPS_EDIT`, labels `*-approved`) são humanos. Workflow que afrouxa isso é mudança de segurança — CODEOWNERS em `.github/workflows/**`.
-6. App gerado: copie esta política e **apague** o que for só do kit; adicione auth/TLS do *seu* runtime.
+6. App gerado: copie esta política e **apague** o que for só do kit; adicione auth/TLS do _seu_ runtime.
 
 ## Referências no repo
 
