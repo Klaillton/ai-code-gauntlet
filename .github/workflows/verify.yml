@@ -301,11 +301,11 @@ jobs:
           set -euo pipefail
           VER=3.9.11
           BASE="https://archive.apache.org/dist/maven/maven-3/${VER}/binaries"
-          curl -sSfL -o maven.tgz "${BASE}/apache-maven-${VER}-bin.tar.gz"
+          curl --proto '=https' --tlsv1.2 -sSfL -o maven.tgz "${BASE}/apache-maven-${VER}-bin.tar.gz"
           echo "bcfe4fe305c962ace56ac7b5fc7a08b87d5abd8b7e89027ab251069faebee516b0ded8961445d6d91ec1985dfe30f8153268843c89aa392733d1a3ec956c9978  maven.tgz" | sha512sum -c
           tar -xzf maven.tgz -C "$RUNNER_TEMP"
           echo "$RUNNER_TEMP/apache-maven-${VER}/bin" >> "$GITHUB_PATH"
       - run: mvn -v
-      - run: npm ci --prefix packages/gauntlet-gates --no-audit --no-fund
+      - run: npm ci --prefix packages/gauntlet-gates --ignore-scripts --no-audit --no-fund
       # Fixture repos are local git repos; drop the kit's PR context so policy-base uses theirs.
       - run: env -u GITHUB_BASE_REF -u GITHUB_EVENT_NAME -u GITHUB_EVENT_PATH npm --prefix packages/gauntlet-gates test

@@ -267,8 +267,7 @@ function buildAdoptConfig(name, skeleton) {
   config.name = name;
   // ADD-POLY: fail-closed stack (template ships "npm"; older templates may not).
   if (!config.stack) {
-    const { name: _name, ...rest } = config;
-    config = { name, stack: "npm", ...rest };
+    config = { name, stack: "npm", ...config };
   }
   if (config.allowSpecEdit === undefined) config.allowSpecEdit = false;
   if (!config.strictness) config.strictness = "lenient";
@@ -583,19 +582,42 @@ Inter-module reactor dependencies are not supported yet (goals run without a lif
   console.log(`\n✅ Adopted gauntlet (stack: maven, S1 skeleton) into ${target}`);
 }
 
-function adoptProject(dir, { gates, stack = "npm" } = {}) {
-  const target = resolve(process.cwd(), dir || ".");
-  if (!existsSync(target)) {
-    throw new Error(`Directory not found: ${target}`);
-  }
+/** ADD-POLY: validate --stack and dispatch; npm keeps the original adopt path. */
+function adoptStack(dir, { gates, stack }) {
   if (!ADOPT_STACKS.includes(stack)) {
     throw new Error(
       `adopt --stack ${stack}: not supported (S1: ${ADOPT_STACKS.join(", ")}; gradle comes later)`,
     );
   }
-  if (stack === "maven") {
-    adoptMaven(target);
+  if (stack !== "maven") {
+    adoptProject(dir, { gates });
     return;
+  }
+  const target = resolve(process.cwd(), dir || ".");
+  if (!existsSync(target)) {
+    throw new Error(`Directory not found: ${target}`);
+  }
+  adoptMaven(target);
+}
+
+/** `adopt [dir] [--gates a,b] [--stack npm|maven]` */
+function parseAdoptArgs(rest) {
+  const valued = new Set(["--gates", "--stack"]);
+  const dir = rest.find((a, i) => !a.startsWith("--") && !valued.has(rest[i - 1])) || ".";
+  const flag = (name) => {
+    const idx = rest.indexOf(`--${name}`);
+    if (idx >= 0) return rest[idx + 1] ?? "";
+    return rest.find((a) => a.startsWith(`--${name}=`))?.split("=")[1];
+  };
+  const stack = flag("stack") ?? "npm";
+  if (!stack) throw new Error("--stack requires a value (npm | maven)");
+  return { dir, gates: flag("gates"), stack };
+}
+
+function adoptProject(dir, { gates } = {}) {
+  const target = resolve(process.cwd(), dir || ".");
+  if (!existsSync(target)) {
+    throw new Error(`Directory not found: ${target}`);
   }
 
   const enabled = defaultGates(gates);
@@ -785,20 +807,8 @@ export async function main(argv) {
   }
 
   if (cmd === "adopt") {
-    const valued = new Set(["--gates", "--stack"]);
-    const dir = rest.find((a, i) => !a.startsWith("--") && !valued.has(rest[i - 1])) || ".";
-    const gatesIdx = rest.indexOf("--gates");
-    const gates =
-      gatesIdx >= 0
-        ? rest[gatesIdx + 1]
-        : rest.find((a) => a.startsWith("--gates="))?.split("=")[1];
-    const stackIdx = rest.indexOf("--stack");
-    const stack =
-      stackIdx >= 0
-        ? rest[stackIdx + 1]
-        : (rest.find((a) => a.startsWith("--stack="))?.split("=")[1] ?? "npm");
-    if (!stack) throw new Error("--stack requires a value (npm | maven)");
-    adoptProject(dir, { gates, stack });
+    const { dir, gates, stack } = parseAdoptArgs(rest);
+    adoptStack(dir, { gates, stack });
     return;
   }
 

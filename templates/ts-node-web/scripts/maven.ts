@@ -70,11 +70,11 @@ export function enumerateModules(root: string): MavenModule[] {
     }
     const xml = stripComments(readFileSync(pom, "utf8"));
     const withoutParent = xml.replace(/<parent>[\s\S]*?<\/parent>/g, "");
-    const packaging = /<packaging>\s*([\w.-]+)\s*<\/packaging>/.exec(withoutParent)?.[1] ?? "jar";
+    const packaging = /<packaging>([^<]*)<\/packaging>/.exec(withoutParent)?.[1]?.trim() || "jar";
     out.push({ dir: posix(dir) || ".", packaging, pom: posix(relative(root, pom)) });
     for (const block of xml.match(/<modules>[\s\S]*?<\/modules>/g) ?? []) {
-      for (const match of block.matchAll(/<module>\s*([^<]+?)\s*<\/module>/g)) {
-        visit(join(dir, match[1] ?? ""));
+      for (const match of block.matchAll(/<module>([^<]*)<\/module>/g)) {
+        visit(join(dir, (match[1] ?? "").trim()));
       }
     }
   };
@@ -129,7 +129,8 @@ export function pomGuard(root: string, modules: MavenModule[]): PomFinding[] {
     }
     const xml = stripComments(readFileSync(file, "utf8"));
     for (const tag of SKIP_TAGS) {
-      const re = new RegExp(`<${tag.replaceAll(".", "\\.")}(?:\\s[^>]*)?>`, "g");
+      const escaped = tag.replaceAll(".", String.raw`\.`);
+      const re = new RegExp(String.raw`<${escaped}(?:\s[^>]*)?>`, "g");
       if (re.test(xml)) {
         findings.push({
           pom: module.pom,
@@ -257,7 +258,7 @@ export type SuiteReport = {
 };
 
 function attr(tag: string, name: string): number {
-  const value = new RegExp(`\\s${name}="([^"]*)"`).exec(tag)?.[1];
+  const value = new RegExp(String.raw`\s${name}="([^"]*)"`).exec(tag)?.[1];
   return value === undefined ? Number.NaN : Number(value);
 }
 
@@ -390,6 +391,47 @@ export function testAdapter(stage: string, modules: MavenModule[], sink: ModuleT
   };
 }
 
+const FRESHNESS_ROOTS = [
+  ["src/main/java", "target/classes"],
+  ["src/test/java", "target/test-classes"],
+] as const;
+
+function isDescriptor(relClass: string): boolean {
+  return relClass.endsWith("package-info.class") || relClass.endsWith("module-info.class");
+}
+
+/** One module: each source has a class from this run; no class or report predates the run. */
+function moduleFreshness(
+  base: string,
+  label: string,
+  startedAt: number,
+): { total: number; detail: string[] } {
+  const detail: string[] = [];
+  let total = 0;
+  for (const [srcRoot, outRoot] of FRESHNESS_ROOTS) {
+    for (const source of walk(join(base, srcRoot), (f) => f.endsWith(".java"))) {
+      total += 1;
+      const relClass = posix(relative(join(base, srcRoot), source)).replace(/\.java$/, ".class");
+      if (isDescriptor(relClass)) {
+        continue;
+      }
+      const out = join(base, outRoot, relClass);
+      if (!existsSync(out)) {
+        const relSource = relClass.replace(/\.class$/, ".java");
+        detail.push(`module ${label}: ${srcRoot}/${relSource} has no class`);
+      } else if (statSync(out).mtimeMs < startedAt) {
+        detail.push(`module ${label}: ${outRoot}/${relClass} predates this run`);
+      }
+    }
+  }
+  for (const report of walk(join(base, "target", "surefire-reports"), (f) => f.endsWith(".xml"))) {
+    if (statSync(report).mtimeMs < startedAt) {
+      detail.push(`module ${label}: ${posix(relative(base, report))} predates this run`);
+    }
+  }
+  return { total, detail };
+}
+
 /**
  * Freshness: every main/test source has a class compiled in THIS run, and every class and
  * report in the core dir was written after the run started (nothing stale or pre-seeded).
@@ -409,37 +451,9 @@ export function freshnessAdapter(
       const detail: string[] = [];
       let total = 0;
       for (const module of built) {
-        const base = join(stage, module.dir);
-        for (const [srcRoot, outRoot] of [
-          ["src/main/java", "target/classes"],
-          ["src/test/java", "target/test-classes"],
-        ] as const) {
-          const sources = walk(join(base, srcRoot), (f) => f.endsWith(".java"));
-          for (const source of sources) {
-            total += 1;
-            const relClass = posix(relative(join(base, srcRoot), source)).replace(
-              /\.java$/,
-              ".class",
-            );
-            if (relClass.endsWith("package-info.class") || relClass.endsWith("module-info.class")) {
-              continue;
-            }
-            const out = join(base, outRoot, relClass);
-            if (!existsSync(out)) {
-              detail.push(
-                `module ${module.dir}: ${srcRoot}/${relClass.replace(/\.class$/, ".java")} has no class`,
-              );
-            } else if (statSync(out).mtimeMs < startedAt) {
-              detail.push(`module ${module.dir}: ${outRoot}/${relClass} predates this run`);
-            }
-          }
-        }
-        const reports = walk(join(base, "target", "surefire-reports"), (f) => f.endsWith(".xml"));
-        for (const report of reports) {
-          if (statSync(report).mtimeMs < startedAt) {
-            detail.push(`module ${module.dir}: ${posix(relative(base, report))} predates this run`);
-          }
-        }
+        const checked = moduleFreshness(join(stage, module.dir), module.dir, startedAt);
+        total += checked.total;
+        detail.push(...checked.detail);
       }
       return { ran: true, total, metric: detail.length, detail };
     },
@@ -470,7 +484,8 @@ export async function runMavenSkeleton(
   const startedAt = Date.now();
   const stage = stageWorkspace(root);
   log(`maven: staged ${root} -> ${stage} (core-chosen, outside the workspace)`);
-  log(`maven: modules ${modules.map((m) => `${m.dir}[${m.packaging}]`).join(", ")}`);
+  const listed = modules.map((m) => m.dir + "[" + m.packaging + "]").join(", ");
+  log(`maven: modules ${listed}`);
   const tests: ModuleTests[] = [];
   const verdicts: CapabilityVerdict[] = [];
   const guard: CapabilityVerdict = {
