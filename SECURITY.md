@@ -71,6 +71,8 @@ Ordem relevante (após `protect-specs` / `deps-lock`):
 - **`deps-lock`** — manifesto de dependência é grant humano (`ALLOW_DEPS_EDIT` / label `deps-approved` no PR)
 - **`protect-specs`** — Gherkin + OpenAPI humanos (`ALLOW_SPEC_EDIT` / `specs-approved`)
 - **`policy-base`** (CHANGE-4, primeiro passo built-in do verify) — política lida do **base**; mudança em `gauntlet.config.json` (exceto add/alter de `contract.cases`), `scripts/**`, configs de teste/mutação, `tsconfig*.json`, `eslint.config.*`, `.eslintrc*` ou qualquer coisa em `.github/**` na raiz (workflows, composite actions, CODEOWNERS, dependabot.yml) exige `POLICY_CHANGE_APPROVED` / label `policy-change-approved`. **Enforcer autoritativo roda do base**: workflow `.github/workflows/policy-base.yml` (`pull_request_target` + push em main) faz checkout do base, instala deps do base (`npm ci --ignore-scripts`), busca o head só como dado (`git fetch origin refs/pull/<n>/head`, sem checkout/`npm ci`/execução) e roda o `scripts/policy-base.ts` do base com `--head <sha>`; em push, `git worktree` em `github.event.before`. O policy-base dentro do `npm run verify` é só check local rápido (é código do head). Residual: o grant ainda não é verificável como humano (agentes usam a identidade do owner) e o job só bloqueia de verdade quando for status required no ruleset (pendente da decisão de identidade) — ver ADR
+- **`stack`** (ADD-POLY S1, segundo passo built-in) — `stack` do config do base tem de existir e bater com os ficheiros de build (`package.json` / `pom.xml`); `gradle` ainda não implementado = FAIL
+- **Maven (ADD-POLY S1, walking skeleton)** — runner fixado (`packages/gauntlet-gates/run.mjs`), sem package.json no consumidor. Goals por coordenada fixada no runner, build numa cópia tmp fora do workspace (sem `target/`, `.mvn/`, `.git`), módulos enumerados pelo core, módulo sem relatório surefire = FAIL, total == 0 = FAIL, relatórios cruzados com as classes de teste compiladas, pom guard para skip/threshold. **Ainda não**: JaCoCo, PIT, ArchUnit, no-cheat Java, paths protegidos de pom/.mvn, outros gates L0 no runner maven, deps entre módulos (S2-S4)
 - **`arch-bound`** — `src/domain` sem HTTP/UI/fs
 - **`no-cheat`** — skip/only, gate desligado, piso rebaixado
 
@@ -85,6 +87,7 @@ Workflow `.github/workflows/verify.yml` em push para `main`/`master`, em todo PR
 - **npm audit** com `--audit-level=critical` no template e no Todo
 - **gates-sync** — scripts canônicos em `packages/gauntlet-gates` não divergem
 - verify do template, do Todo e smoke `create` + verify
+- **maven-skeleton** — JDK 21 (temurin) + Maven 3.9.11 com sha512; corre as fixtures Maven (2 verdes, 5 adversariais) pelo runner fixado
 
 Permissions do `verify.yml` ficam em cada job (`permissions: {}` no nível do workflow). Todo job tem `contents: read`. `actions: write` só nos jobs que publicam artifact (SBOM, gitleaks, template, Todo). `pull-requests: read` só no template e no Todo, para o passo de push ler a label `policy-change-approved` do PR mergeado.
 
@@ -111,7 +114,8 @@ O exemplo Todo é in-memory + API fina. Não trate isso como auth de produção.
 
 - HTTPS/TLS, rate limit, brute-force no “login” (não há form login neste kit)
 - Spring Security, BCrypt, roles, CSRF, Flyway, S3, Docker user `brewer`
-- Dependabot version updates de npm (só security updates) e qualquer coisa Maven
+- Dependabot version updates de npm (só security updates) e qualquer coisa Maven (dependabot, pom diff, Enforcer); o suporte Maven é só o walking skeleton do ADD-POLY S1
+- O enforcer base-run (`policy-base.yml`) ainda só cobre os dois trees npm; `packages/gauntlet-gates/fixtures/**` não é tree de policy
 - OSSAR / CodeQL / secret scanning nativo do GitHub como gate documentado aqui (CodeQL default setup está ligado nas settings e abre alertas, mas não é required check nem gate do kit)
 - Scan de ofuscação (`"AKIA" + "…"`, JWT genérico) no `secrets-scan` local
 - SLA de CVE em apps adoptados

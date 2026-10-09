@@ -276,3 +276,36 @@ jobs:
             examples/todo/mutation-report.json
             examples/todo/complexity-report.json
           if-no-files-found: ignore
+
+  # ADD-POLY S1: pinned runner (packages/gauntlet-gates/run.mjs) on the Maven fixtures with
+  # JDK 21. The consumer fixtures have no package.json; every negative fixture must go red.
+  maven-skeleton:
+    name: Maven walking skeleton (JDK 21)
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+          cache-dependency-path: packages/gauntlet-gates/fixtures/maven/**/pom.xml
+      - name: Install Maven 3.9.11 (pinned, sha512-checked)
+        run: |
+          set -euo pipefail
+          VER=3.9.11
+          BASE="https://archive.apache.org/dist/maven/maven-3/${VER}/binaries"
+          curl -sSfL -o maven.tgz "${BASE}/apache-maven-${VER}-bin.tar.gz"
+          echo "bcfe4fe305c962ace56ac7b5fc7a08b87d5abd8b7e89027ab251069faebee516b0ded8961445d6d91ec1985dfe30f8153268843c89aa392733d1a3ec956c9978  maven.tgz" | sha512sum -c
+          tar -xzf maven.tgz -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/apache-maven-${VER}/bin" >> "$GITHUB_PATH"
+      - run: mvn -v
+      - run: npm ci --prefix packages/gauntlet-gates --no-audit --no-fund
+      # Fixture repos are local git repos; drop the kit's PR context so policy-base uses theirs.
+      - run: env -u GITHUB_BASE_REF -u GITHUB_EVENT_NAME -u GITHUB_EVENT_PATH npm --prefix packages/gauntlet-gates test

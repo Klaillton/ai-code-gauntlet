@@ -137,6 +137,8 @@ function renderGauntlet(inventory: Inventory): string {
 
 Built-in first step: \`policy-base\` (CHANGE-4) — policy read from the base branch; not in \`gates[]\`, so config cannot drop it.
 
+Built-in second step: \`stack\` (ADD-POLY) — \`stack\` from the base config must match the build files (fail closed).
+
 ${gates.length > 0 ? gates.join("\n") : "_No gates configured._"}
 
 ## Allowlist

@@ -10,6 +10,7 @@ This repo is **not** only a Todo app. It is:
 | [`examples/todo`](./examples/todo)                                                   | **Full demo** that proves every gate (strict)                         |
 | [`packages/create-ai-gauntlet`](./packages/create-ai-gauntlet)                       | CLI: `create` + `adopt`                                               |
 | [`packages/gauntlet-gates`](./packages/gauntlet-gates)                               | Canonical verify scripts (`gates:sync` / `gates:check`)               |
+| [`docs/adr/ADR-0001-add-poly.md`](./docs/adr/ADR-0001-add-poly.md)                   | ADD-POLY: adapter contract, `stack`, Maven skeleton (S1)              |
 | [`docs/ADR-gates-source.md`](./docs/ADR-gates-source.md)                             | B1: one copy of gate scripts                                          |
 | [`docs/`](./docs)                                                                    | Premises, greenfield, adopt, original plan, [roadmap](./docs/plan.md) |
 | [`docs/ADR-spec-sync-drift.md`](./docs/ADR-spec-sync-drift.md)                       | Spec-sync drift catalog (D1–D15)                                      |
@@ -77,12 +78,25 @@ node packages/create-ai-gauntlet/bin/create-ai-gauntlet.js adopt /path/to/app --
 
 Details: [docs/ADOPT.md](./docs/ADOPT.md).
 
+**Maven (ADD-POLY S1, walking skeleton):** no package.json needed in the app.
+
+```bash
+node packages/create-ai-gauntlet/bin/create-ai-gauntlet.js adopt /path/to/maven-app --stack maven
+npm ci --prefix packages/gauntlet-gates # pinned runner deps (tsx)
+node packages/gauntlet-gates/run.mjs --root /path/to/maven-app # JDK 21 + mvn on PATH
+```
+
+S1 runs policy-base, `stack`, a pom guard, and maven compile + surefire + freshness. It does
+**not** yet run JaCoCo, PIT, ArchUnit, Cucumber, no-cheat Java, the other L0 gates, or
+inter-module reactor dependencies (S2-S4). See
+[ADR-0001](./docs/adr/ADR-0001-add-poly.md).
+
 ### 4) Verify the whole kit (CI locally)
 
 ```bash
 npm run install:all
 npm run prepare:browsers
-npm run verify   # template + example; needs Chromium
+npm run verify   # template + example + maven fixtures; needs Chromium, JDK 21 and mvn
 ```
 
 ## Premises
@@ -104,7 +118,9 @@ credentials / private keys / high-confidence PII dumps (there is **no**
 
 ## Config
 
-Apps use `gauntlet.config.json` to order gates. Mainline verify is **fail-closed**:
+Apps use `gauntlet.config.json` to order gates. `stack` (`npm` | `maven`) is required and read
+from the base config; missing, unknown, `gradle` (not implemented) or not matching the build
+files fails verify (built-in step after policy-base). Mainline verify is **fail-closed**:
 `enabled: false` on a gate fails no-cheat / verify. Do not use that flag to sneak
 past the gauntlet.
 
@@ -156,7 +172,7 @@ Remaining (not default kit gates):
 - Official dependency-cruiser (arch-bound is the stand-in)
 - Perf/ORM budgets in the **consuming** app, when it has a workload
 - Official Stryker (custom runner is the gate)
-- Another stack via `adopt` in that repo
+- Other stacks: Maven is a walking skeleton only (ADD-POLY S1); Gradle not started
 - Regex inflation in secrets-scan — gitleaks covers history in CI instead
 
 ## License

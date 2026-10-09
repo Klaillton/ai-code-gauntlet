@@ -1,0 +1,6 @@
+{
+  "name": "report-mismatch",
+  "stack": "maven",
+  "strictness": "strict",
+  "gates": []
+}

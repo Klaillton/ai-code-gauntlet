@@ -67,3 +67,61 @@ test("create patches package name and gauntlet.md App line", () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+function adopt(args) {
+  const bin = join(pkgRoot, "..", "bin", "create-ai-gauntlet.js");
+  return spawnSync(process.execPath, [bin, "adopt", ...args], { encoding: "utf8" });
+}
+
+test("adopt (npm default) writes a fail-closed stack: npm", () => {
+  const dir = mkdtempSync(join(tmpdir(), "gauntlet-adopt-npm-"));
+  try {
+    const result = adopt([dir]);
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    const config = JSON.parse(readFileSync(join(dir, "gauntlet.config.json"), "utf8"));
+    assert.equal(config.stack, "npm");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("adopt --stack maven: config + docs only, no package.json, no scripts/", () => {
+  const dir = mkdtempSync(join(tmpdir(), "gauntlet-adopt-maven-"));
+  try {
+    writeFileSync(join(dir, "pom.xml"), "<project><artifactId>x</artifactId></project>\n");
+    const result = adopt(["--stack", "maven", dir]);
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    const config = JSON.parse(readFileSync(join(dir, "gauntlet.config.json"), "utf8"));
+    assert.equal(config.stack, "maven");
+    assert.deepEqual(config.gates, []);
+    assert.equal(existsSync(join(dir, "package.json")), false);
+    assert.equal(existsSync(join(dir, "scripts")), false);
+    assert.equal(existsSync(join(dir, "docs/sdd/Security.md")), true);
+    assert.match(readFileSync(join(dir, "ADOPT-STATUS.md"), "utf8"), /run\.mjs --root \./);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("adopt --stack maven without pom.xml fails closed", () => {
+  const dir = mkdtempSync(join(tmpdir(), "gauntlet-adopt-maven-nopom-"));
+  try {
+    const result = adopt([dir, "--stack=maven"]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /pom\.xml not found/);
+    assert.equal(existsSync(join(dir, "gauntlet.config.json")), false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("adopt --stack gradle is not implemented yet (fails)", () => {
+  const dir = mkdtempSync(join(tmpdir(), "gauntlet-adopt-gradle-"));
+  try {
+    const result = adopt([dir, "--stack", "gradle"]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /not supported/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

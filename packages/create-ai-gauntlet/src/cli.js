@@ -1,4 +1,13 @@
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync, appendFileSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+  writeFileSync,
+  appendFileSync,
+} from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -30,7 +39,7 @@ function printHelp() {
 
 Usage:
   create-ai-gauntlet create <dir> [--sample todo]
-  create-ai-gauntlet adopt [dir] [--gates static,unit,contract,e2e]
+  create-ai-gauntlet adopt [dir] [--gates static,unit,contract,e2e] [--stack npm|maven]
   create-ai-gauntlet help
 
 Examples:
@@ -38,10 +47,13 @@ Examples:
   npx create-ai-gauntlet create my-app --sample todo
   npx create-ai-gauntlet adopt .
   npx create-ai-gauntlet adopt . --gates static,unit
+  npx create-ai-gauntlet adopt . --stack maven
 
 Notes:
   adopt writes a fail-closed gauntlet.config.json matching templates/ts-node-web
   (full gate list; never enabled:false). --gates only guides scaffolding + ADOPT-STATUS.
+  --stack maven (ADD-POLY S1 walking skeleton): no package.json, no scripts/ copied;
+  the pinned kit runner runs compile + surefire + freshness (see ADOPT-STATUS.md).
 `);
 }
 
@@ -117,10 +129,7 @@ function createProject(dir, { sample } = {}) {
         continue;
       }
       const raw = readFileSync(full, "utf8");
-      writeFileSync(
-        full,
-        raw.replace(/("name"\s*:\s*)"[^"]*"/, `$1${JSON.stringify(pkgName)}`),
-      );
+      writeFileSync(full, raw.replace(/("name"\s*:\s*)"[^"]*"/, `$1${JSON.stringify(pkgName)}`));
     }
     // Keep committed D7 docs honest after the name patch (no npm install yet).
     const gauntletMd = join(target, "docs/generated/gauntlet.md");
@@ -150,7 +159,10 @@ function defaultGates(list) {
   if (!list) {
     return ["format", "lint", "typecheck", "unit"];
   }
-  return list.split(",").map((s) => s.trim()).filter(Boolean);
+  return list
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
 function gateEnabled(id, enabledIds) {
@@ -242,13 +254,22 @@ function buildAdoptConfig(name, skeleton) {
         ],
       },
       agent: {
-        protectedGlobs: ["features/**/*.feature", "openapi/openapi.yaml", "docs/holes-review/**/*.md"],
+        protectedGlobs: [
+          "features/**/*.feature",
+          "openapi/openapi.yaml",
+          "docs/holes-review/**/*.md",
+        ],
         maxVerifyCycles: 5,
       },
     };
   }
 
   config.name = name;
+  // ADD-POLY: fail-closed stack (template ships "npm"; older templates may not).
+  if (!config.stack) {
+    const { name: _name, ...rest } = config;
+    config = { name, stack: "npm", ...rest };
+  }
   if (config.allowSpecEdit === undefined) config.allowSpecEdit = false;
   if (!config.strictness) config.strictness = "lenient";
   config.gates = Array.isArray(config.gates) ? [...config.gates] : [];
@@ -344,7 +365,11 @@ function buildAdoptConfig(name, skeleton) {
 
   if (!config.agent) {
     config.agent = {
-      protectedGlobs: ["features/**/*.feature", "openapi/openapi.yaml", "docs/holes-review/**/*.md"],
+      protectedGlobs: [
+        "features/**/*.feature",
+        "openapi/openapi.yaml",
+        "docs/holes-review/**/*.md",
+      ],
       maxVerifyCycles: 5,
     };
   }
@@ -399,6 +424,7 @@ function mergeGitignore(target, skeleton) {
     "crap-report.json",
     "deps-lock-report.json",
     "secrets-scan-report.json",
+    "maven-report.json",
     ".gauntlet/allow-spec-edit",
     ".gauntlet/allow-deps-edit",
     ".gauntlet/allow-secrets-paths",
@@ -423,7 +449,6 @@ function mergeGitignore(target, skeleton) {
   }
 }
 
-
 const SDD_PRESENCE_DOCS = ["docs/sdd/Security.md", "docs/sdd/Observability.md"];
 
 function sddPresenceDocOk(markdown) {
@@ -445,9 +470,7 @@ function ensureSddPresenceDocs(target, skeleton) {
     const from = join(skeleton, rel);
     if (!existsSync(to)) {
       if (!existsSync(from)) {
-        throw new Error(
-          `adopt failed (D15): missing ${rel} and template has no copy to install`,
-        );
+        throw new Error(`adopt failed (D15): missing ${rel} and template has no copy to install`);
       }
       mkdirSync(dirname(to), { recursive: true });
       cpSync(from, to);
@@ -465,10 +488,114 @@ function ensureSddPresenceDocs(target, skeleton) {
   }
 }
 
-function adoptProject(dir, { gates } = {}) {
+export const ADOPT_STACKS = ["npm", "maven"];
+
+/**
+ * ADD-POLY S1: maven walking skeleton. The consumer gets config + agent docs only; the kit
+ * runner (pinned checkout) owns every command. No package.json, no scripts/ in the consumer.
+ */
+function adoptMaven(target) {
+  if (!existsSync(join(target, "pom.xml"))) {
+    throw new Error(`adopt --stack maven: ${join(target, "pom.xml")} not found (fail closed)`);
+  }
+  if (existsSync(join(target, "package.json"))) {
+    throw new Error(
+      "adopt --stack maven: package.json is also present; S1 supports one stack per tree (fail closed)",
+    );
+  }
+  const skeleton = templatePath(null);
+  for (const [rel, from] of [
+    [".agent", join(skeleton, ".agent")],
+    ["AGENTS.md", join(skeleton, "AGENTS.md")],
+  ]) {
+    const to = join(target, rel);
+    if (!existsSync(from)) continue;
+    if (statSync(from).isDirectory()) {
+      copyDir(from, to, { skip: [] });
+      console.log(`+ ${rel}/`);
+    } else if (!existsSync(to)) {
+      cpSync(from, to);
+      console.log(`+ ${rel}`);
+    } else {
+      console.log(`keep existing ${rel}`);
+    }
+  }
+  const skillsFrom = skillsSrc();
+  if (existsSync(skillsFrom)) {
+    copyDir(skillsFrom, join(target, ".agent", "skills"), { skip: [] });
+    console.log("+ .agent/skills/ (canonical)");
+  }
+  ensureSddPresenceDocs(target, skeleton);
+  mergeGitignore(target, skeleton);
+
+  const configPath = join(target, "gauntlet.config.json");
+  const config = {
+    name: pkgNameFromDir(target),
+    stack: "maven",
+    strictness: "strict",
+    allowSpecEdit: false,
+    allowDepsEdit: false,
+    gates: [],
+  };
+  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
+  console.log("+ gauntlet.config.json (stack: maven, gates[] core-owned)");
+
+  writeFileSync(
+    join(target, "ADOPT-STATUS.md"),
+    `# Gauntlet adopt status (stack: maven, ADD-POLY S1)
+
+Generated by \`create-ai-gauntlet adopt --stack maven\`.
+
+## How it runs
+No package.json and no scripts/ in this repo. The kit is a pinned runner:
+
+\`\`\`bash
+git clone https://github.com/Klaillton/ai-code-gauntlet kit && git -C kit checkout <pinned-sha>
+npm ci --prefix kit/packages/gauntlet-gates
+node kit/packages/gauntlet-gates/run.mjs --root .
+\`\`\`
+
+Needs JDK 21 and Maven (\`mvn\` on PATH) and git with \`origin/main\` fetched.
+
+## What S1 checks (fail closed)
+- policy-base: gauntlet.config.json policy comes from the base branch.
+- stack: \`stack\` must be \`maven\` and pom.xml must be the only build file.
+- pom guard: skips, filters, report/output redirects and pom-owned thresholds are FAIL.
+- maven:compile, maven:test (surefire), maven:freshness, by plugin coordinates pinned in the
+  runner, in a tmp copy outside the workspace (target/, .mvn/, .git are not copied).
+- Every jar module needs a surefire report; total tests == 0 is FAIL; reports must match the
+  compiled test classes; failed, errored or skipped tests are FAIL.
+
+## Not yet (S2-S4)
+JaCoCo coverage, no-cheat Java, protected pom/.mvn paths and grants, PIT, CRAP, ArchUnit,
+Cucumber/Testcontainers, openapi-diff, Gradle. The other L0 gates (protect-specs, secrets,
+adr-lint, sdd-presence, holes-review, spec-code, D11, D13) are not wired into the maven runner yet.
+Inter-module reactor dependencies are not supported yet (goals run without a lifecycle).
+
+## Checklist
+- [ ] Commit gauntlet.config.json on main first (policy-base reads \`stack\` from the base)
+- [ ] Review AGENTS.md
+- [ ] Confirm \`docs/sdd/Security.md\` and \`docs/sdd/Observability.md\` (D15)
+- [ ] CI: copy the \`maven-skeleton\` job from the kit's .github/workflows/verify.yml
+`,
+  );
+  console.log("+ ADOPT-STATUS.md");
+  console.log(`\n✅ Adopted gauntlet (stack: maven, S1 skeleton) into ${target}`);
+}
+
+function adoptProject(dir, { gates, stack = "npm" } = {}) {
   const target = resolve(process.cwd(), dir || ".");
   if (!existsSync(target)) {
     throw new Error(`Directory not found: ${target}`);
+  }
+  if (!ADOPT_STACKS.includes(stack)) {
+    throw new Error(
+      `adopt --stack ${stack}: not supported (S1: ${ADOPT_STACKS.join(", ")}; gradle comes later)`,
+    );
+  }
+  if (stack === "maven") {
+    adoptMaven(target);
+    return;
   }
 
   const enabled = defaultGates(gates);
@@ -658,13 +785,20 @@ export async function main(argv) {
   }
 
   if (cmd === "adopt") {
-    const dir = rest.find((a) => !a.startsWith("--")) || ".";
+    const valued = new Set(["--gates", "--stack"]);
+    const dir = rest.find((a, i) => !a.startsWith("--") && !valued.has(rest[i - 1])) || ".";
     const gatesIdx = rest.indexOf("--gates");
     const gates =
       gatesIdx >= 0
         ? rest[gatesIdx + 1]
         : rest.find((a) => a.startsWith("--gates="))?.split("=")[1];
-    adoptProject(dir, { gates });
+    const stackIdx = rest.indexOf("--stack");
+    const stack =
+      stackIdx >= 0
+        ? rest[stackIdx + 1]
+        : (rest.find((a) => a.startsWith("--stack="))?.split("=")[1] ?? "npm");
+    if (!stack) throw new Error("--stack requires a value (npm | maven)");
+    adoptProject(dir, { gates, stack });
     return;
   }
 

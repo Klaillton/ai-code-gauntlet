@@ -1,0 +1,6 @@
+{
+  "name": "ok-multi",
+  "stack": "maven",
+  "strictness": "strict",
+  "gates": []
+}

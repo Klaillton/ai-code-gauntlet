@@ -1,0 +1,6 @@
+{
+  "name": "stack-mismatch",
+  "stack": "npm",
+  "strictness": "strict",
+  "gates": []
+}

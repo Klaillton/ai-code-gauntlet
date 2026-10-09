@@ -1,0 +1,6 @@
+{
+  "name": "pom-cheat",
+  "stack": "maven",
+  "strictness": "strict",
+  "gates": []
+}

@@ -160,11 +160,21 @@ Detalhes: [`ADR-secrets-privacy.md`](./ADR-secrets-privacy.md).
 
 ## Apps não-TypeScript
 
-Nesta versão o adapter de produção é **TypeScript**. Para Java/Spring:
+O adapter completo é **TypeScript** (npm). Java/Maven tem só o walking skeleton do ADD-POLY S1:
 
-- Use a **Camada 0** (copiar premissas do `AGENTS.md` / `docs/PREMISES.md`)
-- Mapeie gates no `gauntlet.config.json` para `mvn verify`, etc. (commands livres)
-- Adapter Maven completo = roadmap multi-stack
+```bash
+node packages/create-ai-gauntlet/bin/create-ai-gauntlet.js adopt /path/to/maven-app --stack maven
+npm ci --prefix packages/gauntlet-gates
+node packages/gauntlet-gates/run.mjs --root /path/to/maven-app   # JDK 21 + mvn no PATH
+```
+
+- O app não precisa de package.json nem de `scripts/`; o runner é o kit num SHA fixado
+- `stack: maven` + `gates: []` — o core escolhe os comandos (coordenadas de plugin fixadas); `gates[]` não vazio = FAIL
+- S1 corre: policy-base, `stack`, pom guard, maven compile + surefire + freshness
+- Ainda **não**: JaCoCo, PIT, ArchUnit, Cucumber, no-cheat Java, paths protegidos de pom/.mvn, outros gates L0 no runner maven, dependências entre módulos do reactor
+- **Não** mapeie gates para `mvn verify` com comandos livres: com `stack` fail-closed, um tree npm com `pom.xml` falha
+- `stack` é obrigatório no `gauntlet.config.json` (lido do base); sem ele o verify falha
+- Ver `docs/adr/ADR-0001-add-poly.md`
 
 ## Segurança
 

@@ -12,6 +12,8 @@
 
 Built-in first step: `policy-base` (CHANGE-4) — policy read from the base branch; not in `gates[]`, so config cannot drop it.
 
+Built-in second step: `stack` (ADD-POLY) — `stack` from the base config must match the build files (fail closed).
+
 1. `format` (enabled) — `npm run format`
 2. `lint` (enabled) — `npm run lint`
 3. `typecheck` (enabled) — `npm run typecheck`

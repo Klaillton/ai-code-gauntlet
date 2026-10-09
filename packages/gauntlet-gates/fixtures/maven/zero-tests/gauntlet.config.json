@@ -1,0 +1,6 @@
+{
+  "name": "zero-tests",
+  "stack": "maven",
+  "strictness": "strict",
+  "gates": []
+}

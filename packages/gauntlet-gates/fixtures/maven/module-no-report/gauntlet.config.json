@@ -1,0 +1,6 @@
+{
+  "name": "module-no-report",
+  "stack": "maven",
+  "strictness": "strict",
+  "gates": []
+}

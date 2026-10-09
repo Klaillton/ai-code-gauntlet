@@ -1,0 +1,6 @@
+{
+  "name": "ok-single",
+  "stack": "maven",
+  "strictness": "strict",
+  "gates": []
+}
