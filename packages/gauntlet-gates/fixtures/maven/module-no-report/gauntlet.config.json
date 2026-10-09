@@ -2,5 +2,44 @@
   "name": "module-no-report",
   "stack": "maven",
   "strictness": "strict",
-  "gates": []
+  "allowSpecEdit": false,
+  "allowDepsEdit": false,
+  "gates": [
+    {
+      "id": "protect-specs"
+    },
+    {
+      "id": "holes-review"
+    },
+    {
+      "id": "spec-code"
+    },
+    {
+      "id": "adr-lint"
+    },
+    {
+      "id": "sdd-presence"
+    },
+    {
+      "id": "secrets-scan"
+    },
+    {
+      "id": "spec-sync"
+    }
+  ],
+  "agent": {
+    "protectedGlobs": ["features/**/*.feature", "openapi/openapi.yaml", "docs/holes-review/**/*.md"]
+  },
+  "allowHolesReviewSkip": false,
+  "holesReview": {
+    "implementationGlobs": ["alpha/src/main/**", "beta/src/main/**"],
+    "artifactGlob": "docs/holes-review/**/*.md"
+  },
+  "adrLint": {
+    "glob": "docs/adr/**/*.md"
+  },
+  "allowSpecCodeSkip": false,
+  "specCode": {
+    "implementationGlobs": ["alpha/src/main/**", "beta/src/main/**"]
+  }
 }

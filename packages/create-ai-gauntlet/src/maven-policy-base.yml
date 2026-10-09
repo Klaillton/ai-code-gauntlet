@@ -1,0 +1,128 @@
+name: policy-base
+
+# ADD-POLY (stack: maven) authoritative policy enforcer. Written by
+# `create-ai-gauntlet adopt --stack maven`. Runs BASE code + the PINNED kit only; the PR
+# head is data (git fetch, no checkout, no build, no execution).
+# - pull_request_target: checks out the BASE of this repo, checks out the gauntlet kit at a
+#   pinned commit, installs the kit runner's locked deps (no lifecycle scripts), fetches the
+#   PR head as a ref, and runs the kit's policy-base against base...head.
+# - push to main: a git worktree at github.event.before is the base; the grant is the merged
+#   PR's policy-change-approved label (none on a direct push).
+# Hardening: no secrets, persist-credentials: false, read-only token, PR number and SHAs only
+# via env (never interpolated into run:). Make this job a required status check.
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  push:
+    branches: [main, master]
+
+# Nothing at workflow level; each job gets exactly contents: read + pull-requests: read.
+permissions: {}
+
+concurrency:
+  group: policy-base-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request_target' }}
+
+env:
+  # Pinned gauntlet kit commit (the runner). Changing it is a .github/** policy change.
+  GAUNTLET_KIT_REPO: Klaillton/ai-code-gauntlet
+  GAUNTLET_KIT_SHA: __KIT_SHA__
+
+jobs:
+  enforce-pr:
+    name: policy-base (base-run, PR)
+    permissions:
+      contents: read
+      pull-requests: read
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the BASE (never the PR head)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check out the pinned gauntlet kit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ env.GAUNTLET_KIT_REPO }}
+          ref: ${{ env.GAUNTLET_KIT_SHA }}
+          path: .gauntlet-kit
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - name: Install the kit runner deps only (locked, no lifecycle scripts)
+        run: npm ci --prefix .gauntlet-kit/packages/gauntlet-gates --ignore-scripts --no-audit --no-fund
+      - name: Fetch the PR head as data (no checkout)
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git fetch --no-tags origin "+refs/pull/${PR_NUMBER}/head:refs/remotes/pr/head"
+          git cat-file -e "${HEAD_SHA}^{commit}"
+      - name: Enforce with the pinned kit against base...head
+        env:
+          CI: "true"
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        # Grant: the policy-change-approved label, read by the script from the event payload.
+        run: node .gauntlet-kit/packages/gauntlet-gates/run.mjs --root . --policy-head "$HEAD_SHA"
+
+  enforce-push:
+    name: policy-base (base-run, push)
+    permissions:
+      contents: read
+      pull-requests: read
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check out the pinned gauntlet kit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ env.GAUNTLET_KIT_REPO }}
+          ref: ${{ env.GAUNTLET_KIT_SHA }}
+          path: .gauntlet-kit
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - name: Install the kit runner deps only (locked, no lifecycle scripts)
+        run: npm ci --prefix .gauntlet-kit/packages/gauntlet-gates --ignore-scripts --no-audit --no-fund
+      - name: Policy grant from the merged PR label (none on a direct push)
+        id: policy-grant
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          labels=$(gh api "repos/${REPO}/commits/${SHA}/pulls" \
+            --jq '[.[] | select(.merged_at != null) | .labels[].name] | join(",")' || true)
+          case ",$labels," in
+            *,policy-change-approved,*) echo "approved=1" >> "$GITHUB_OUTPUT" ;;
+            *) echo "approved=" >> "$GITHUB_OUTPUT" ;;
+          esac
+      - name: Base worktree at github.event.before
+        env:
+          BEFORE: ${{ github.event.before }}
+          BASE_DIR: ${{ runner.temp }}/policy-base-base
+        run: |
+          case "$BEFORE" in
+            "" | 0000000000000000000000000000000000000000)
+              echo "::error::no usable github.event.before; cannot resolve the base (fail closed)"
+              exit 1 ;;
+          esac
+          git worktree add --detach "$BASE_DIR" "$BEFORE"
+      - name: Enforce with the pinned kit against the pushed commit
+        env:
+          CI: "true"
+          HEAD_SHA: ${{ github.sha }}
+          BASE_DIR: ${{ runner.temp }}/policy-base-base
+          POLICY_CHANGE_APPROVED: ${{ steps.policy-grant.outputs.approved }}
+        run: node .gauntlet-kit/packages/gauntlet-gates/run.mjs --root "$BASE_DIR" --policy-head "$HEAD_SHA"

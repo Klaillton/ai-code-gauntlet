@@ -3,6 +3,7 @@
 // The consumer needs no package.json; tsx comes from this package's own lockfile.
 //   npm ci --prefix <kit>/packages/gauntlet-gates
 //   node <kit>/packages/gauntlet-gates/run.mjs --root <consumer>
+//   node <kit>/packages/gauntlet-gates/run.mjs --root <base checkout> --policy-head <sha>
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -30,7 +31,19 @@ try {
   process.exit(1);
 }
 
-const result = spawnSync(process.execPath, [tsxCli, join(here, "src", "verify.ts")], {
+// --policy-head <sha>: base-run enforcer mode (consumer policy-base.yml); head is data only.
+const headIndex = argv.indexOf("--policy-head");
+let script = [join(here, "src", "verify.ts")];
+if (headIndex >= 0) {
+  const head = argv[headIndex + 1] ?? "";
+  if (!/^[0-9a-f]{40}$/.test(head)) {
+    console.error("gauntlet runner: --policy-head needs a full commit SHA (fail closed)");
+    process.exit(1);
+  }
+  script = [join(here, "src", "policy-base.ts"), "--head", head];
+}
+
+const result = spawnSync(process.execPath, [tsxCli, ...script], {
   cwd: root,
   stdio: "inherit",
   env: process.env,

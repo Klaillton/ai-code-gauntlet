@@ -24,6 +24,11 @@ npm --prefix packages/gauntlet-gates test   # maven fixtures, needs JDK 21 + mvn
 ```
 
 - `src/adapter.ts` — L1 contract `{command,args,parser}` -> `{ran,total,metric}`, fail-closed `stack`.
-- `src/maven.ts` — maven L2 skeleton (compile, surefire, freshness, pom guard).
-- `fixtures/maven/` — `ok-single`, `ok-multi` (green) and `stack-mismatch`, `zero-tests`,
-  `module-no-report`, `report-mismatch` (also a forged report under `target/`), `pom-cheat` (red).
+- `src/maven.ts` — maven L2 skeleton: one reactor run (`process-test-classes` + pinned
+  surefire), per-module reports, freshness, pom guard.
+- `src/l0.ts` — L0 gate list, `l0-config` validation (every stack), runner-owned L0 commands.
+- `run.mjs --root <base> --policy-head <sha>` — base-run policy-base (used by the consumer's
+  `.github/workflows/policy-base.yml` that `adopt --stack maven` writes).
+- `fixtures/maven/` — `ok-single`, `ok-multi`, `reactor-dep` (green) and `stack-mismatch`,
+  `zero-tests`, `module-no-report`, `report-mismatch` (also a forged report under `target/`),
+  `pom-cheat`, `pom-includes`, `reactor-dep-no-test`, `missing-l0` (red); `_shared` SDD docs.

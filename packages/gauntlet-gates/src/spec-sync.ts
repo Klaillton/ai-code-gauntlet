@@ -1214,6 +1214,17 @@ function checkD6(inventory: Inventory): Finding[] {
   return findings;
 }
 
+/**
+ * ADD-POLY L0 subset for non-npm stacks: D11 (Gherkin edge inventory) + D13 (OpenAPI <->
+ * contract.cases). The other D-checks read TypeScript routes/domain and do not apply.
+ */
+export function runSpecSyncL0(cwd = process.cwd()): SpecSyncResult {
+  const inventory = buildInventory(cwd);
+  const findings: Finding[] = [...checkD11(inventory), ...checkD13(inventory)];
+  const ok = findings.every((finding) => finding.severity !== "fail");
+  return { ok, strictness: inventory.strictness, findings, inventory };
+}
+
 export function runSpecSync(cwd = process.cwd()): SpecSyncResult {
   const inventory = buildInventory(cwd);
   const { entries, findings: allowlistFindings } = asAllowlist(inventory.config.allowlist);
@@ -1274,7 +1285,7 @@ function isDirectRun(): boolean {
 }
 
 function main(): void {
-  const result = runSpecSync();
+  const result = process.argv.includes("--l0") ? runSpecSyncL0() : runSpecSync();
   writeSpecSyncReport(result);
   printFindings(result);
   if (!result.ok) {

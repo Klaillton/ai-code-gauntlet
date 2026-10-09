@@ -82,13 +82,15 @@ Details: [docs/ADOPT.md](./docs/ADOPT.md).
 
 ```bash
 node packages/create-ai-gauntlet/bin/create-ai-gauntlet.js adopt /path/to/maven-app --stack maven
-npm ci --prefix packages/gauntlet-gates # pinned runner deps (tsx)
+npm ci --prefix packages/gauntlet-gates # pinned runner deps (tsx, js-yaml)
 node packages/gauntlet-gates/run.mjs --root /path/to/maven-app # JDK 21 + mvn on PATH
 ```
 
-S1 runs policy-base, `stack`, a pom guard, and maven compile + surefire + freshness. It does
-**not** yet run JaCoCo, PIT, ArchUnit, Cucumber, no-cheat Java, the other L0 gates, or
-inter-module reactor dependencies (S2-S4). See
+S1 runs policy-base, `stack`, `l0-config`, the L0 gates (protect-specs, holes-review, spec-code,
+adr-lint, sdd-presence, secrets-scan, spec-sync D11/D13), a pom guard, and one reactor run
+(`process-test-classes` + pinned surefire) with per-module report checks and freshness. Adopt
+also writes a base-run `.github/workflows/policy-base.yml` pinned to the kit SHA. It does **not**
+yet run JaCoCo, PIT, ArchUnit, Cucumber or no-cheat Java (S2-S4). See
 [ADR-0001](./docs/adr/ADR-0001-add-poly.md).
 
 ### 4) Verify the whole kit (CI locally)

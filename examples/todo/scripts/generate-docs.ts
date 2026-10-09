@@ -139,6 +139,8 @@ Built-in first step: \`policy-base\` (CHANGE-4) — policy read from the base br
 
 Built-in second step: \`stack\` (ADD-POLY) — \`stack\` from the base config must match the build files (fail closed).
 
+Built-in third step: \`l0-config\` (ADD-POLY) — every L0 gate (protect-specs, holes-review, spec-code, adr-lint, sdd-presence, secrets-scan, spec-sync) must be in \`gates[]\`, for every stack (fail closed).
+
 ${gates.length > 0 ? gates.join("\n") : "_No gates configured._"}
 
 ## Allowlist

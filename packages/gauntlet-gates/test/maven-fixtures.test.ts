@@ -29,6 +29,8 @@ function git(cwd: string, args: string[]): void {
 function run(name: string, prepare?: (root: string) => void): Run {
   const root = mkdtempSync(join(tmpdir(), `gauntlet-fixture-${name}-`));
   temps.push(root);
+  // Every fixture is an L0-clean consumer: shared docs/sdd (D15) overlay, then the fixture.
+  cpSync(join(fixtures, "_shared"), root, { recursive: true });
   cpSync(join(fixtures, name), root, { recursive: true });
   prepare?.(root);
   git(root, ["init", "-q", "-b", "main"]);
@@ -77,6 +79,20 @@ type Verdict = {
   reasons: string[];
 };
 
+const L0 = [
+  "protect-specs",
+  "holes-review",
+  "spec-code",
+  "adr-lint",
+  "sdd-presence",
+  "secrets-scan",
+  "spec-sync",
+];
+
+function gateIds(r: Run): string[] {
+  return (r.report.gates as { id: string; ok: boolean }[]).filter((g) => g.ok).map((g) => g.id);
+}
+
 function verdict(r: Run, capability: string): Verdict {
   const verdicts = (r.maven?.verdicts ?? []) as Verdict[];
   const found = verdicts.find((v) => v.capability === capability);
@@ -123,7 +139,60 @@ describe("maven walking skeleton (S1)", () => {
     });
     assert.equal(r.status, 0, r.out);
     assert.equal(r.report.stack, "maven");
+    const passed = gateIds(r);
+    for (const id of ["policy-base", "stack", "l0-config", ...L0, "maven:compile", "maven:test"]) {
+      assert.ok(passed.includes(id), `${id} did not pass\n${r.out}`);
+    }
     assert.equal(existsSync(join(pkg, "fixtures", "maven", "ok-single", "target")), false);
+  });
+
+  it("reactor-dep: app depends on core + reads main/test resources, one reactor run, GREEN", () => {
+    const r = run("reactor-dep");
+    assert.equal(r.status, 0, r.out);
+    const modules = (r.maven?.modules as { dir: string }[]).map((m) => m.dir);
+    assert.deepEqual(modules, [".", "core", "app"]);
+    assert.equal(verdict(r, "maven:test").total, 2);
+    const tests = r.maven?.tests as { module: string; suites: { name: string }[] }[];
+    const byModule = Object.fromEntries(tests.map((t) => [t.module, t.suites.map((s) => s.name)]));
+    assert.deepEqual(byModule, { core: ["demo.core.GreeterTest"], app: ["demo.app.AppTest"] });
+    for (const id of L0) assert.ok(gateIds(r).includes(id), `L0 ${id} did not pass`);
+  });
+
+  it("reactor-dep-no-test: app without its test is module-no-report FAIL", () => {
+    const r = run("reactor-dep-no-test");
+    assert.notEqual(r.status, 0);
+    const v = verdict(r, "maven:test");
+    assert.equal(v.ok, false);
+    assert.equal(v.total, 1, "core still ran its test");
+    assert.ok(
+      v.reasons.some((m) => /module app: no surefire report/.test(m)),
+      v.reasons.join("\n"),
+    );
+  });
+
+  it("pom-includes: pom surefire <includes> hiding a failing test is FAIL (guard + cross-check)", () => {
+    const r = run("pom-includes");
+    assert.notEqual(r.status, 0);
+    const guard = verdict(r, "maven:pom-guard");
+    assert.ok(
+      guard.reasons.some((m) => /<includes>/.test(m)),
+      guard.reasons.join("\n"),
+    );
+    const v = verdict(r, "maven:test");
+    assert.equal(v.ok, false);
+    assert.ok(
+      v.reasons.some((m) => /compiled test class demo\.FailingTest has no surefire report/.test(m)),
+      v.reasons.join("\n"),
+    );
+  });
+
+  it("missing-l0: a maven config without an L0 gate FAILS before any build", () => {
+    const r = run("missing-l0");
+    assert.notEqual(r.status, 0);
+    assert.equal(r.maven, undefined);
+    assert.match(r.out, /L0 gate "secrets-scan" missing from gates\[\]/);
+    const l0 = (r.report.gates as { id: string; ok: boolean }[]).find((g) => g.id === "l0-config");
+    assert.equal(l0?.ok, false);
   });
 
   it("stack-mismatch: declared npm on a maven tree is FAIL before any build", () => {

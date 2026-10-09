@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import process from "node:process";
 import { checkStack, npmGateAdapter, runAdapter, type Stack } from "./adapter.js";
+import { checkL0Gates, L0_GATES, runL0Gate } from "./l0.js";
 import { runMavenSkeleton } from "./maven.js";
 import { loadPolicyConfig, printPolicyFindings, runPolicyBase } from "./policy-base.js";
 
@@ -108,6 +109,26 @@ async function main(): Promise<void> {
     return;
   }
   console.info(`Gate passed: stack (${stackCheck.stack})`);
+
+  // ADD-POLY: L0 gates are mandatory for every stack (config validation, built-in).
+  console.info("\n=== GATE: l0-config (built-in) ===");
+  const l0Problems = checkL0Gates(stackCheck.stack, config.gates);
+  results.push({
+    id: "l0-config",
+    ok: l0Problems.length === 0,
+    exitCode: l0Problems.length === 0 ? 0 : 1,
+    durationMs: 0,
+  });
+  if (l0Problems.length > 0) {
+    for (const problem of l0Problems) {
+      console.error(`  x ${problem}`);
+    }
+    writeReport(config, results, false);
+    console.error("\nGate failed: l0-config");
+    process.exitCode = 1;
+    return;
+  }
+  console.info(`Gate passed: l0-config (${L0_GATES.join(", ")})`);
   if (stackCheck.stack !== "npm") {
     await runCoreStack(stackCheck.stack, config, results);
     return;
@@ -138,14 +159,23 @@ async function main(): Promise<void> {
   console.info("\nAll gates passed. Code is eligible for human exploratory check.");
 }
 
-/** Non-npm stacks: the core picks every command; config gates[] cannot add or replace them. */
+/**
+ * Non-npm stacks: the core picks every command. gates[] holds L0 ids only (validated above);
+ * L0 runs from this kit copy in canonical order, then the stack's capabilities.
+ */
 async function runCoreStack(stack: Stack, config: GauntletConfig, results: GateResult[]) {
-  if (Array.isArray(config.gates) && config.gates.length > 0) {
-    console.error(`\nstack ${stack}: gates[] must be empty; the runner chooses the commands.`);
-    results.push({ id: `${stack}:gates`, ok: false, exitCode: 1, durationMs: 0 });
-    writeReport(config, results, false);
-    process.exitCode = 1;
-    return;
+  for (const id of L0_GATES) {
+    console.info(`\n=== GATE: ${id} (L0, runner-owned) ===`);
+    const started = Date.now();
+    const code = await runL0Gate(id, stack, process.cwd());
+    results.push({ id, ok: code === 0, exitCode: code, durationMs: Date.now() - started });
+    if (code !== 0) {
+      writeReport(config, results, false);
+      console.error(`\nGate failed: ${id} (exit ${code})`);
+      process.exitCode = code;
+      return;
+    }
+    console.info(`Gate passed: ${id}`);
   }
   const run = await runMavenSkeleton(process.cwd());
   writeFileSync(
@@ -171,7 +201,7 @@ async function runCoreStack(stack: Stack, config: GauntletConfig, results: GateR
     process.exitCode = 1;
     return;
   }
-  console.info("\nAll gates passed (maven S1 skeleton: compile, test, freshness).");
+  console.info("\nAll gates passed (L0 + maven S1 skeleton: compile, test, freshness).");
 }
 
 main().catch((error) => {

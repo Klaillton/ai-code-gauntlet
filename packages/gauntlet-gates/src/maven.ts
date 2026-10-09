@@ -2,19 +2,26 @@
  * ADD-POLY S1 — maven L2 adapters (walking skeleton): compile, test (surefire), freshness.
  *
  * Anti-false-green rules this file owns:
- * - Goals run by fixed plugin coordinates chosen here (never pom phases/bindings).
+ * - ONE reactor invocation: `process-test-classes <pinned surefire>:test` (Gate revise #1), so
+ *   resources reach target/classes and sibling modules resolve through the reactor. The
+ *   lifecycle stops before `test`, so the pom's own surefire execution does not run; the
+ *   pinned surefire coordinate is the one that produces the reports.
  * - The build runs in a core-chosen tmp copy OUTSIDE the workspace; `target/`, `.mvn/`, `.git`
  *   are not copied, so committed/stale reports and maven.config/extensions cannot leak in.
+ *   `-Dmaven.repo.local` is a core-chosen dir outside the workspace (never ~/.m2).
+ * - Reports are read per module from `<stage>/<module>/target/surefire-reports` (the stage is
+ *   core-chosen) and attributed to that module: each report must match a test class compiled
+ *   in the SAME module, and each compiled test class needs its report.
  * - Reactor modules are enumerated by the core from the poms; a jar module with no surefire
  *   report is FAIL; total == 0 tests is FAIL (adapter.ts).
- * - Surefire reports are cross-checked against the compiled test classes (both directions).
  * - Thresholds and skips never come from the pom: the pom guard FAILs any attempt.
- * Not yet (S2+): JaCoCo, multi-module inter-module deps, no-cheat Java, protected pom paths.
+ * Not yet (S2+): JaCoCo, no-cheat Java, protected pom paths, pom semantic diff.
  */
 import {
   cpSync,
   existsSync,
   lstatSync,
+  mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
@@ -26,14 +33,11 @@ import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import process from "node:process";
 import { runAdapter, type Adapter, type AdapterResult, type CapabilityVerdict } from "./adapter.js";
 
-/** Pinned by the runner. The pom's own <plugins> versions are irrelevant for these goals. */
-export const MAVEN_GOALS = {
-  resources: "org.apache.maven.plugins:maven-resources-plugin:3.3.1:resources",
-  compile: "org.apache.maven.plugins:maven-compiler-plugin:3.14.1:compile",
-  testResources: "org.apache.maven.plugins:maven-resources-plugin:3.3.1:testResources",
-  testCompile: "org.apache.maven.plugins:maven-compiler-plugin:3.14.1:testCompile",
-  surefire: "org.apache.maven.plugins:maven-surefire-plugin:3.5.4:test",
-} as const;
+/** Lifecycle stops here: compile + resources + test-compile, never the pom's `test` phase. */
+export const MAVEN_LIFECYCLE_PHASE = "process-test-classes";
+
+/** Pinned by the runner; this coordinate (not the pom's version) produces the reports. */
+export const SUREFIRE_GOAL = "org.apache.maven.plugins:maven-surefire-plugin:3.5.4:test";
 
 /** Always passed; a user property cannot beat explicit pom config, so the pom guard does that. */
 const FORCED_PROPS = [
@@ -162,11 +166,28 @@ export function pomGuard(root: string, modules: MavenModule[]): PomFinding[] {
   return findings;
 }
 
+export function isInside(root: string, path: string): boolean {
+  const rel = relative(resolve(root), resolve(path));
+  return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
+}
+
+/**
+ * Core-chosen local repository: GAUNTLET_MAVEN_REPO (runner env) or <tmp>/gauntlet-m2-repo.
+ * Shared between runs as a download cache; the core never installs into it.
+ */
+export function mavenRepo(root: string): string {
+  const repo = resolve(process.env.GAUNTLET_MAVEN_REPO ?? join(tmpdir(), "gauntlet-m2-repo"));
+  if (isInside(root, repo)) {
+    throw new Error(`maven repo ${repo} is inside the workspace (fail closed)`);
+  }
+  mkdirSync(repo, { recursive: true });
+  return repo;
+}
+
 /** Core-chosen staging dir outside the workspace; never copies target/, .mvn/, .git. */
 export function stageWorkspace(root: string): string {
   const stage = mkdtempSync(join(tmpdir(), "gauntlet-maven-"));
-  const rel = relative(resolve(root), resolve(stage));
-  if (rel === "" || (!rel.startsWith("..") && !isAbsolute(rel))) {
+  if (isInside(root, stage)) {
     rmSync(stage, { recursive: true, force: true });
     throw new Error(`staging dir ${stage} is inside the workspace; set TMPDIR outside it`);
   }
@@ -340,24 +361,41 @@ export function checkModuleTests(stage: string, module: MavenModule): ModuleTest
   return { module: module.dir, suites, compiled, problems };
 }
 
-function mvnArgs(stage: string, goals: string[]): string[] {
-  return ["-B", "-ntp", "-f", join(stage, "pom.xml"), ...FORCED_PROPS, ...goals];
+/** The single reactor invocation (Gate revise #1). */
+export function reactorArgs(stage: string, repo: string): string[] {
+  return [
+    "-B",
+    "-ntp",
+    "-f",
+    join(stage, "pom.xml"),
+    `-Dmaven.repo.local=${repo}`,
+    ...FORCED_PROPS,
+    MAVEN_LIFECYCLE_PHASE,
+    SUREFIRE_GOAL,
+  ];
 }
 
-export function compileAdapter(stage: string, modules: MavenModule[]): Adapter {
+/** Shared between the reactor adapter (writes) and the report adapter (reads). */
+export type ReactorState = { exitCode: number };
+
+/** Runs the reactor once; parses compiled main classes per module. */
+export function compileAdapter(
+  stage: string,
+  modules: MavenModule[],
+  repo: string,
+  state: ReactorState,
+): Adapter {
   const built = buildModules(modules);
   return {
     capability: "maven:compile",
     command: process.env.GAUNTLET_MVN ?? "mvn",
-    args: mvnArgs(stage, [
-      MAVEN_GOALS.resources,
-      MAVEN_GOALS.compile,
-      MAVEN_GOALS.testResources,
-      MAVEN_GOALS.testCompile,
-    ]),
+    args: reactorArgs(stage, repo),
     cwd: stage,
     // total: main classes compiled across modules; metric: modules without classes.
+    // Exit != 0 may be a test failure, so the verdict comes from the classes on disk; the
+    // test adapter fails a non-zero exit that no failing test explains.
     parser: (raw): AdapterResult => {
+      state.exitCode = raw.exitCode;
       const detail: string[] = [];
       let total = 0;
       for (const module of built) {
@@ -369,30 +407,35 @@ export function compileAdapter(stage: string, modules: MavenModule[]): Adapter {
         }
         total += classes.length;
       }
-      return { ran: raw.exitCode === 0, total, metric: detail.length, detail };
+      return { ran: raw.exitCode !== 127, total, metric: detail.length, detail };
     },
     accept: (result) =>
       result.metric === 0 ? undefined : "maven:compile: module(s) without classes",
   };
 }
 
-export function testAdapter(stage: string, modules: MavenModule[], sink: ModuleTests[]): Adapter {
+/** Reads the reports the reactor wrote (no command of its own). */
+export function testAdapter(
+  stage: string,
+  modules: MavenModule[],
+  sink: ModuleTests[],
+  state: ReactorState,
+): Adapter {
   const built = buildModules(modules);
   return {
     capability: "maven:test",
-    command: process.env.GAUNTLET_MVN ?? "mvn",
-    args: mvnArgs(stage, [MAVEN_GOALS.surefire]),
+    args: [],
     cwd: stage,
     // total: tests reported; metric: failures + errors + skipped.
-    parser: (raw): AdapterResult => {
+    parser: (): AdapterResult => {
       const results = built.map((module) => checkModuleTests(stage, module));
       sink.push(...results);
       const suites = results.flatMap((result) => result.suites);
       const total = suites.reduce((sum, suite) => sum + suite.tests, 0);
       const metric = suites.reduce((sum, s) => sum + s.failures + s.errors + s.skipped, 0);
       const detail = results.flatMap((result) => result.problems);
-      if (raw.exitCode !== 0 && metric === 0) {
-        detail.push(`maven:test: mvn exited ${raw.exitCode} with no failing test in the reports`);
+      if (state.exitCode !== 0 && metric === 0) {
+        detail.push(`maven: mvn exited ${state.exitCode} with no failing test in the reports`);
       }
       return { ran: suites.length > 0, total, metric, detail };
     },
@@ -486,7 +529,7 @@ export type MavenRun = {
 };
 
 /**
- * Walking skeleton: pom guard -> stage -> compile -> test -> freshness. Every capability runs
+ * Walking skeleton: pom guard -> stage -> reactor (compile + surefire) -> reports -> freshness. Every capability runs
  * (no short-circuit after the pom guard) so the report shows each false-green it caught.
  */
 export async function runMavenSkeleton(
@@ -496,6 +539,7 @@ export async function runMavenSkeleton(
   const modules = enumerateModules(root);
   const pomFindings = pomGuard(root, modules);
   const startedAt = Date.now();
+  const repo = mavenRepo(root);
   const stage = stageWorkspace(root);
   log(`maven: staged ${root} -> ${stage} (core-chosen, outside the workspace)`);
   const listed = modules.map((m) => m.dir + "[" + m.packaging + "]").join(", ");
@@ -513,9 +557,10 @@ export async function runMavenSkeleton(
     reasons: pomFindings.map((finding) => `${finding.pom}: ${finding.message}`),
   };
   verdicts.push(guard);
+  const state: ReactorState = { exitCode: 1 };
   for (const adapter of [
-    compileAdapter(stage, modules),
-    testAdapter(stage, modules, tests),
+    compileAdapter(stage, modules, repo, state),
+    testAdapter(stage, modules, tests, state),
     freshnessAdapter(stage, modules, startedAt),
   ]) {
     log(`\n=== CAPABILITY: ${adapter.capability} ===`);

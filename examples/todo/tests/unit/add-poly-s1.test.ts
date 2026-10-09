@@ -2,7 +2,9 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import { checkStack, judge, npmGateAdapter, runAdapter } from "../../scripts/adapter.js";
+import { checkL0Gates, L0_GATES, l0Command } from "../../scripts/l0.js";
 import {
   checkModuleTests,
   enumerateModules,
@@ -170,5 +172,48 @@ describe("ADD-POLY S1: maven parsing (no mvn needed)", () => {
     });
     const result = checkModuleTests(stage, { dir: ".", packaging: "jar", pom: "pom.xml" });
     expect(result.problems.some((p) => p.includes("tests=5 but has 1"))).toBe(true);
+  });
+});
+
+describe("ADD-POLY S1: L0 gates are mandatory for every stack", () => {
+  const npmL0 = L0_GATES.map((id) => ({ id, command: "npm", args: ["run", id] }));
+  const idsOnly = L0_GATES.map((id) => ({ id }));
+
+  it("this tree's gauntlet.config.json lists every L0 gate", () => {
+    const config = JSON.parse(readFileSync("gauntlet.config.json", "utf8")) as { gates: unknown };
+    expect(checkL0Gates("npm", config.gates)).toEqual([]);
+  });
+
+  it("a missing L0 gate is FAIL (npm and maven)", () => {
+    const withoutSecrets = (gates: { id: string }[]) =>
+      gates.filter((g) => g.id !== "secrets-scan");
+    expect(checkL0Gates("npm", withoutSecrets(npmL0)).join("\n")).toMatch(/"secrets-scan" missing/);
+    expect(checkL0Gates("maven", withoutSecrets(idsOnly)).join("\n")).toMatch(
+      /"secrets-scan" missing/,
+    );
+  });
+
+  it("gates[] absent is FAIL", () => {
+    expect(checkL0Gates("maven", undefined)).toHaveLength(1);
+  });
+
+  it("npm L0 entries must be exactly npm run <id>", () => {
+    const swapped = npmL0.map((g) =>
+      g.id === "spec-code" ? { ...g, command: "true", args: [] } : g,
+    );
+    expect(checkL0Gates("npm", swapped).join("\n")).toMatch(/exactly `npm run spec-code`/);
+  });
+
+  it("maven L0 entries are ids only and extra gates are FAIL", () => {
+    expect(checkL0Gates("maven", idsOnly)).toEqual([]);
+    expect(checkL0Gates("maven", npmL0)).toHaveLength(L0_GATES.length);
+    expect(checkL0Gates("maven", [...idsOnly, { id: "unit" }]).join("\n")).toMatch(
+      /"unit" is not an L0 gate/,
+    );
+  });
+
+  it("the runner owns the command; spec-sync runs --l0 off npm", () => {
+    expect(l0Command("spec-sync", "maven").args.at(-1)).toBe("--l0");
+    expect(l0Command("spec-sync", "npm").args.at(-1)).toMatch(/spec-sync\.ts$/);
   });
 });

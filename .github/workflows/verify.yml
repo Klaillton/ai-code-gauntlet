@@ -308,4 +308,5 @@ jobs:
       - run: mvn -v
       - run: npm ci --prefix packages/gauntlet-gates --ignore-scripts --no-audit --no-fund
       # Fixture repos are local git repos; drop the kit's PR context so policy-base uses theirs.
-      - run: env -u GITHUB_BASE_REF -u GITHUB_EVENT_NAME -u GITHUB_EVENT_PATH npm --prefix packages/gauntlet-gates test
+      # Core-chosen repo = the setup-java cache dir (outside the workspace; never installed into).
+      - run: GAUNTLET_MAVEN_REPO="$HOME/.m2/repository" env -u GITHUB_BASE_REF -u GITHUB_EVENT_NAME -u GITHUB_EVENT_PATH npm --prefix packages/gauntlet-gates test

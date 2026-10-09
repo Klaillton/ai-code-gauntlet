@@ -85,6 +85,20 @@ test("adopt (npm default) writes a fail-closed stack: npm", () => {
   }
 });
 
+/** Lines inside `run:` scripts that interpolate `${{ }}` (script injection surface). */
+function expressionsInRunBlocks(yaml) {
+  const hits = [];
+  let runIndent = -1;
+  for (const line of yaml.split("\n")) {
+    const indent = line.length - line.trimStart().length;
+    if (runIndent >= 0 && line.trim() !== "" && indent <= runIndent) runIndent = -1;
+    const run = /^(\s*)(?:- )?run:/.exec(line);
+    if (run) runIndent = indent;
+    if ((run || runIndent >= 0) && line.includes("${{")) hits.push(line.trim());
+  }
+  return hits;
+}
+
 test("adopt --stack maven: config + docs only, no package.json, no scripts/", () => {
   const dir = mkdtempSync(join(tmpdir(), "gauntlet-adopt-maven-"));
   try {
@@ -93,7 +107,26 @@ test("adopt --stack maven: config + docs only, no package.json, no scripts/", ()
     assert.equal(result.status, 0, result.stderr || result.stdout);
     const config = JSON.parse(readFileSync(join(dir, "gauntlet.config.json"), "utf8"));
     assert.equal(config.stack, "maven");
-    assert.deepEqual(config.gates, []);
+    assert.deepEqual(
+      config.gates.map((g) => g.id),
+      [
+        "protect-specs",
+        "holes-review",
+        "spec-code",
+        "adr-lint",
+        "sdd-presence",
+        "secrets-scan",
+        "spec-sync",
+      ],
+    );
+    assert.ok(config.gates.every((g) => !("command" in g) && !("args" in g)));
+    const wf = readFileSync(join(dir, ".github/workflows/policy-base.yml"), "utf8");
+    assert.match(wf, /^on:\n {2}pull_request_target:/m);
+    assert.match(wf, /^permissions: \{\}$/m);
+    assert.equal((wf.match(/^ +persist-credentials: false$/gm) ?? []).length, 4);
+    assert.match(wf, /GAUNTLET_KIT_SHA: [0-9a-f]{40}$/m);
+    assert.match(wf, /--policy-head "\$HEAD_SHA"/);
+    assert.deepEqual(expressionsInRunBlocks(wf), [], "PR data reaches run: only via env");
     assert.equal(existsSync(join(dir, "package.json")), false);
     assert.equal(existsSync(join(dir, "scripts")), false);
     assert.equal(existsSync(join(dir, "docs/sdd/Security.md")), true);
@@ -121,6 +154,33 @@ test("adopt --stack gradle is not implemented yet (fails)", () => {
     const result = adopt([dir, "--stack", "gradle"]);
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /not supported/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("adopt --stack maven pins --kit-ref and lists module globs; bad ref fails closed", () => {
+  const dir = mkdtempSync(join(tmpdir(), "gauntlet-adopt-maven-ref-"));
+  try {
+    writeFileSync(
+      join(dir, "pom.xml"),
+      "<project><packaging>pom</packaging><modules><module>core</module><!-- <module>old</module> --><module>app</module></modules></project>\n",
+    );
+    const sha = "a".repeat(40);
+    const ok = adopt([dir, "--stack", "maven", "--kit-ref", sha]);
+    assert.equal(ok.status, 0, ok.stderr || ok.stdout);
+    const wf = readFileSync(join(dir, ".github/workflows/policy-base.yml"), "utf8");
+    assert.match(wf, new RegExp(`GAUNTLET_KIT_SHA: ${sha}$`, "m"));
+    const config = JSON.parse(readFileSync(join(dir, "gauntlet.config.json"), "utf8"));
+    assert.deepEqual(config.specCode.implementationGlobs, ["core/src/main/**", "app/src/main/**"]);
+
+    const other = mkdtempSync(join(tmpdir(), "gauntlet-adopt-maven-badref-"));
+    writeFileSync(join(other, "pom.xml"), "<project/>\n");
+    const bad = adopt([other, "--stack", "maven", "--kit-ref", "main"]);
+    assert.notEqual(bad.status, 0);
+    assert.match(bad.stderr, /cannot pin the kit/);
+    assert.equal(existsSync(join(other, "gauntlet.config.json")), false);
+    rmSync(other, { recursive: true, force: true });
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
