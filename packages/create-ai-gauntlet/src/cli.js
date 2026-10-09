@@ -504,8 +504,6 @@ export const L0_GATE_IDS = [
   "spec-sync",
 ];
 
-/** Same list as gauntlet-gates l0.ts MAVEN_BUILD_GLOBS (l0-config fails without them). */
-export const MAVEN_BUILD_GLOBS = ["**/pom.xml", ".mvn/**", "mvnw", "mvnw.cmd"];
 /** gauntlet-gates spec-code DEFAULT_SPEC_GLOBS (build files excluded on purpose). */
 const SPEC_GLOBS = [
   "features/**/*.feature",
@@ -640,13 +638,12 @@ function adoptMaven(target, { kitRef: explicitRef } = {}) {
     // L0 core (ids only; the pinned runner owns every command). Missing one = FAIL.
     gates: L0_GATE_IDS.map((id) => ({ id })),
     agent: {
-      // Maven build files as whole files: a pom plugin could forge a surefire report. Until
-      // S2's semantic pom diff, any change needs policy-change-approved (and specs-approved).
+      // Maven build files are NOT listed: policy-base protects them (policy-change-approved
+      // only); listing them here would also demand specs-approved. l0-config enforces both.
       protectedGlobs: [
         "features/**/*.feature",
         "openapi/openapi.yaml",
         "docs/holes-review/**/*.md",
-        ...MAVEN_BUILD_GLOBS,
       ],
     },
     allowHolesReviewSkip: false,
@@ -687,9 +684,9 @@ Needs JDK 21, Maven (\`mvn\` on PATH) and git with \`origin/main\` fetched.
   sdd-presence, secrets-scan, spec-sync \`--l0\` (D11 Gherkin edge inventory + D13 OpenAPI vs
   contract.cases; both skip when features/ or openapi/ are absent).
 - pom guard: skips, filters, report/output redirects and pom-owned thresholds are FAIL.
-- Build files are protected as whole files (\`**/pom.xml\`, \`.mvn/**\`, \`mvnw\`, \`mvnw.cmd\`):
-  any change needs \`policy-change-approved\` (policy-base) and \`specs-approved\`
-  (protect-specs). S2's semantic pom diff replaces this.
+- Build files are protected as whole files by policy-base (\`**/pom.xml\`, \`.mvn/**\`,
+  \`mvnw\`, \`mvnw.cmd\`): any change needs \`policy-change-approved\` only. In S2 the semantic
+  pom diff splits dependency changes (\`deps-approved\`) from policy changes.
 - l0-config also FAILs when a reactor module's \`src/main/**\` is not covered by
   \`holesReview\`/\`specCode\` implementationGlobs: adding a module means adding its glob
   (a policy change).

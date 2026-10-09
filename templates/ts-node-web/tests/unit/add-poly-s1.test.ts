@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { checkStack, judge, npmGateAdapter, runAdapter } from "../../scripts/adapter.js";
 import {
+  checkBuildFilesProtected,
   checkL0Gates,
   checkMavenL0Coverage,
   L0_GATES,
@@ -228,7 +229,7 @@ describe("ADD-POLY S1: maven build files and module coverage", () => {
   const AGG = (mods: string[]) =>
     `<project><packaging>pom</packaging><modules>${mods.map((m) => `<module>${m}</module>`).join("")}</modules></project>`;
   const covered = (globs: string[]) => ({
-    agent: { protectedGlobs: [...MAVEN_BUILD_GLOBS] },
+    agent: { protectedGlobs: ["features/**/*.feature"] },
     holesReview: { implementationGlobs: globs },
     specCode: { implementationGlobs: globs },
   });
@@ -270,11 +271,35 @@ describe("ADD-POLY S1: maven build files and module coverage", () => {
     expect(problems.join("\n")).toMatch(/module parent\/c: .* not covered by specCode/);
   });
 
-  it("default src/** does not cover a sub-module; missing build globs are FAIL", () => {
+  it("default src/** does not cover a sub-module", () => {
     const root = tree({ "pom.xml": AGG(["core"]), "core/pom.xml": POM });
     const problems = checkMavenL0Coverage(root, {});
-    expect(problems.filter((p) => p.startsWith("agent.protectedGlobs"))).toHaveLength(4);
     expect(problems.filter((p) => p.startsWith("module core:"))).toHaveLength(2);
+    expect(problems).toHaveLength(2);
+  });
+
+  it("build files listed in protectedGlobs are FAIL (would demand specs-approved)", () => {
+    const root = tree({ "pom.xml": POM });
+    const config = {
+      ...covered(["src/main/**"]),
+      agent: { protectedGlobs: [...MAVEN_BUILD_GLOBS] },
+    };
+    const problems = checkMavenL0Coverage(root, config);
+    expect(problems).toHaveLength(4);
+    expect(problems.join("\n")).toMatch(/must not list "\*\*\/pom\.xml".*never specs-approved/);
+  });
+
+  it("l0-config requires policy-base to protect the 4 build paths and every module pom", () => {
+    expect(checkBuildFilesProtected(["core/pom.xml"])).toEqual([]);
+    const withoutWrapper = (path: string, prefix: string) =>
+      !path.startsWith("mvnw") && isProtectedPolicyPath(path, prefix);
+    expect(checkBuildFilesProtected([], withoutWrapper).join("\n")).toMatch(
+      /does not protect mvnw:.*\n.*does not protect mvnw\.cmd:/,
+    );
+    const rootPomOnly = (path: string) => path === "pom.xml";
+    const failed = checkBuildFilesProtected(["deep/x/pom.xml"], rootPomOnly).join("\n");
+    expect(failed).toMatch(/does not protect deep\/x\/pom\.xml/);
+    expect(failed).toMatch(/does not protect \.mvn\/extensions\.xml/);
   });
 
   it("single-module: src/main/** covers the root module", () => {

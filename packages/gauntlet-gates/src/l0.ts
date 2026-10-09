@@ -16,6 +16,7 @@ import { fileURLToPath } from "node:url";
 import type { Stack } from "./adapter.js";
 import { DEFAULT_IMPLEMENTATION_GLOBS, isImplementationPath } from "./holes-review.js";
 import { buildModules, enumerateModules } from "./maven.js";
+import { isProtectedPolicyPath } from "./policy-base.js";
 
 export const L0_GATES = [
   "protect-specs",
@@ -68,8 +69,45 @@ export function checkL0Gates(stack: Stack, gates: unknown): string[] {
   return problems;
 }
 
-/** Maven build files: whole-file protected until S2's semantic pom diff (adopt writes these). */
+/**
+ * Maven build files: policy-base protects them as whole files until S2's semantic pom diff
+ * (`isMavenBuildPath`, grant `policy-change-approved` only). They must NOT be in
+ * agent.protectedGlobs, or protect-specs would also ask for `specs-approved`.
+ */
 export const MAVEN_BUILD_GLOBS = ["**/pom.xml", ".mvn/**", "mvnw", "mvnw.cmd"] as const;
+
+/** Tree-relative probes for the 4 build paths (+ every real module pom). */
+function buildFileProbes(poms: readonly string[]): string[] {
+  return [
+    ...new Set([
+      "pom.xml",
+      "module/pom.xml",
+      "a/b/pom.xml",
+      ...poms,
+      ".mvn/extensions.xml",
+      ".mvn/maven.config",
+      ".mvn/wrapper/maven-wrapper.properties",
+      "mvnw",
+      "mvnw.cmd",
+    ]),
+  ];
+}
+
+/**
+ * FAIL reasons when policy-base would not protect a Maven build file. The predicate is the
+ * one policy-base uses; injectable only so the check itself can be tested.
+ */
+export function checkBuildFilesProtected(
+  poms: readonly string[],
+  isProtected: (treeRel: string, prefix: string) => boolean = isProtectedPolicyPath,
+): string[] {
+  return buildFileProbes(poms)
+    .filter((path) => !isProtected(path, ""))
+    .map(
+      (path) =>
+        `policy-base does not protect ${path}: maven build files need policy-change-approved (until S2)`,
+    );
+}
 
 type L0Config = {
   agent?: { protectedGlobs?: unknown };
@@ -92,22 +130,25 @@ function moduleProbes(dir: string): string[] {
 /**
  * Maven-only L0 config checks (FAIL reasons; empty = ok): every build module (enumerated
  * recursively, like the core) must have its src/main covered by holesReview and specCode
- * implementationGlobs, and the build files must be in agent.protectedGlobs.
+ * implementationGlobs; policy-base must protect the build files, and agent.protectedGlobs must
+ * not list them (a pom change needs policy-change-approved only, never specs-approved).
  */
 export function checkMavenL0Coverage(root: string, config: unknown): string[] {
   const cfg = (typeof config === "object" && config !== null ? config : {}) as L0Config;
   const problems: string[] = [];
+  const modules = enumerateModules(root);
+  problems.push(...checkBuildFilesProtected(modules.map((module) => module.pom)));
   const protectedGlobs = stringList(cfg.agent?.protectedGlobs, []);
-  for (const glob of MAVEN_BUILD_GLOBS) {
-    if (!protectedGlobs.includes(glob)) {
-      problems.push(`agent.protectedGlobs must include "${glob}" (maven build files, until S2)`);
-    }
+  for (const glob of MAVEN_BUILD_GLOBS.filter((g) => protectedGlobs.includes(g))) {
+    problems.push(
+      `agent.protectedGlobs must not list "${glob}": policy-base owns maven build files (policy-change-approved only, never specs-approved)`,
+    );
   }
   const scopes: [string, string[]][] = [
     ["holesReview", stringList(cfg.holesReview?.implementationGlobs, DEFAULT_IMPLEMENTATION_GLOBS)],
     ["specCode", stringList(cfg.specCode?.implementationGlobs, DEFAULT_IMPLEMENTATION_GLOBS)],
   ];
-  for (const module of buildModules(enumerateModules(root))) {
+  for (const module of buildModules(modules)) {
     for (const [key, globs] of scopes) {
       if (!moduleProbes(module.dir).every((probe) => isImplementationPath(probe, globs))) {
         const where = module.dir === "." ? "src/main/**" : `${module.dir}/src/main/**`;

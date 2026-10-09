@@ -28,15 +28,7 @@
     }
   ],
   "agent": {
-    "protectedGlobs": [
-      "features/**/*.feature",
-      "openapi/openapi.yaml",
-      "docs/holes-review/**/*.md",
-      "**/pom.xml",
-      ".mvn/**",
-      "mvnw",
-      "mvnw.cmd"
-    ]
+    "protectedGlobs": ["features/**/*.feature", "openapi/openapi.yaml", "docs/holes-review/**/*.md"]
   },
   "allowHolesReviewSkip": false,
   "holesReview": {

@@ -88,8 +88,8 @@ node packages/gauntlet-gates/run.mjs --root /path/to/maven-app # JDK 21 + mvn on
 
 S1 runs policy-base, `stack`, `l0-config`, the L0 gates (protect-specs, holes-review, spec-code,
 adr-lint, sdd-presence, secrets-scan, spec-sync D11/D13), module coverage of the
-holes-review/spec-code globs, whole-file protection of `pom.xml`/`.mvn/**`/`mvnw*` (label
-needed), a pom guard, and one reactor run
+holes-review/spec-code globs, whole-file protection of `pom.xml`/`.mvn/**`/`mvnw*` by
+policy-base (only `policy-change-approved` needed), a pom guard, and one reactor run
 (`process-test-classes` + pinned surefire) with per-module report checks and freshness. Adopt
 also writes a base-run `.github/workflows/policy-base.yml` pinned to the kit SHA. It does **not**
 yet run JaCoCo, PIT, ArchUnit, Cucumber or no-cheat Java (S2-S4). See

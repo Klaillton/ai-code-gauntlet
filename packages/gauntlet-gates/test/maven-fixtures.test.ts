@@ -338,22 +338,19 @@ describe("maven walking skeleton (S1)", () => {
     assert.equal(r.maven, undefined, "no build after an l0-config failure");
   });
 
-  it("adopted config protects a nested module pom and .mvn/extensions.xml (unlabelled = FAIL)", () => {
+  it("nested module pom + .mvn/extensions.xml: policy-base alone blocks; policy grant suffices", () => {
     const touch = (root: string): void => {
       const pom = join(root, "core", "pom.xml");
       writeFileSync(pom, readFileSync(pom, "utf8").replace("</project>", "<!-- x --></project>"));
       mkdirSync(join(root, ".mvn"), { recursive: true });
       writeFileSync(join(root, ".mvn", "extensions.xml"), "<extensions/>\n");
     };
-    const config = (r: Run) =>
-      JSON.parse(readFileSync(join(r.root, "gauntlet.config.json"), "utf8")) as {
-        agent: { protectedGlobs: string[] };
-      };
 
     // No label: the authoritative policy-base (first step) blocks both files.
     const unlabelled = run("reactor-dep", adoptInPlace, { change: touch });
+    const config = JSON.parse(readFileSync(join(unlabelled.root, "gauntlet.config.json"), "utf8"));
     for (const glob of ["**/pom.xml", ".mvn/**", "mvnw", "mvnw.cmd"]) {
-      assert.ok(config(unlabelled).agent.protectedGlobs.includes(glob), glob);
+      assert.ok(!config.agent.protectedGlobs.includes(glob), `adopt must not list ${glob}`);
     }
     assert.notEqual(unlabelled.status, 0, unlabelled.out);
     assert.equal(gateOk(unlabelled, "policy-base"), false);
@@ -362,21 +359,15 @@ describe("maven walking skeleton (S1)", () => {
       /protected policy paths changed vs base .*without human grant: \.mvn\/extensions\.xml, core\/pom\.xml/,
     );
 
-    // policy-change-approved alone: protect-specs still blocks (protectedGlobs, specs-approved).
+    // policy-change-approved only (no specs-approved / ALLOW_SPEC_EDIT): protect-specs passes.
     const policyOnly = run("reactor-dep", adoptInPlace, {
       change: touch,
       env: { POLICY_CHANGE_APPROVED: "1" },
     });
-    assert.notEqual(policyOnly.status, 0, policyOnly.out);
-    assert.equal(gateOk(policyOnly, "policy-base"), true);
-    assert.equal(gateOk(policyOnly, "protect-specs"), false);
-    assert.match(
-      policyOnly.out,
-      /protect-specs blocked spec edits without human grant: .*core\/pom\.xml/,
-    );
-    assert.match(
-      policyOnly.out,
-      /protect-specs blocked spec edits without human grant: .*\.mvn\/extensions\.xml/,
-    );
+    assert.equal(gateOk(policyOnly, "policy-base"), true, policyOnly.out);
+    assert.equal(gateOk(policyOnly, "protect-specs"), true, policyOnly.out);
+    assert.doesNotMatch(policyOnly.out, /protect-specs blocked/);
+    assert.equal(gateOk(policyOnly, "spec-code"), true, policyOnly.out);
+    assert.equal(policyOnly.status, 0, policyOnly.out);
   });
 });

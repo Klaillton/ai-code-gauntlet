@@ -41,8 +41,8 @@ or a second stack's build file next to it: FAIL.
 2. Fail-closed `stack` (built-in second step after policy-base; template + Todo declare `npm`).
 3. Pinned runner (`run.mjs`) for consumers without package.json.
 4. `create-ai-gauntlet adopt --stack maven`: config (`stack: maven`, `gates[]` = the L0 ids
-   only, plus the L0 keys: protected globs including the Maven build files `**/pom.xml`,
-   `.mvn/**`, `mvnw`, `mvnw.cmd`, holes-review and spec-code globs per reactor module, and
+   only, plus the L0 keys: protected spec globs (not the build files), holes-review and
+   spec-code globs per reactor module, and
    `specCode.specGlobs` pinned so a build-file touch never counts as a spec touch),
    agent docs, SDD docs, and `.github/workflows/policy-base.yml` (base-run enforcer, same
    hardening as the kit's: `pull_request_target`, `permissions: {}` with per-job
@@ -98,10 +98,13 @@ org.apache.maven.plugins:maven-surefire-plugin:3.5.4:test`. The lifecycle up to
 - Every tree's config must list all L0 gates; a config that drops one fails `l0-config`.
 - Maven build files are protected as whole files until S2's semantic pom diff: policy-base
   treats any `pom.xml` (every level), `.mvn/**`, `mvnw`, `mvnw.cmd` as protected policy paths
-  (`policy-change-approved`, enforced base-run), and the adopted `agent.protectedGlobs` lists
-  them too, so protect-specs also asks for `specs-approved`. A pom change (even a dependency
-  bump) therefore needs both labels in S1. For maven, `l0-config` fails if the four globs are
-  missing from `agent.protectedGlobs`.
+  (`policy-change-approved`, enforced base-run). They are deliberately NOT in the adopted
+  `agent.protectedGlobs` (Gate decision): a pom change needs ONE label,
+  `policy-change-approved`, never `specs-approved`. In S2 the semantic pom diff splits it:
+  dependency changes -> `deps-approved`, plugin/build policy changes -> `policy-change-approved`.
+  For maven, `l0-config` fails if policy-base would not protect any of the 4 build paths
+  (probed with policy-base's own predicate, including every real module pom) and if
+  `agent.protectedGlobs` lists them (that would bring `specs-approved` back).
 - For maven, `l0-config` enumerates the reactor modules recursively (the core's own
   enumeration) and FAILS naming every build module whose `src/main/**` is not covered by
   `holesReview` and `specCode` implementationGlobs (`module c: c/src/main/** not covered by
@@ -113,8 +116,8 @@ org.apache.maven.plugins:maven-surefire-plugin:3.5.4:test`. The lifecycle up to
 
 - CLOSED (was: forged report from the pom). The lifecycle up to `process-test-classes` runs
   every plugin the pom binds to those phases, so one could write a passing surefire XML for
-  existing test classes. Any change to a pom, `.mvn/**` or `mvnw*` now needs the human grant
-  (see Consequences); the plugins in the base pom are trusted as reviewed code.
+  existing test classes. Any change to a pom, `.mvn/**` or `mvnw*` now needs
+  `policy-change-approved` via policy-base alone (see Consequences); the plugins in the base pom are trusted as reviewed code.
 - gitleaks (history scan) stays a CI job in the kit; the maven runner runs `secrets-scan`.
 - CLOSED (was: new module outside the globs). `l0-config` fails on an uncovered reactor
   module (maven fixture test: adopted `reactor-dep` + module C added to the reactor).

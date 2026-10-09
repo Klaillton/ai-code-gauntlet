@@ -121,7 +121,10 @@ test("adopt --stack maven: config + docs only, no package.json, no scripts/", ()
     );
     assert.ok(config.gates.every((g) => !("command" in g) && !("args" in g)));
     for (const glob of ["**/pom.xml", ".mvn/**", "mvnw", "mvnw.cmd"]) {
-      assert.ok(config.agent.protectedGlobs.includes(glob), `protectedGlobs has ${glob}`);
+      assert.ok(
+        !config.agent.protectedGlobs.includes(glob),
+        `protectedGlobs must not have ${glob}`,
+      );
     }
     assert.ok(
       !config.specCode.specGlobs.some((g) => /pom|mvn/.test(g)),
