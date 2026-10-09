@@ -12,14 +12,14 @@ concurrency:
   # CHANGE-5: only PR runs cancel; push runs on main always finish (a cancelled main run is never green).
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-permissions:
-  contents: read
-  # CHANGE-4: push to main looks up the merged PR's policy-change-approved label.
-  pull-requests: read
+# Nothing at workflow level (githubactions:S8264). Each job sets its own token scope.
+permissions: {}
 
 jobs:
   gates-sync:
     name: Gate scripts in sync
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -33,6 +33,8 @@ jobs:
 
   sbom:
     name: SBOM
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -59,6 +61,8 @@ jobs:
 
   audit:
     name: npm audit
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -77,6 +81,8 @@ jobs:
 
   smoke-create:
     name: Smoke create + verify
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -120,6 +126,8 @@ jobs:
 
   gitleaks:
     name: gitleaks (history extra)
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -149,6 +157,9 @@ jobs:
 
   template:
     name: Template ts-node-web
+    permissions:
+      contents: read
+      pull-requests: read
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -201,6 +212,9 @@ jobs:
 
   example-todo:
     name: Example Todo
+    permissions:
+      contents: read
+      pull-requests: read
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:

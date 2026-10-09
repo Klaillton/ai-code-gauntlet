@@ -372,7 +372,7 @@ describe("CHANGE-4 helpers", () => {
 
 const WORKFLOW_WITH_VERIFY = "name: verify\njobs:\n  t:\n    steps:\n      - run: npm run verify\n";
 const REAL_ENFORCER = resolve("scripts", "policy-base.ts");
-const TSX = resolve("node_modules", ".bin", "tsx");
+const TSX = resolve("node_modules", "tsx", "dist", "cli.mjs");
 
 /** Base = real enforcer + workflow with a verify step; head neutralises both (adversarial). */
 function neutralisedHead(): { root: string; app: string; headSha: string } {
@@ -397,10 +397,21 @@ function runBaseEnforcer(root: string, headSha: string, extraEnv: NodeJS.Process
   const baseDir = join(mkdtempSync(join(tmpdir(), "policy-base-wt-")), "base");
   temps.push(dirname(baseDir));
   git(root, ["worktree", "add", "-q", "--detach", baseDir, "origin/main"]);
-  const run = spawnSync(TSX, ["scripts/policy-base.ts", "--head", headSha], {
+  const env: NodeJS.ProcessEnv = {
+    PATH: process.env.PATH,
+    CI: "true",
+    GITHUB_BASE_REF: "main",
+    ...extraEnv,
+  };
+  // Windows cannot spawn node without SystemRoot. Do not copy the parent env:
+  // a leaked POLICY_CHANGE_APPROVED would hide a missing grant.
+  if (process.env.SystemRoot) {
+    env.SystemRoot = process.env.SystemRoot;
+  }
+  const run = spawnSync(process.execPath, [TSX, "scripts/policy-base.ts", "--head", headSha], {
     cwd: join(baseDir, "app"),
     encoding: "utf8",
-    env: { PATH: process.env.PATH, CI: "true", GITHUB_BASE_REF: "main", ...extraEnv },
+    env,
   });
   return { status: run.status, output: `${run.stdout}${run.stderr}`, baseDir };
 }
