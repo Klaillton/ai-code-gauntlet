@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import process from "node:process";
 import { checkStack, npmGateAdapter, runAdapter, type Stack } from "./adapter.js";
-import { checkL0Gates, L0_GATES, runL0Gate } from "./l0.js";
+import { checkL0Gates, checkMavenL0Coverage, L0_GATES, runL0Gate } from "./l0.js";
 import { runMavenSkeleton } from "./maven.js";
 import { loadPolicyConfig, printPolicyFindings, runPolicyBase } from "./policy-base.js";
 
@@ -112,7 +112,10 @@ async function main(): Promise<void> {
 
   // ADD-POLY: L0 gates are mandatory for every stack (config validation, built-in).
   console.info("\n=== GATE: l0-config (built-in) ===");
-  const l0Problems = checkL0Gates(stackCheck.stack, config.gates);
+  const l0Problems = [
+    ...checkL0Gates(stackCheck.stack, config.gates),
+    ...(stackCheck.stack === "maven" ? checkMavenL0Coverage(process.cwd(), config) : []),
+  ];
   results.push({
     id: "l0-config",
     ok: l0Problems.length === 0,

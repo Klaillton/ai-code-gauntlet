@@ -41,7 +41,9 @@ or a second stack's build file next to it: FAIL.
 2. Fail-closed `stack` (built-in second step after policy-base; template + Todo declare `npm`).
 3. Pinned runner (`run.mjs`) for consumers without package.json.
 4. `create-ai-gauntlet adopt --stack maven`: config (`stack: maven`, `gates[]` = the L0 ids
-   only, plus the L0 keys: protected globs, holes-review and spec-code globs per reactor module),
+   only, plus the L0 keys: protected globs including the Maven build files `**/pom.xml`,
+   `.mvn/**`, `mvnw`, `mvnw.cmd`, holes-review and spec-code globs per reactor module, and
+   `specCode.specGlobs` pinned so a build-file touch never counts as a spec touch),
    agent docs, SDD docs, and `.github/workflows/policy-base.yml` (base-run enforcer, same
    hardening as the kit's: `pull_request_target`, `permissions: {}` with per-job
    `contents: read` + `pull-requests: read`, `persist-credentials: false`, head fetched as data
@@ -94,24 +96,34 @@ org.apache.maven.plugins:maven-surefire-plugin:3.5.4:test`. The lifecycle up to
 - pom surefire config still cannot change what runs: `<skip>`/`<includes>` etc. fail the pom
   guard, and a test class surefire did not run fails the cross-check (`pom-includes` fixture).
 - Every tree's config must list all L0 gates; a config that drops one fails `l0-config`.
+- Maven build files are protected as whole files until S2's semantic pom diff: policy-base
+  treats any `pom.xml` (every level), `.mvn/**`, `mvnw`, `mvnw.cmd` as protected policy paths
+  (`policy-change-approved`, enforced base-run), and the adopted `agent.protectedGlobs` lists
+  them too, so protect-specs also asks for `specs-approved`. A pom change (even a dependency
+  bump) therefore needs both labels in S1. For maven, `l0-config` fails if the four globs are
+  missing from `agent.protectedGlobs`.
+- For maven, `l0-config` enumerates the reactor modules recursively (the core's own
+  enumeration) and FAILS naming every build module whose `src/main/**` is not covered by
+  `holesReview` and `specCode` implementationGlobs (`module c: c/src/main/** not covered by
+...`). Adding a module therefore means adding its globs (a policy change).
 - The kit runner now needs `js-yaml` (inventory for D11/D13), pinned in
   `packages/gauntlet-gates/package-lock.json`.
 
 **Residuals (S1):**
 
-- The lifecycle up to `process-test-classes` runs every plugin the pom binds to those phases
-  (e.g. exec, antrun, a code generator). The consumer's build code is trusted until S2
-  protects pom paths with grants; the pom guard only covers skip/filter/redirect/threshold.
+- CLOSED (was: forged report from the pom). The lifecycle up to `process-test-classes` runs
+  every plugin the pom binds to those phases, so one could write a passing surefire XML for
+  existing test classes. Any change to a pom, `.mvn/**` or `mvnw*` now needs the human grant
+  (see Consequences); the plugins in the base pom are trusted as reviewed code.
 - gitleaks (history scan) stays a CI job in the kit; the maven runner runs `secrets-scan`.
-- `holesReview`/`specCode` implementation globs are written per module at adopt time; a new
-  module needs a config update (a policy change) or its code is not covered.
+- CLOSED (was: new module outside the globs). `l0-config` fails on an uncovered reactor
+  module (maven fixture test: adopted `reactor-dep` + module C added to the reactor).
 - The local repo is a shared download cache between runs (not installed into by the core).
 
 **Not done yet (explicit):**
 
-- S2: JaCoCo by the core, pom dependency diff,
-  no-cheat Java (`@Disabled`, `assume*`, ...), protected paths and grants for pom.xml, `.mvn/**`,
-  `mvnw*`, lombok.config; Enforcer rules.
+- S2: JaCoCo by the core, semantic pom diff (replaces the whole-file pom protection), no-cheat
+  Java (`@Disabled`, `assume*`, ...), lombok.config protection; Enforcer rules.
 - S3: PIT, CRAP from JaCoCo, ArchUnit. S4: Cucumber + Testcontainers, openapi-diff.
 - Gradle; gherkin-mutation Java; D16-Java. Bumping the pinned kit SHA in a consumer is a
   manual policy change.

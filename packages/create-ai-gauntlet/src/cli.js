@@ -504,6 +504,17 @@ export const L0_GATE_IDS = [
   "spec-sync",
 ];
 
+/** Same list as gauntlet-gates l0.ts MAVEN_BUILD_GLOBS (l0-config fails without them). */
+export const MAVEN_BUILD_GLOBS = ["**/pom.xml", ".mvn/**", "mvnw", "mvnw.cmd"];
+/** gauntlet-gates spec-code DEFAULT_SPEC_GLOBS (build files excluded on purpose). */
+const SPEC_GLOBS = [
+  "features/**/*.feature",
+  "openapi/openapi.yaml",
+  "openapi/**/*.yaml",
+  "openapi/**/*.yml",
+  "docs/holes-review/**/*.md",
+];
+
 /** Drops XML comments by scanning (no regex); an unclosed comment drops the rest. */
 function stripXmlComments(xml) {
   let out = "";
@@ -611,8 +622,14 @@ function adoptMaven(target, { kitRef: explicitRef } = {}) {
   mergeGitignore(target, skeleton);
 
   const modules = mavenModuleDirs(target);
-  const implementationGlobs =
-    modules.length > 0 ? modules.map((dir) => `${dir}/src/main/**`) : ["src/main/**"];
+  const rootPom = stripXmlComments(readFileSync(join(target, "pom.xml"), "utf8"));
+  const rootIsAggregator = /<packaging>\s*pom\s*<\/packaging>/.test(
+    rootPom.replace(/<parent>[^]*?<\/parent>/g, ""),
+  );
+  const implementationGlobs = [
+    ...(rootIsAggregator ? [] : ["src/main/**"]),
+    ...modules.map((dir) => `${dir}/src/main/**`),
+  ];
   const configPath = join(target, "gauntlet.config.json");
   const config = {
     name: pkgNameFromDir(target),
@@ -623,17 +640,21 @@ function adoptMaven(target, { kitRef: explicitRef } = {}) {
     // L0 core (ids only; the pinned runner owns every command). Missing one = FAIL.
     gates: L0_GATE_IDS.map((id) => ({ id })),
     agent: {
+      // Maven build files as whole files: a pom plugin could forge a surefire report. Until
+      // S2's semantic pom diff, any change needs policy-change-approved (and specs-approved).
       protectedGlobs: [
         "features/**/*.feature",
         "openapi/openapi.yaml",
         "docs/holes-review/**/*.md",
+        ...MAVEN_BUILD_GLOBS,
       ],
     },
     allowHolesReviewSkip: false,
     holesReview: { implementationGlobs, artifactGlob: "docs/holes-review/**/*.md" },
     adrLint: { glob: "docs/adr/**/*.md" },
     allowSpecCodeSkip: false,
-    specCode: { implementationGlobs },
+    // specGlobs pinned so a pom/.mvn touch never counts as the spec half of spec-code.
+    specCode: { implementationGlobs, specGlobs: SPEC_GLOBS },
   };
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
   console.log("+ gauntlet.config.json (stack: maven, L0 gate ids, runner-owned commands)");
@@ -666,16 +687,20 @@ Needs JDK 21, Maven (\`mvn\` on PATH) and git with \`origin/main\` fetched.
   sdd-presence, secrets-scan, spec-sync \`--l0\` (D11 Gherkin edge inventory + D13 OpenAPI vs
   contract.cases; both skip when features/ or openapi/ are absent).
 - pom guard: skips, filters, report/output redirects and pom-owned thresholds are FAIL.
+- Build files are protected as whole files (\`**/pom.xml\`, \`.mvn/**\`, \`mvnw\`, \`mvnw.cmd\`):
+  any change needs \`policy-change-approved\` (policy-base) and \`specs-approved\`
+  (protect-specs). S2's semantic pom diff replaces this.
+- l0-config also FAILs when a reactor module's \`src/main/**\` is not covered by
+  \`holesReview\`/\`specCode\` implementationGlobs: adding a module means adding its glob
+  (a policy change).
 - One reactor run in a tmp copy outside the workspace: \`process-test-classes\` + the pinned
   surefire coordinate, with a core-chosen \`-Dmaven.repo.local\`.
 - Every jar module needs a surefire report; total tests == 0 is FAIL; reports must match the
   compiled test classes of the same module; failed, errored or skipped tests are FAIL.
 
 ## Not yet (S2-S4)
-JaCoCo coverage, no-cheat Java, protected pom/.mvn paths and grants, PIT, CRAP, ArchUnit,
+JaCoCo coverage, no-cheat Java, semantic pom diff, PIT, CRAP, ArchUnit,
 Cucumber/Testcontainers, openapi-diff, Gradle. gitleaks history scan is not in the runner.
-\`holesReview\`/\`specCode\` implementation globs list today's modules; a new module needs a
-config update (a policy change).
 
 ## Checklist
 - [ ] Commit gauntlet.config.json and .github/workflows/policy-base.yml on main first

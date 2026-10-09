@@ -4,7 +4,15 @@
  */
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { after, before, describe, it } from "node:test";
@@ -15,6 +23,7 @@ const fixtures = join(pkg, "fixtures", "maven");
 const temps: string[] = [];
 
 type Run = {
+  root: string;
   status: number;
   out: string;
   report: Record<string, unknown>;
@@ -25,15 +34,7 @@ function git(cwd: string, args: string[]): void {
   execFileSync("git", args, { cwd, stdio: "ignore" });
 }
 
-/** Fixture -> its own git repo whose origin/main is the same commit (policy identical). */
-function run(name: string, prepare?: (root: string) => void): Run {
-  const root = mkdtempSync(join(tmpdir(), `gauntlet-fixture-${name}-`));
-  temps.push(root);
-  // Every fixture is an L0-clean consumer: shared docs/sdd (D15) overlay, then the fixture.
-  cpSync(join(fixtures, "_shared"), root, { recursive: true });
-  cpSync(join(fixtures, name), root, { recursive: true });
-  prepare?.(root);
-  git(root, ["init", "-q", "-b", "main"]);
+function commit(root: string, message: string): void {
   git(root, ["add", "-A"]);
   git(root, [
     "-c",
@@ -44,10 +45,33 @@ function run(name: string, prepare?: (root: string) => void): Run {
     "commit.gpgsign=false",
     "commit",
     "-qm",
-    "fixture",
+    message,
   ]);
+}
+
+type RunOptions = {
+  /** Applied after origin/main is set and committed on top: an unlabelled PR change. */
+  change?: (root: string) => void;
+  env?: Record<string, string>;
+};
+
+/** Fixture -> its own git repo whose origin/main is the same commit (policy identical). */
+function run(name: string, prepare?: (root: string) => void, options: RunOptions = {}): Run {
+  const root = mkdtempSync(join(tmpdir(), `gauntlet-fixture-${name}-`));
+  temps.push(root);
+  // Every fixture is an L0-clean consumer: shared docs/sdd (D15) overlay, then the fixture.
+  cpSync(join(fixtures, "_shared"), root, { recursive: true });
+  cpSync(join(fixtures, name), root, { recursive: true });
+  prepare?.(root);
+  git(root, ["init", "-q", "-b", "main"]);
+  commit(root, "fixture");
   git(root, ["update-ref", "refs/remotes/origin/main", "HEAD"]);
-  const env = { ...process.env };
+  if (options.change) {
+    git(root, ["checkout", "-q", "-b", "pr"]);
+    options.change(root);
+    commit(root, "pr change");
+  }
+  const env: NodeJS.ProcessEnv = { ...process.env };
   for (const key of [
     "GITHUB_BASE_REF",
     "GITHUB_EVENT_NAME",
@@ -56,6 +80,10 @@ function run(name: string, prepare?: (root: string) => void): Run {
   ]) {
     delete env[key];
   }
+  for (const key of ["ALLOW_SPEC_EDIT", "SPEC_SYNC_APPROVED", "HOLES_REVIEW_APPROVED"]) {
+    delete env[key];
+  }
+  Object.assign(env, options.env);
   const result = spawnSync(process.execPath, [join(pkg, "run.mjs"), "--root", root], {
     encoding: "utf8",
     env,
@@ -69,7 +97,7 @@ function run(name: string, prepare?: (root: string) => void): Run {
   const maven = existsSync(mavenPath)
     ? (JSON.parse(readFileSync(mavenPath, "utf8")) as Record<string, unknown>)
     : undefined;
-  return { status: result.status ?? 1, out, report, maven };
+  return { root, status: result.status ?? 1, out, report, maven };
 }
 
 type Verdict = {
@@ -98,6 +126,21 @@ function verdict(r: Run, capability: string): Verdict {
   const found = verdicts.find((v) => v.capability === capability);
   assert.ok(found, `no ${capability} verdict in maven-report.json\n${r.out}`);
   return found;
+}
+
+const cli = join(pkg, "..", "create-ai-gauntlet", "bin", "create-ai-gauntlet.js");
+
+/** prepare(): replace the fixture config with what `adopt --stack maven` writes. */
+function adoptInPlace(root: string): void {
+  rmSync(join(root, "gauntlet.config.json"));
+  const adopted = spawnSync(process.execPath, [cli, "adopt", root, "--stack", "maven"], {
+    encoding: "utf8",
+  });
+  assert.equal(adopted.status, 0, adopted.stderr || adopted.stdout);
+}
+
+function gateOk(r: Run, id: string): boolean | undefined {
+  return (r.report.gates as { id: string; ok: boolean }[]).find((g) => g.id === id)?.ok;
 }
 
 before(() => {
@@ -129,14 +172,7 @@ describe("maven walking skeleton (S1)", () => {
   });
 
   it("walking skeleton: create-ai-gauntlet adopt --stack maven, then the pinned runner", () => {
-    const cli = join(pkg, "..", "create-ai-gauntlet", "bin", "create-ai-gauntlet.js");
-    const r = run("ok-single", (root) => {
-      rmSync(join(root, "gauntlet.config.json"));
-      const adopted = spawnSync(process.execPath, [cli, "adopt", root, "--stack", "maven"], {
-        encoding: "utf8",
-      });
-      assert.equal(adopted.status, 0, adopted.stderr || adopted.stdout);
-    });
+    const r = run("ok-single", adoptInPlace);
     assert.equal(r.status, 0, r.out);
     assert.equal(r.report.stack, "maven");
     const passed = gateIds(r);
@@ -251,5 +287,96 @@ describe("maven walking skeleton (S1)", () => {
       guard.reasons.join("\n"),
     );
     assert.equal(verdict(r, "maven:test").ok, false);
+  });
+
+  it("adopted multi-module reactor (reactor-dep) is green: L0 + compile + surefire", () => {
+    const r = run("reactor-dep", adoptInPlace);
+    assert.equal(r.status, 0, r.out);
+    const config = JSON.parse(readFileSync(join(r.root, "gauntlet.config.json"), "utf8"));
+    assert.deepEqual(config.holesReview.implementationGlobs, [
+      "core/src/main/**",
+      "app/src/main/**",
+    ]);
+    assert.equal(verdict(r, "maven:test").total, 2);
+  });
+
+  it("new module C added to the reactor outside the adopted globs: l0-config FAIL", () => {
+    const r = run("reactor-dep", (root) => {
+      adoptInPlace(root);
+      const pom = join(root, "pom.xml");
+      writeFileSync(
+        pom,
+        readFileSync(pom, "utf8").replace(
+          "<module>app</module>",
+          "<module>app</module>\n    <module>c</module>",
+        ),
+      );
+      mkdirSync(join(root, "c", "src", "main", "java", "demo", "c"), { recursive: true });
+      writeFileSync(
+        join(root, "c", "pom.xml"),
+        readFileSync(join(root, "core", "pom.xml"), "utf8").replace(
+          "<artifactId>core</artifactId>",
+          "<artifactId>c</artifactId>",
+        ),
+      );
+      writeFileSync(
+        join(root, "c", "src", "main", "java", "demo", "c", "C.java"),
+        "package demo.c;\n\npublic final class C {\n  private C() {}\n}\n",
+      );
+    });
+    assert.notEqual(r.status, 0, r.out);
+    assert.equal(gateOk(r, "l0-config"), false);
+    assert.match(
+      r.out,
+      /module c: c\/src\/main\/\*\* not covered by holesReview\.implementationGlobs/,
+    );
+    assert.match(
+      r.out,
+      /module c: c\/src\/main\/\*\* not covered by specCode\.implementationGlobs/,
+    );
+    assert.doesNotMatch(r.out, /module (core|app):/);
+    assert.equal(r.maven, undefined, "no build after an l0-config failure");
+  });
+
+  it("adopted config protects a nested module pom and .mvn/extensions.xml (unlabelled = FAIL)", () => {
+    const touch = (root: string): void => {
+      const pom = join(root, "core", "pom.xml");
+      writeFileSync(pom, readFileSync(pom, "utf8").replace("</project>", "<!-- x --></project>"));
+      mkdirSync(join(root, ".mvn"), { recursive: true });
+      writeFileSync(join(root, ".mvn", "extensions.xml"), "<extensions/>\n");
+    };
+    const config = (r: Run) =>
+      JSON.parse(readFileSync(join(r.root, "gauntlet.config.json"), "utf8")) as {
+        agent: { protectedGlobs: string[] };
+      };
+
+    // No label: the authoritative policy-base (first step) blocks both files.
+    const unlabelled = run("reactor-dep", adoptInPlace, { change: touch });
+    for (const glob of ["**/pom.xml", ".mvn/**", "mvnw", "mvnw.cmd"]) {
+      assert.ok(config(unlabelled).agent.protectedGlobs.includes(glob), glob);
+    }
+    assert.notEqual(unlabelled.status, 0, unlabelled.out);
+    assert.equal(gateOk(unlabelled, "policy-base"), false);
+    assert.match(
+      unlabelled.out,
+      /protected policy paths changed vs base .*without human grant: \.mvn\/extensions\.xml, core\/pom\.xml/,
+    );
+
+    // policy-change-approved alone: protect-specs still blocks (protectedGlobs, specs-approved).
+    const policyOnly = run("reactor-dep", adoptInPlace, {
+      change: touch,
+      env: { POLICY_CHANGE_APPROVED: "1" },
+    });
+    assert.notEqual(policyOnly.status, 0, policyOnly.out);
+    assert.equal(gateOk(policyOnly, "policy-base"), true);
+    assert.equal(gateOk(policyOnly, "protect-specs"), false);
+    assert.match(
+      policyOnly.out,
+      /protect-specs blocked spec edits without human grant: .*core\/pom\.xml/,
+    );
+    assert.match(
+      policyOnly.out,
+      /protect-specs blocked spec edits without human grant: .*\.mvn\/extensions\.xml/,
+    );
   });
 });

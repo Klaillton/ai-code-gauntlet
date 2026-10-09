@@ -14,6 +14,8 @@ import { dirname, join } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import type { Stack } from "./adapter.js";
+import { DEFAULT_IMPLEMENTATION_GLOBS, isImplementationPath } from "./holes-review.js";
+import { buildModules, enumerateModules } from "./maven.js";
 
 export const L0_GATES = [
   "protect-specs",
@@ -59,6 +61,58 @@ export function checkL0Gates(stack: Stack, gates: unknown): string[] {
       if (!(L0_GATES as readonly unknown[]).includes(entry.id)) {
         problems.push(
           `gates[] entry ${JSON.stringify(entry.id)} is not an L0 gate (stack ${stack})`,
+        );
+      }
+    }
+  }
+  return problems;
+}
+
+/** Maven build files: whole-file protected until S2's semantic pom diff (adopt writes these). */
+export const MAVEN_BUILD_GLOBS = ["**/pom.xml", ".mvn/**", "mvnw", "mvnw.cmd"] as const;
+
+type L0Config = {
+  agent?: { protectedGlobs?: unknown };
+  holesReview?: { implementationGlobs?: unknown };
+  specCode?: { implementationGlobs?: unknown };
+};
+
+function stringList(value: unknown, fallback: readonly string[]): string[] {
+  return Array.isArray(value)
+    ? value.filter((v): v is string => typeof v === "string")
+    : [...fallback];
+}
+
+/** Probe paths that stand for "this module's main sources" (code + resources). */
+function moduleProbes(dir: string): string[] {
+  const base = dir === "." ? "" : `${dir}/`;
+  return [`${base}src/main/java/gauntlet/Probe.java`, `${base}src/main/resources/gauntlet.probe`];
+}
+
+/**
+ * Maven-only L0 config checks (FAIL reasons; empty = ok): every build module (enumerated
+ * recursively, like the core) must have its src/main covered by holesReview and specCode
+ * implementationGlobs, and the build files must be in agent.protectedGlobs.
+ */
+export function checkMavenL0Coverage(root: string, config: unknown): string[] {
+  const cfg = (typeof config === "object" && config !== null ? config : {}) as L0Config;
+  const problems: string[] = [];
+  const protectedGlobs = stringList(cfg.agent?.protectedGlobs, []);
+  for (const glob of MAVEN_BUILD_GLOBS) {
+    if (!protectedGlobs.includes(glob)) {
+      problems.push(`agent.protectedGlobs must include "${glob}" (maven build files, until S2)`);
+    }
+  }
+  const scopes: [string, string[]][] = [
+    ["holesReview", stringList(cfg.holesReview?.implementationGlobs, DEFAULT_IMPLEMENTATION_GLOBS)],
+    ["specCode", stringList(cfg.specCode?.implementationGlobs, DEFAULT_IMPLEMENTATION_GLOBS)],
+  ];
+  for (const module of buildModules(enumerateModules(root))) {
+    for (const [key, globs] of scopes) {
+      if (!moduleProbes(module.dir).every((probe) => isImplementationPath(probe, globs))) {
+        const where = module.dir === "." ? "src/main/**" : `${module.dir}/src/main/**`;
+        problems.push(
+          `module ${module.dir}: ${where} not covered by ${key}.implementationGlobs (add "${where}"; a policy change)`,
         );
       }
     }

@@ -120,6 +120,14 @@ test("adopt --stack maven: config + docs only, no package.json, no scripts/", ()
       ],
     );
     assert.ok(config.gates.every((g) => !("command" in g) && !("args" in g)));
+    for (const glob of ["**/pom.xml", ".mvn/**", "mvnw", "mvnw.cmd"]) {
+      assert.ok(config.agent.protectedGlobs.includes(glob), `protectedGlobs has ${glob}`);
+    }
+    assert.ok(
+      !config.specCode.specGlobs.some((g) => /pom|mvn/.test(g)),
+      "build files are not specs",
+    );
+    assert.deepEqual(config.specCode.implementationGlobs, ["src/main/**"]);
     const wf = readFileSync(join(dir, ".github/workflows/policy-base.yml"), "utf8");
     assert.match(wf, /^on:\n {2}pull_request_target:/m);
     assert.match(wf, /^permissions: \{\}$/m);

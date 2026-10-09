@@ -1,10 +1,16 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
 import { checkStack, judge, npmGateAdapter, runAdapter } from "../../scripts/adapter.js";
-import { checkL0Gates, L0_GATES, l0Command } from "../../scripts/l0.js";
+import {
+  checkL0Gates,
+  checkMavenL0Coverage,
+  L0_GATES,
+  l0Command,
+  MAVEN_BUILD_GLOBS,
+} from "../../scripts/l0.js";
+import { isProtectedPolicyPath } from "../../scripts/policy-base.js";
 import {
   checkModuleTests,
   enumerateModules,
@@ -215,5 +221,64 @@ describe("ADD-POLY S1: L0 gates are mandatory for every stack", () => {
   it("the runner owns the command; spec-sync runs --l0 off npm", () => {
     expect(l0Command("spec-sync", "maven").args.at(-1)).toBe("--l0");
     expect(l0Command("spec-sync", "npm").args.at(-1)).toMatch(/spec-sync\.ts$/);
+  });
+});
+
+describe("ADD-POLY S1: maven build files and module coverage", () => {
+  const AGG = (mods: string[]) =>
+    `<project><packaging>pom</packaging><modules>${mods.map((m) => `<module>${m}</module>`).join("")}</modules></project>`;
+  const covered = (globs: string[]) => ({
+    agent: { protectedGlobs: [...MAVEN_BUILD_GLOBS] },
+    holesReview: { implementationGlobs: globs },
+    specCode: { implementationGlobs: globs },
+  });
+
+  it("policy-base treats every pom.xml, .mvn/**, mvnw and mvnw.cmd as protected", () => {
+    for (const path of [
+      "pom.xml",
+      "core/pom.xml",
+      "a/b/pom.xml",
+      ".mvn/extensions.xml",
+      "mvnw",
+      "mvnw.cmd",
+    ]) {
+      expect(isProtectedPolicyPath(path, "")).toBe(true);
+    }
+    expect(isProtectedPolicyPath("core/src/main/java/A.java", "")).toBe(false);
+    expect(isProtectedPolicyPath("other/pom.xml", "app")).toBe(false);
+  });
+
+  it("every reactor module covered: ok", () => {
+    const root = tree({ "pom.xml": AGG(["core", "app"]), "core/pom.xml": POM, "app/pom.xml": POM });
+    expect(checkMavenL0Coverage(root, covered(["core/src/main/**", "app/src/main/**"]))).toEqual(
+      [],
+    );
+  });
+
+  it("a nested module outside the globs is FAIL, naming it (holesReview and specCode)", () => {
+    const root = tree({
+      "pom.xml": AGG(["core", "parent"]),
+      "core/pom.xml": POM,
+      "parent/pom.xml": AGG(["c"]),
+      "parent/c/pom.xml": POM,
+    });
+    const problems = checkMavenL0Coverage(root, covered(["core/src/main/**"]));
+    expect(problems).toHaveLength(2);
+    expect(problems.join("\n")).toMatch(
+      /module parent\/c: parent\/c\/src\/main\/\*\* not covered by holesReview/,
+    );
+    expect(problems.join("\n")).toMatch(/module parent\/c: .* not covered by specCode/);
+  });
+
+  it("default src/** does not cover a sub-module; missing build globs are FAIL", () => {
+    const root = tree({ "pom.xml": AGG(["core"]), "core/pom.xml": POM });
+    const problems = checkMavenL0Coverage(root, {});
+    expect(problems.filter((p) => p.startsWith("agent.protectedGlobs"))).toHaveLength(4);
+    expect(problems.filter((p) => p.startsWith("module core:"))).toHaveLength(2);
+  });
+
+  it("single-module: src/main/** covers the root module", () => {
+    const root = tree({ "pom.xml": POM });
+    expect(checkMavenL0Coverage(root, covered(["src/main/**"]))).toEqual([]);
   });
 });

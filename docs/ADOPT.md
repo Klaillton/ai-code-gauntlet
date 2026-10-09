@@ -172,8 +172,9 @@ node packages/gauntlet-gates/run.mjs --root /path/to/maven-app   # JDK 21 + mvn 
 - `stack: maven` + `gates[]` só com os ids L0 (`{ "id": "protect-specs" }`, ...) — o core escolhe os comandos; faltar um L0, ter `command`/`args` ou um id não-L0 = FAIL (`l0-config`; no npm o L0 tem de ser exatamente `npm run <id>`)
 - `adopt --stack maven` também escreve `.github/workflows/policy-base.yml` (base-run, `pull_request_target`, kit fixado por SHA via `--kit-ref <sha>` ou o HEAD do kit); torná-lo status required
 - S1 corre: policy-base, `stack`, `l0-config`, gates L0 (protect-specs, holes-review, spec-code, adr-lint, sdd-presence, secrets-scan, spec-sync D11/D13), pom guard, uma invocação de reactor (`process-test-classes` + surefire fixado) com relatórios por módulo + freshness
-- Ainda **não**: JaCoCo, PIT, ArchUnit, Cucumber, no-cheat Java, paths protegidos de pom/.mvn
-- Residual: plugins ligados pelo pom às fases até `process-test-classes` correm; módulo novo exige atualizar os globs de holes-review/spec-code (mudança de política)
+- `pom.xml` (todos os níveis), `.mvn/**`, `mvnw`, `mvnw.cmd` são protegidos como ficheiro inteiro até S2: qualquer mudança exige `policy-change-approved` (policy-base) e `specs-approved` (protect-specs, via `protectedGlobs`)
+- Módulo novo no reactor: `l0-config` falha nomeando o módulo até os globs `<módulo>/src/main/**` de `holesReview`/`specCode` serem adicionados (mudança de política)
+- Ainda **não**: JaCoCo, PIT, ArchUnit, Cucumber, no-cheat Java, diff semântico do pom
 - **Não** mapeie gates para `mvn verify` com comandos livres: com `stack` fail-closed, um tree npm com `pom.xml` falha
 - `stack` é obrigatório no `gauntlet.config.json` (lido do base); sem ele o verify falha
 - Ver `docs/adr/ADR-0001-add-poly.md`
