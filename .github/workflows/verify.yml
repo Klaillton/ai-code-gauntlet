@@ -9,7 +9,8 @@ on:
 
 concurrency:
   group: verify-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # CHANGE-5: only PR runs cancel; push runs on main always finish (a cancelled main run is never green).
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # Nothing at workflow level (githubactions:S8264). Each job sets its own token scope.
 permissions: {}
@@ -34,7 +35,6 @@ jobs:
     name: SBOM
     permissions:
       contents: read
-      actions: write
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -128,7 +128,6 @@ jobs:
     name: gitleaks (history extra)
     permissions:
       contents: read
-      actions: write
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -160,7 +159,6 @@ jobs:
     name: Template ts-node-web
     permissions:
       contents: read
-      actions: write
       pull-requests: read
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -216,7 +214,6 @@ jobs:
     name: Example Todo
     permissions:
       contents: read
-      actions: write
       pull-requests: read
     runs-on: ubuntu-latest
     timeout-minutes: 30

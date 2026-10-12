@@ -19,12 +19,12 @@ O que **não** cobre:
 
 Branch default: **`main`**. Correções de segurança entram só aí.
 
-| Superfície                         | Suportada |
-| ---------------------------------- | --------- |
-| `main`                             | Sim       |
-| Tags / releases pontuais           | Não (sem SLA de backport) |
-| Branches de feature, forks, adopt  | Não       |
-| Apps gerados a partir do template  | Responsabilidade do dono do app |
+| Superfície                        | Suportada                       |
+| --------------------------------- | ------------------------------- |
+| `main`                            | Sim                             |
+| Tags / releases pontuais          | Não (sem SLA de backport)       |
+| Branches de feature, forks, adopt | Não                             |
+| Apps gerados a partir do template | Responsabilidade do dono do app |
 
 ## Reportando uma vulnerabilidade
 
@@ -86,7 +86,9 @@ Workflow `.github/workflows/verify.yml` em push para `main`/`master`, em todo PR
 - **gates-sync** — scripts canônicos em `packages/gauntlet-gates` não divergem
 - verify do template, do Todo e smoke `create` + verify
 
-Permissions do `verify.yml` ficam em cada job (`permissions: {}` no nível do workflow). Todo job tem `contents: read`. `actions: write` só nos jobs que publicam artifact (SBOM, gitleaks, template, Todo). `pull-requests: read` só no template e no Todo, para o passo de push ler a label `policy-change-approved` do PR mergeado.
+Permissions do `verify.yml` ficam em cada job (`permissions: {}` no nível do workflow). Todo job tem `contents: read`. `actions: write` foi removido de todos os jobs (CHANGE-5: nenhum step usa; `upload-artifact` e cache usam o token de runtime, não o `GITHUB_TOKEN`). `pull-requests: read` só no template e no Todo, para o passo de push ler a label `policy-change-approved` do PR mergeado.
+
+Concurrency (CHANGE-5): grupo `verify-<workflow>-<ref>`; `cancel-in-progress` só em `pull_request`. Runs de push em `main` sempre terminam — um run cancelado em `main` nunca conta como green.
 
 Workflow `.github/workflows/policy-base.yml` (CHANGE-4, enforcer do base): `pull_request_target` (opened, synchronize, reopened, labeled, unlabeled) + push em `main`/`master`. Permissions exatamente `contents: read` + `pull-requests: read` por job (`permissions: {}` no nível do workflow), sem secrets, `persist-credentials: false`, número do PR e SHAs só via `env` (nada controlado pelo head interpolado em `run:`), nenhum código do head executado. Bootstrap: o PR que introduz o CHANGE-4 (#61) não é coberto por esse job (o workflow ainda não existe no base); a label humana `policy-change-approved` no #61 é o grant de bootstrap. PRs de fork e do Dependabot sob `pull_request_target` recebem token read-only e nenhum secret (o job não usa); esse caminho só é exercitado depois do merge do #61 e o Nightly confirma no primeiro PR do Dependabot. Bumps do Dependabot do ecossistema github-actions tocam `.github/**` e por isso sempre exigem `policy-change-approved` — intencional. `.prettierrc` fica fora do CHANGE-4 de propósito (só formatação).
 
@@ -123,7 +125,7 @@ O exemplo Todo é in-memory + API fina. Não trate isso como auth de produção.
 3. Agent não adiciona `secretsScan.allowPaths`. Para se humano.
 4. Não desligar gate no `gauntlet.config.json` para “ficar verde”.
 5. Grants (`ALLOW_SPEC_EDIT`, `ALLOW_DEPS_EDIT`, labels `*-approved`) são humanos. Workflow que afrouxa isso é mudança de segurança — CODEOWNERS em `.github/workflows/**`.
-6. App gerado: copie esta política e **apague** o que for só do kit; adicione auth/TLS do *seu* runtime.
+6. App gerado: copie esta política e **apague** o que for só do kit; adicione auth/TLS do _seu_ runtime.
 
 ## Referências no repo
 

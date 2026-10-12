@@ -288,6 +288,11 @@ the scaffold its own base (first commit pushed to a local bare `origin`) and run
 the kit's event context. The policy diff ignores JSON formatting and object key order; array
 order counts (gate order matters).
 
+**CHANGE-5 (CI follow-up).** `verify.yml` concurrency cancels in-progress runs only on
+`pull_request`; push runs on main always finish, so a cancelled main run never reads as green.
+The unused `actions: write` permission is removed (workflow keeps `contents: read` +
+`pull-requests: read`).
+
 **Discarded.** A protected-keys list (a new key escapes it). Reading the grant from committed
 config (self-grant). Treating `push` to main as already reviewed (the merge is exactly what
 needs the grant). Allowing an unresolvable CI base to pass (silent bypass).
