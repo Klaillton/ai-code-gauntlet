@@ -2,7 +2,20 @@
   "name": "@ai-code-gauntlet/gates",
   "version": "0.2.0",
   "private": true,
-  "description": "Canonical gauntlet gate scripts. Sync into examples/todo and templates/ts-node-web.",
+  "description": "Canonical gauntlet gate scripts + pinned runner. Sync into examples/todo and templates/ts-node-web.",
   "type": "module",
-  "license": "MIT"
+  "license": "MIT",
+  "bin": {
+    "gauntlet-run": "./run.mjs"
+  },
+  "scripts": {
+    "test": "tsx --test test/*.test.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "js-yaml": "4.3.2",
+    "tsx": "4.23.15"
+  }
 }

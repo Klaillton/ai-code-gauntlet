@@ -1,7 +1,9 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { spawn } from "node:child_process";
 import process from "node:process";
+import { checkStack, npmGateAdapter, runAdapter, type Stack } from "./adapter.js";
+import { checkL0Gates, checkMavenL0Coverage, L0_GATES, runL0Gate } from "./l0.js";
+import { runMavenSkeleton } from "./maven.js";
 import { loadPolicyConfig, printPolicyFindings, runPolicyBase } from "./policy-base.js";
 
 type Gate = {
@@ -13,6 +15,8 @@ type Gate = {
 
 type GauntletConfig = {
   name?: string;
+  /** ADD-POLY: npm | maven (gradle declared, not implemented). Missing = FAIL. */
+  stack?: unknown;
   strictness?: string;
   gates: Gate[];
 };
@@ -30,16 +34,11 @@ function loadConfig(): GauntletConfig {
   return loadPolicyConfig(process.cwd()) as unknown as GauntletConfig;
 }
 
-function runStep(gate: Gate): Promise<number> {
-  return new Promise((resolveCode) => {
-    console.info(`\n=== GATE: ${gate.id} ===`);
-    const child = spawn(gate.command, gate.args, {
-      stdio: "inherit",
-      shell: process.platform === "win32",
-      env: process.env,
-    });
-    child.on("exit", (code) => resolveCode(code ?? 1));
-  });
+/** npm L2 adapter: same command, same exit-code verdict as before ADD-POLY (parity). */
+async function runStep(gate: Gate): Promise<number> {
+  console.info(`\n=== GATE: ${gate.id} ===`);
+  const verdict = await runAdapter(npmGateAdapter(gate, process.cwd()));
+  return verdict.ok ? 0 : verdict.exitCode;
 }
 
 function readJson(path: string): unknown {
@@ -54,9 +53,11 @@ function writeReport(config: GauntletConfig, gates: GateResult[], ok: boolean): 
   const report = {
     name: config.name ?? "gauntlet",
     generatedAt: new Date().toISOString(),
+    stack: typeof config.stack === "string" ? config.stack : null,
     strictness: config.strictness ?? "strict",
     ok,
     gates,
+    maven: readJson("maven-report.json"),
     policyBase: readJson("policy-base-report.json"),
     specSync: readJson("spec-sync-report.json"),
     noCheat: readJson("no-cheat-report.json"),
@@ -97,6 +98,45 @@ async function main(): Promise<void> {
     return;
   }
 
+  // ADD-POLY: built-in, fail-closed; `stack` is read from the base config like every policy key.
+  console.info("\n=== GATE: stack (built-in) ===");
+  const stackCheck = checkStack(config.stack, process.cwd());
+  results.push({ id: "stack", ok: stackCheck.ok, exitCode: stackCheck.ok ? 0 : 1, durationMs: 0 });
+  if (!stackCheck.ok) {
+    writeReport(config, results, false);
+    console.error(`\nGate failed: stack — ${stackCheck.reason}`);
+    process.exitCode = 1;
+    return;
+  }
+  console.info(`Gate passed: stack (${stackCheck.stack})`);
+
+  // ADD-POLY: L0 gates are mandatory for every stack (config validation, built-in).
+  console.info("\n=== GATE: l0-config (built-in) ===");
+  const l0Problems = [
+    ...checkL0Gates(stackCheck.stack, config.gates),
+    ...(stackCheck.stack === "maven" ? checkMavenL0Coverage(process.cwd(), config) : []),
+  ];
+  results.push({
+    id: "l0-config",
+    ok: l0Problems.length === 0,
+    exitCode: l0Problems.length === 0 ? 0 : 1,
+    durationMs: 0,
+  });
+  if (l0Problems.length > 0) {
+    for (const problem of l0Problems) {
+      console.error(`  x ${problem}`);
+    }
+    writeReport(config, results, false);
+    console.error("\nGate failed: l0-config");
+    process.exitCode = 1;
+    return;
+  }
+  console.info(`Gate passed: l0-config (${L0_GATES.join(", ")})`);
+  if (stackCheck.stack !== "npm") {
+    await runCoreStack(stackCheck.stack, config, results);
+    return;
+  }
+
   for (const gate of config.gates) {
     if (gate.enabled === false) {
       console.error(`\nGate ${gate.id} has enabled:false — mainline verify is fail-closed.`);
@@ -120,6 +160,51 @@ async function main(): Promise<void> {
   }
   writeReport(config, results, true);
   console.info("\nAll gates passed. Code is eligible for human exploratory check.");
+}
+
+/**
+ * Non-npm stacks: the core picks every command. gates[] holds L0 ids only (validated above);
+ * L0 runs from this kit copy in canonical order, then the stack's capabilities.
+ */
+async function runCoreStack(stack: Stack, config: GauntletConfig, results: GateResult[]) {
+  for (const id of L0_GATES) {
+    console.info(`\n=== GATE: ${id} (L0, runner-owned) ===`);
+    const started = Date.now();
+    const code = await runL0Gate(id, stack, process.cwd());
+    results.push({ id, ok: code === 0, exitCode: code, durationMs: Date.now() - started });
+    if (code !== 0) {
+      writeReport(config, results, false);
+      console.error(`\nGate failed: ${id} (exit ${code})`);
+      process.exitCode = code;
+      return;
+    }
+    console.info(`Gate passed: ${id}`);
+  }
+  const run = await runMavenSkeleton(process.cwd());
+  writeFileSync(
+    resolve("maven-report.json"),
+    `${JSON.stringify({ ...run, generatedAt: new Date().toISOString() }, null, 2)}\n`,
+  );
+  for (const verdict of run.verdicts) {
+    results.push({
+      id: verdict.capability,
+      ok: verdict.ok,
+      exitCode: verdict.exitCode,
+      durationMs: verdict.durationMs,
+    });
+    const mark = verdict.ok ? "Gate passed" : "Gate failed";
+    const counts = `ran=${verdict.ran} total=${verdict.total} metric=${verdict.metric}`;
+    (verdict.ok ? console.info : console.error)(`${mark}: ${verdict.capability} (${counts})`);
+    for (const reason of verdict.reasons) {
+      console.error(`  x ${reason}`);
+    }
+  }
+  writeReport(config, results, run.ok);
+  if (!run.ok) {
+    process.exitCode = 1;
+    return;
+  }
+  console.info("\nAll gates passed (L0 + maven S1 skeleton: compile, test, freshness).");
 }
 
 main().catch((error) => {

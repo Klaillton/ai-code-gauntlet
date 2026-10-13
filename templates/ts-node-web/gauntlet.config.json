@@ -1,5 +1,6 @@
 {
   "name": "my-gauntlet-app",
+  "stack": "npm",
   "strictness": "lenient",
   "allowSpecEdit": false,
   "allowDepsEdit": false,

@@ -1,0 +1,52 @@
+{
+  "name": "zero-tests",
+  "stack": "maven",
+  "strictness": "strict",
+  "allowSpecEdit": false,
+  "allowDepsEdit": false,
+  "gates": [
+    {
+      "id": "protect-specs"
+    },
+    {
+      "id": "holes-review"
+    },
+    {
+      "id": "spec-code"
+    },
+    {
+      "id": "adr-lint"
+    },
+    {
+      "id": "sdd-presence"
+    },
+    {
+      "id": "secrets-scan"
+    },
+    {
+      "id": "spec-sync"
+    }
+  ],
+  "agent": {
+    "protectedGlobs": ["features/**/*.feature", "openapi/openapi.yaml", "docs/holes-review/**/*.md"]
+  },
+  "allowHolesReviewSkip": false,
+  "holesReview": {
+    "implementationGlobs": ["src/main/**"],
+    "artifactGlob": "docs/holes-review/**/*.md"
+  },
+  "adrLint": {
+    "glob": "docs/adr/**/*.md"
+  },
+  "allowSpecCodeSkip": false,
+  "specCode": {
+    "implementationGlobs": ["src/main/**"],
+    "specGlobs": [
+      "features/**/*.feature",
+      "openapi/openapi.yaml",
+      "openapi/**/*.yaml",
+      "openapi/**/*.yml",
+      "docs/holes-review/**/*.md"
+    ]
+  }
+}
