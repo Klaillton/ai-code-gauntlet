@@ -354,6 +354,34 @@ describe("CHANGE-4 policy read from base", () => {
     expect(runPolicyBase(app, GRANT_ENV).ok).toBe(true);
   });
 
+  it("failsWhenKitFixtureDocModifiedWithoutGrant", () => {
+    const { app, root } = fixture();
+    const doc = join(
+      root,
+      "packages",
+      "gauntlet-gates",
+      "fixtures",
+      "maven",
+      "_shared",
+      "docs",
+      "sdd",
+      "Security.md",
+    );
+    git(root, ["checkout", "-q", "main"]);
+    write(doc, "# Security\n\nThreats: listed.\n");
+    commitAll(root, "base fixture doc");
+    git(root, ["update-ref", "refs/remotes/origin/main", "HEAD"]);
+    git(root, ["checkout", "-q", "-B", "feature"]);
+    write(doc, "# Security\n");
+    commitAll(root, "weaken fixture doc");
+    const result = runPolicyBase(app, LOCAL);
+    expect(result.ok).toBe(false);
+    expect(failText(result)).toContain(
+      "packages/gauntlet-gates/fixtures/maven/_shared/docs/sdd/Security.md",
+    );
+    expect(runPolicyBase(app, GRANT_ENV).ok).toBe(true);
+  });
+
   it("allowsKitPackageDocsChangesWithoutGrant", () => {
     const { app, root } = fixture();
     write(join(root, "packages", "gauntlet-gates", "README.md"), "# gates\n");
@@ -416,7 +444,7 @@ describe("CHANGE-4 helpers", () => {
     expect(isProtectedPolicyPath("docs/.github/x.yml", "")).toBe(false);
   });
 
-  it("protectsKitGateAndCliSourcesExceptMarkdown", () => {
+  it("protectsKitSourcesExceptMarkdownOutsideFixturesAndTests", () => {
     for (const path of [
       "packages/gauntlet-gates/src/policy-base.ts",
       "packages/gauntlet-gates/run.mjs",
@@ -428,6 +456,12 @@ describe("CHANGE-4 helpers", () => {
       "packages/create-ai-gauntlet/src/cli.test.js",
       "packages/create-ai-gauntlet/src/maven-policy-base.yml",
       "packages/create-ai-gauntlet/bin/create-ai-gauntlet.js",
+      "packages/gauntlet-gates/fixtures/maven/_shared/docs/sdd/Security.md",
+      "packages/gauntlet-gates/fixtures/maven/_shared/docs/sdd/Observability.md",
+      "packages/gauntlet-gates/test/notes.md",
+      "packages/gauntlet-gates/src/testdata/case.md",
+      "packages/create-ai-gauntlet/src/fixtures/x.md",
+      "packages/create-ai-gauntlet/tests/README.md",
     ]) {
       expect(isProtectedPolicyPath(path, "app/"), path).toBe(true);
       expect(isProtectedPolicyPath(path, ""), path).toBe(true);
@@ -435,7 +469,8 @@ describe("CHANGE-4 helpers", () => {
     for (const path of [
       "packages/gauntlet-gates/README.md",
       "packages/create-ai-gauntlet/README.md",
-      "packages/gauntlet-gates/fixtures/maven/_shared/docs/sdd/Security.md",
+      "packages/gauntlet-gates/docs/usage.md",
+      "packages/create-ai-gauntlet/src/latest.md",
       "packages/other/src/x.ts",
       "app/packages/gauntlet-gates/src/x.ts",
     ]) {

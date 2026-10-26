@@ -25,3 +25,8 @@ templates/*/package-lock.json @Klaillton
 # Docs exception: last match wins; a pattern with no owner un-owns the match.
 /packages/gauntlet-gates/**/*.md
 /packages/create-ai-gauntlet/**/*.md
+# ...except docs that feed gates: fixtures and test dirs stay owned (any depth).
+/packages/gauntlet-gates/**/fixtures/** @Klaillton
+/packages/gauntlet-gates/**/test*/** @Klaillton
+/packages/create-ai-gauntlet/**/fixtures/** @Klaillton
+/packages/create-ai-gauntlet/**/test*/** @Klaillton
