@@ -1,11 +1,19 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { CREATE_SKIP, findKitRoot } from "./cli.js";
+import { CREATE_SKIP, findKitRoot, skillFiles } from "./cli.js";
 
 const pkgRoot = dirname(fileURLToPath(import.meta.url));
 
@@ -97,6 +105,34 @@ function expressionsInRunBlocks(yaml) {
     if ((run || runIndent >= 0) && line.includes("${{")) hits.push(line.trim());
   }
   return hits;
+}
+
+test("skillFiles keeps only top-level skill markdown", () => {
+  assert.deepEqual(
+    skillFiles(["README.md", "check.mjs", "grill-spec.md", "lint.mjs", "lint.test.mjs", "sync.mjs"]),
+    ["grill-spec.md"],
+  );
+});
+
+for (const stack of ["npm", "maven"]) {
+  test(`adopt (${stack}) copies only *.md skills, never the kit's lint/check scripts`, () => {
+    const dir = mkdtempSync(join(tmpdir(), `gauntlet-adopt-skills-${stack}-`));
+    try {
+      if (stack === "maven") {
+        writeFileSync(join(dir, "pom.xml"), "<project><artifactId>x</artifactId></project>\n");
+      }
+      const result = adopt(["--stack", stack, dir]);
+      assert.equal(result.status, 0, result.stderr || result.stdout);
+      const skills = readdirSync(join(dir, ".agent", "skills")).sort();
+      assert.ok(skills.includes("grill-spec.md"), skills.join(","));
+      assert.deepEqual(
+        skills.filter((name) => !name.endsWith(".md") || name === "README.md"),
+        [],
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 }
 
 test("adopt --stack maven: config + docs only, no package.json, no scripts/", () => {

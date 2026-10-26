@@ -398,6 +398,30 @@ const TOOL_CONFIG_RES = [
   /^\.eslintrc(?:\.[\w.]+)?$/,
 ];
 
+/** skills:check + its lint and self-test: weakening any of them weakens the skills gate. */
+const KIT_SKILLS_GATE_RE = /^packages\/gauntlet-skills\/[^/]+\.mjs$/;
+
+/** Kit gate + CLI sources: the enforcers adopting projects pin. Only plain docs are exempt. */
+const KIT_SOURCES_RE = /^packages\/(?:gauntlet-gates|create-ai-gauntlet)\//;
+
+/**
+ * Everything under the kit packages is protected; the only exception is a `*.md` with no
+ * `fixtures/` or `test*` directory anywhere in its path (fixtures/tests feed the gates).
+ */
+function isKitPolicySource(repoRel: string): boolean {
+  if (KIT_SKILLS_GATE_RE.test(repoRel)) {
+    return true;
+  }
+  if (!KIT_SOURCES_RE.test(repoRel)) {
+    return false;
+  }
+  if (!repoRel.endsWith(".md")) {
+    return true;
+  }
+  const dirs = repoRel.split("/").slice(2, -1);
+  return dirs.some((dir) => dir === "fixtures" || dir.startsWith("test"));
+}
+
 /**
  * ADD-POLY: Maven build files as whole files (any `pom.xml`, `.mvn/**`, `mvnw`, `mvnw.cmd`).
  * A pom plugin bound before the test goal could forge a surefire report; until S2's semantic
@@ -414,12 +438,15 @@ export function isMavenBuildPath(treeRel: string): boolean {
 
 /**
  * scripts/**, Maven build files, test + mutation runner configs, tsconfig/eslint configs
- * (tree-relative) and .github/** (repo root: workflows, composite actions, CODEOWNERS,
- * dependabot.yml).
+ * (tree-relative), .github/** (repo root: workflows, composite actions, CODEOWNERS,
+ * dependabot.yml) and kit sources at the repo root (mirrors CODEOWNERS):
+ * packages/gauntlet-skills/*.mjs (top level: check/lint/lint.test/sync) and
+ * packages/gauntlet-gates/** + packages/create-ai-gauntlet/** except *.md outside
+ * fixtures/ and test* dirs.
  */
 export function isProtectedPolicyPath(repoRel: string, prefix: string): boolean {
   const normalized = repoRel.replaceAll("\\", "/");
-  if (normalized.startsWith(".github/")) {
+  if (normalized.startsWith(".github/") || isKitPolicySource(normalized)) {
     return true;
   }
   const scope = prefix.replace(/\/$/, "");
