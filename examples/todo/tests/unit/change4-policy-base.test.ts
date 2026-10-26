@@ -338,6 +338,30 @@ describe("CHANGE-4 policy read from base", () => {
     expect(runPolicyBase(app, GRANT_ENV).ok).toBe(true);
   });
 
+  it("failsWhenKitGateSourceModifiedWithoutGrant", () => {
+    const { app, root } = fixture();
+    const enforcer = join(root, "packages", "gauntlet-gates", "src", "policy-base.ts");
+    git(root, ["checkout", "-q", "main"]);
+    write(enforcer, "export const strict = true;\n");
+    commitAll(root, "base enforcer");
+    git(root, ["update-ref", "refs/remotes/origin/main", "HEAD"]);
+    git(root, ["checkout", "-q", "-B", "feature"]);
+    write(enforcer, "export const strict = false;\n");
+    commitAll(root, "weaken kit enforcer");
+    const result = runPolicyBase(app, LOCAL);
+    expect(result.ok).toBe(false);
+    expect(failText(result)).toContain("packages/gauntlet-gates/src/policy-base.ts");
+    expect(runPolicyBase(app, GRANT_ENV).ok).toBe(true);
+  });
+
+  it("allowsKitPackageDocsChangesWithoutGrant", () => {
+    const { app, root } = fixture();
+    write(join(root, "packages", "gauntlet-gates", "README.md"), "# gates\n");
+    write(join(root, "packages", "create-ai-gauntlet", "README.md"), "# cli\n");
+    commitAll(root, "kit docs");
+    expect(runPolicyBase(app, LOCAL).ok).toBe(true);
+  });
+
   it("allowsKitSkillMarkdownChangesWithoutGrant", () => {
     const { app, root } = fixture();
     write(join(root, "packages", "gauntlet-skills", "grill-spec.md"), "# grill-spec\n");
@@ -390,6 +414,33 @@ describe("CHANGE-4 helpers", () => {
     expect(isProtectedPolicyPath("app/node_modules/x/tsconfig.json", "app/")).toBe(false);
     expect(isProtectedPolicyPath("app/src/tsconfig-helper.ts", "app/")).toBe(false);
     expect(isProtectedPolicyPath("docs/.github/x.yml", "")).toBe(false);
+  });
+
+  it("protectsKitGateAndCliSourcesExceptMarkdown", () => {
+    for (const path of [
+      "packages/gauntlet-gates/src/policy-base.ts",
+      "packages/gauntlet-gates/run.mjs",
+      "packages/gauntlet-gates/package.json",
+      "packages/gauntlet-gates/test/maven-fixtures.test.ts",
+      "packages/gauntlet-gates/fixtures/maven/missing-l0/pom.xml",
+      "packages/gauntlet-gates/fixtures/maven/missing-l0/gauntlet.config.json",
+      "packages/create-ai-gauntlet/src/cli.js",
+      "packages/create-ai-gauntlet/src/cli.test.js",
+      "packages/create-ai-gauntlet/src/maven-policy-base.yml",
+      "packages/create-ai-gauntlet/bin/create-ai-gauntlet.js",
+    ]) {
+      expect(isProtectedPolicyPath(path, "app/"), path).toBe(true);
+      expect(isProtectedPolicyPath(path, ""), path).toBe(true);
+    }
+    for (const path of [
+      "packages/gauntlet-gates/README.md",
+      "packages/create-ai-gauntlet/README.md",
+      "packages/gauntlet-gates/fixtures/maven/_shared/docs/sdd/Security.md",
+      "packages/other/src/x.ts",
+      "app/packages/gauntlet-gates/src/x.ts",
+    ]) {
+      expect(isProtectedPolicyPath(path, "app/"), path).toBe(false);
+    }
   });
 
   it("protectsKitSkillsGateScriptsOnlyAtTopLevel", () => {

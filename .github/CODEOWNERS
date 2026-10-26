@@ -18,3 +18,10 @@ templates/*/package-lock.json @Klaillton
 
 # Kit skills gate (skills:check, its lint + self-test, sync) — weakening it weakens the gauntlet.
 /packages/gauntlet-skills/*.mjs @Klaillton
+
+# Kit gate + CLI sources (tests and fixtures included) — the enforcers adopting projects pin.
+/packages/gauntlet-gates/** @Klaillton
+/packages/create-ai-gauntlet/** @Klaillton
+# Docs exception: last match wins; a pattern with no owner un-owns the match.
+/packages/gauntlet-gates/**/*.md
+/packages/create-ai-gauntlet/**/*.md
