@@ -321,6 +321,29 @@ describe("CHANGE-4 policy read from base", () => {
     commitAll(root, "docs");
     expect(runPolicyBase(app, LOCAL).ok).toBe(true);
   });
+
+  it("failsWhenKitSkillsLintModifiedWithoutGrant", () => {
+    const { app, root } = fixture();
+    const lint = join(root, "packages", "gauntlet-skills", "lint.mjs");
+    git(root, ["checkout", "-q", "main"]);
+    write(lint, 'export const RULES = [{ id: "skip-hooks" }];\n');
+    commitAll(root, "base lint");
+    git(root, ["update-ref", "refs/remotes/origin/main", "HEAD"]);
+    git(root, ["checkout", "-q", "-B", "feature"]);
+    write(lint, "export const RULES = [];\n");
+    commitAll(root, "weaken skills lint");
+    const result = runPolicyBase(app, LOCAL);
+    expect(result.ok).toBe(false);
+    expect(failText(result)).toContain("packages/gauntlet-skills/lint.mjs");
+    expect(runPolicyBase(app, GRANT_ENV).ok).toBe(true);
+  });
+
+  it("allowsKitSkillMarkdownChangesWithoutGrant", () => {
+    const { app, root } = fixture();
+    write(join(root, "packages", "gauntlet-skills", "grill-spec.md"), "# grill-spec\n");
+    commitAll(root, "skill text");
+    expect(runPolicyBase(app, LOCAL).ok).toBe(true);
+  });
 });
 
 describe("CHANGE-4 helpers", () => {
@@ -367,6 +390,23 @@ describe("CHANGE-4 helpers", () => {
     expect(isProtectedPolicyPath("app/node_modules/x/tsconfig.json", "app/")).toBe(false);
     expect(isProtectedPolicyPath("app/src/tsconfig-helper.ts", "app/")).toBe(false);
     expect(isProtectedPolicyPath("docs/.github/x.yml", "")).toBe(false);
+  });
+
+  it("protectsKitSkillsGateScriptsOnlyAtTopLevel", () => {
+    for (const path of [
+      "packages/gauntlet-skills/check.mjs",
+      "packages/gauntlet-skills/lint.mjs",
+      "packages/gauntlet-skills/lint.test.mjs",
+      "packages/gauntlet-skills/sync.mjs",
+    ]) {
+      expect(isProtectedPolicyPath(path, "app/"), path).toBe(true);
+      expect(isProtectedPolicyPath(path, ""), path).toBe(true);
+    }
+    expect(isProtectedPolicyPath("packages/gauntlet-skills/grill-spec.md", "app/")).toBe(false);
+    expect(isProtectedPolicyPath("packages/gauntlet-skills/README.md", "app/")).toBe(false);
+    expect(isProtectedPolicyPath("packages/gauntlet-skills/sub/x.mjs", "app/")).toBe(false);
+    expect(isProtectedPolicyPath("app/packages/gauntlet-skills/lint.mjs", "app/")).toBe(false);
+    expect(isProtectedPolicyPath("app/.agent/skills/grill-spec.md", "app/")).toBe(false);
   });
 });
 

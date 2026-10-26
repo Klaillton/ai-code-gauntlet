@@ -15,3 +15,6 @@ templates/*/package-lock.json @Klaillton
 # CI / ownership metadata — human-owned (workflows can weaken the gauntlet).
 /.github/workflows/** @Klaillton
 /.github/CODEOWNERS @Klaillton
+
+# Kit skills gate (skills:check, its lint + self-test, sync) — weakening it weakens the gauntlet.
+/packages/gauntlet-skills/*.mjs @Klaillton

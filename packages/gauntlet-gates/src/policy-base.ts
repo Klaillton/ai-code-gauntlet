@@ -398,6 +398,9 @@ const TOOL_CONFIG_RES = [
   /^\.eslintrc(?:\.[\w.]+)?$/,
 ];
 
+/** skills:check + its lint and self-test: weakening any of them weakens the skills gate. */
+const KIT_SKILLS_GATE_RE = /^packages\/gauntlet-skills\/[^/]+\.mjs$/;
+
 /**
  * ADD-POLY: Maven build files as whole files (any `pom.xml`, `.mvn/**`, `mvnw`, `mvnw.cmd`).
  * A pom plugin bound before the test goal could forge a surefire report; until S2's semantic
@@ -414,12 +417,13 @@ export function isMavenBuildPath(treeRel: string): boolean {
 
 /**
  * scripts/**, Maven build files, test + mutation runner configs, tsconfig/eslint configs
- * (tree-relative) and .github/** (repo root: workflows, composite actions, CODEOWNERS,
- * dependabot.yml).
+ * (tree-relative), .github/** (repo root: workflows, composite actions, CODEOWNERS,
+ * dependabot.yml) and the kit's skills gate scripts (repo root, top level only:
+ * packages/gauntlet-skills/*.mjs = check/lint/lint.test/sync; mirrors CODEOWNERS).
  */
 export function isProtectedPolicyPath(repoRel: string, prefix: string): boolean {
   const normalized = repoRel.replaceAll("\\", "/");
-  if (normalized.startsWith(".github/")) {
+  if (normalized.startsWith(".github/") || KIT_SKILLS_GATE_RE.test(normalized)) {
     return true;
   }
   const scope = prefix.replace(/\/$/, "");
