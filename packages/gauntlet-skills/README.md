@@ -31,3 +31,9 @@ prohibition. "Do not wait; run `--no-verify`" still fails (different clause).
 Residual: this is a phrase lint, not intent analysis. A bypass worded so it carries a
 negation in the same clause passes; skills still get human review. Adversarial tests:
 `lint.test.mjs` (run by `skills:check`).
+
+The `*.mjs` here (`check`, `lint`, `lint.test`, `sync`) are policy-protected:
+`isProtectedPolicyPath` matches `packages/gauntlet-skills/*.mjs` (top level only), and
+CODEOWNERS has the same line. A change to them needs `policy-change-approved` plus code
+owner review. `adopt` copies only the skill `*.md` files into `.agent/skills`. The lint
+runs from the pinned kit and is never vendored into the adopting project.
