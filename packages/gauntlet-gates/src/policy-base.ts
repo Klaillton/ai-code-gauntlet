@@ -401,6 +401,16 @@ const TOOL_CONFIG_RES = [
 /** skills:check + its lint and self-test: weakening any of them weakens the skills gate. */
 const KIT_SKILLS_GATE_RE = /^packages\/gauntlet-skills\/[^/]+\.mjs$/;
 
+/** Kit gate + CLI sources (incl. tests and fixtures): the enforcers adopting projects pin. Docs exempt. */
+const KIT_SOURCES_RE = /^packages\/(?:gauntlet-gates|create-ai-gauntlet)\//;
+
+function isKitPolicySource(repoRel: string): boolean {
+  if (KIT_SKILLS_GATE_RE.test(repoRel)) {
+    return true;
+  }
+  return KIT_SOURCES_RE.test(repoRel) && !repoRel.endsWith(".md");
+}
+
 /**
  * ADD-POLY: Maven build files as whole files (any `pom.xml`, `.mvn/**`, `mvnw`, `mvnw.cmd`).
  * A pom plugin bound before the test goal could forge a surefire report; until S2's semantic
@@ -418,12 +428,13 @@ export function isMavenBuildPath(treeRel: string): boolean {
 /**
  * scripts/**, Maven build files, test + mutation runner configs, tsconfig/eslint configs
  * (tree-relative), .github/** (repo root: workflows, composite actions, CODEOWNERS,
- * dependabot.yml) and the kit's skills gate scripts (repo root, top level only:
- * packages/gauntlet-skills/*.mjs = check/lint/lint.test/sync; mirrors CODEOWNERS).
+ * dependabot.yml) and kit sources at the repo root (mirrors CODEOWNERS):
+ * packages/gauntlet-skills/*.mjs (top level: check/lint/lint.test/sync) and
+ * packages/gauntlet-gates/** + packages/create-ai-gauntlet/** except *.md.
  */
 export function isProtectedPolicyPath(repoRel: string, prefix: string): boolean {
   const normalized = repoRel.replaceAll("\\", "/");
-  if (normalized.startsWith(".github/") || KIT_SKILLS_GATE_RE.test(normalized)) {
+  if (normalized.startsWith(".github/") || isKitPolicySource(normalized)) {
     return true;
   }
   const scope = prefix.replace(/\/$/, "");
