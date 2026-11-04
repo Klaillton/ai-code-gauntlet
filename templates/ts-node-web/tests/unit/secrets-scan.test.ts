@@ -1,8 +1,8 @@
-import { mkdirSync, writeFileSync } from "node:fs";
-import { randomUUID } from "node:crypto";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { execFileSync } from "node:child_process";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   isForbiddenEnvPath,
   isPlaceholderValue,
@@ -87,10 +87,18 @@ function initGit(dir: string): void {
   execFileSync("git", ["config", "user.name", "fixture"], { cwd: dir, stdio: "ignore" });
 }
 
+const temps: string[] = [];
+
+afterEach(() => {
+  while (temps.length > 0) {
+    const dir = temps.pop();
+    if (dir) rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 function fixtureDir(): string {
-  const root = process.env.TEMP ?? process.env.TMP ?? process.env.TMPDIR ?? ".";
-  const dir = join(root, `secrets-scan-${randomUUID()}`);
-  mkdirSync(dir, { recursive: true });
+  const dir = mkdtempSync(join(tmpdir(), "secrets-scan-"));
+  temps.push(dir);
   return dir;
 }
 
