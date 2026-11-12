@@ -181,4 +181,10 @@ Remaining (not default kit gates):
 
 ## License
 
-MIT
+Copyright (c) 2026 Klaillton Santos. All rights reserved.
+
+The code is public for inspection. Apart from what GitHub's Terms of Service allow, no license is granted to use, copy, modify, or distribute this code without written permission.
+
+Third-party files keep their own licence notices.
+
+Contributions only by direct request to the author (Klaillton Santos).
