@@ -4,7 +4,7 @@
   "private": true,
   "description": "Canonical gauntlet gate scripts + pinned runner. Sync into examples/todo and templates/ts-node-web.",
   "type": "module",
-  "license": "MIT",
+  "license": "UNLICENSED",
   "bin": {
     "gauntlet-run": "./run.mjs"
   },
