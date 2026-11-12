@@ -184,3 +184,4 @@ node packages/gauntlet-gates/run.mjs --root /path/to/maven-app   # JDK 21 + mvn 
 - Adopt **nunca** deve apagar features ou testes legados
 - Não força Hono se o app for Nest/Express/Next — só traga charter + verify + harness que você escolher
 - Grants de specs/deps são **human-only**; agentes não devem criar `.gauntlet/allow-*` nem labels
+
