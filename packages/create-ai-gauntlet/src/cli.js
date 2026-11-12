@@ -78,6 +78,21 @@ function skillsSrc() {
   return join(templatePath(null), ".agent", "skills");
 }
 
+/**
+ * Adopting projects get only the skill texts (top-level *.md, not README.md), matching
+ * skills:sync. The kit's lint/check scripts stay in the pinned kit (policy-protected there).
+ */
+export function skillFiles(names) {
+  return names.filter((name) => name.endsWith(".md") && name !== "README.md");
+}
+
+function copySkills(src, dest) {
+  mkdirSync(dest, { recursive: true });
+  for (const name of skillFiles(readdirSync(src))) {
+    if (statSync(join(src, name)).isFile()) cpSync(join(src, name), join(dest, name));
+  }
+}
+
 export const CREATE_SKIP = [
   "node_modules",
   "coverage",
@@ -613,7 +628,7 @@ function adoptMaven(target, { kitRef: explicitRef } = {}) {
   }
   const skillsFrom = skillsSrc();
   if (existsSync(skillsFrom)) {
-    copyDir(skillsFrom, join(target, ".agent", "skills"), { skip: [] });
+    copySkills(skillsFrom, join(target, ".agent", "skills"));
     console.log("+ .agent/skills/ (canonical)");
   }
   ensureSddPresenceDocs(target, skeleton);
@@ -774,7 +789,7 @@ function adoptProject(dir, { gates } = {}) {
   const skillsFrom = skillsSrc();
   const skillsTo = join(target, ".agent", "skills");
   if (existsSync(skillsFrom)) {
-    copyDir(skillsFrom, skillsTo, { skip: [] });
+    copySkills(skillsFrom, skillsTo);
     console.log("+ .agent/skills/ (canonical)");
   }
 
