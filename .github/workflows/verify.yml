@@ -5,12 +5,15 @@ on:
     branches: [main, master]
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
+  # app-identity-2: the grant is a human review on the exact head SHA, so a review re-runs verify.
+  pull_request_review:
+    types: [submitted, dismissed]
   workflow_dispatch:
 
 concurrency:
   group: verify-${{ github.workflow }}-${{ github.ref }}
   # CHANGE-5: only PR runs cancel; push runs on main always finish (a cancelled main run is never green).
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'pull_request_review' }}
 
 # Nothing at workflow level (githubactions:S8264). Each job sets its own token scope.
 permissions: {}
@@ -178,31 +181,19 @@ jobs:
           cache-dependency-path: templates/ts-node-web/package-lock.json
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      # CHANGE-4: on push the policy base is github.event.before; the only grant is the
-      # human label policy-change-approved on the PR that produced this commit.
-      - name: Policy grant from merged PR label (push only)
-        id: policy-grant
-        if: github.event_name == 'push'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          labels=$(gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/pulls" \
-            --jq '[.[] | select(.merged_at != null) | .labels[].name] | join(",")' || true)
-          case ",$labels," in
-            *,policy-change-approved,*) echo "approved=1" >> "$GITHUB_OUTPUT" ;;
-            *) echo "approved=" >> "$GITHUB_OUTPUT" ;;
-          esac
+      # app-identity-2: grants are read live by the gates (scripts/human-grant.ts): the PR label
+      # names the grant, and only an APPROVED review by a human (not the App, not an agent) on
+      # the exact head SHA proves it. On push, the PR that produced the commit is used. Env
+      # grant flags are ignored inside GitHub Actions; API errors fail closed.
       - run: npm run verify
         env:
           CI: true
           GAUNTLET_E2E: "1"
-          # PR labels only. Push to main skips origin/main...HEAD inside the diff gates;
-          # policy-base (CHANGE-4) diffs github.event.before..HEAD on push.
-          ALLOW_SPEC_EDIT: ${{ contains(github.event.pull_request.labels.*.name, 'specs-approved') && '1' || '' }}
-          ALLOW_DEPS_EDIT: ${{ contains(github.event.pull_request.labels.*.name, 'deps-approved') && '1' || '' }}
-          HOLES_REVIEW_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'holes-approved') && '1' || '' }}
-          SPEC_SYNC_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'spec-sync-approved') && '1' || '' }}
-          POLICY_CHANGE_APPROVED: ${{ (contains(github.event.pull_request.labels.*.name, 'policy-change-approved') || steps.policy-grant.outputs.approved == '1') && '1' || '' }}
+          GITHUB_TOKEN: ${{ github.token }}
+          # Logins whose token is shared with agents: their reviews are "human-unattributed".
+          # Default Klaillton until the shared token is revoked; then a repo admin sets the
+          # Actions variable GAUNTLET_SHARED_TOKEN_LOGINS to "none".
+          GAUNTLET_SHARED_TOKEN_LOGINS: ${{ vars.GAUNTLET_SHARED_TOKEN_LOGINS || 'Klaillton' }}
       - if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -233,31 +224,19 @@ jobs:
           cache-dependency-path: examples/todo/package-lock.json
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      # CHANGE-4: on push the policy base is github.event.before; the only grant is the
-      # human label policy-change-approved on the PR that produced this commit.
-      - name: Policy grant from merged PR label (push only)
-        id: policy-grant
-        if: github.event_name == 'push'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          labels=$(gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/pulls" \
-            --jq '[.[] | select(.merged_at != null) | .labels[].name] | join(",")' || true)
-          case ",$labels," in
-            *,policy-change-approved,*) echo "approved=1" >> "$GITHUB_OUTPUT" ;;
-            *) echo "approved=" >> "$GITHUB_OUTPUT" ;;
-          esac
+      # app-identity-2: grants are read live by the gates (scripts/human-grant.ts): the PR label
+      # names the grant, and only an APPROVED review by a human (not the App, not an agent) on
+      # the exact head SHA proves it. On push, the PR that produced the commit is used. Env
+      # grant flags are ignored inside GitHub Actions; API errors fail closed.
       - run: npm run verify
         env:
           CI: true
           GAUNTLET_E2E: "1"
-          # PR labels only. Push to main skips origin/main...HEAD inside the diff gates;
-          # policy-base (CHANGE-4) diffs github.event.before..HEAD on push.
-          ALLOW_SPEC_EDIT: ${{ contains(github.event.pull_request.labels.*.name, 'specs-approved') && '1' || '' }}
-          ALLOW_DEPS_EDIT: ${{ contains(github.event.pull_request.labels.*.name, 'deps-approved') && '1' || '' }}
-          HOLES_REVIEW_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'holes-approved') && '1' || '' }}
-          SPEC_SYNC_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'spec-sync-approved') && '1' || '' }}
-          POLICY_CHANGE_APPROVED: ${{ (contains(github.event.pull_request.labels.*.name, 'policy-change-approved') || steps.policy-grant.outputs.approved == '1') && '1' || '' }}
+          GITHUB_TOKEN: ${{ github.token }}
+          # Logins whose token is shared with agents: their reviews are "human-unattributed".
+          # Default Klaillton until the shared token is revoked; then a repo admin sets the
+          # Actions variable GAUNTLET_SHARED_TOKEN_LOGINS to "none".
+          GAUNTLET_SHARED_TOKEN_LOGINS: ${{ vars.GAUNTLET_SHARED_TOKEN_LOGINS || 'Klaillton' }}
       - if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

@@ -114,7 +114,7 @@ protect-specs, deps-lock, secrets-scan, arch-bound, holes-review (D12), and no-c
 cannot edit `features/**` or `openapi/openapi.yaml` without a protect-specs
 grant, cannot edit `package.json` / `package-lock.json` (root, examples,
 templates) without a deps-lock grant (`ALLOW_DEPS_EDIT=1`, committed
-`allowDepsEdit: true` already on the base branch, or PR label `deps-approved` — working-tree
+`allowDepsEdit: true` already on the base branch, or PR label `deps-approved` + human approve on the head SHA — working-tree
 `.gauntlet/allow-*` files are **not** grants; no usable git → these gates
 **fail**), and cannot land
 credentials / private keys / high-confidence PII dumps (there is **no**
@@ -136,16 +136,24 @@ config key fails without a human grant, except adding or altering `contract.case
 entries (D13); removing one needs the grant. Edits to `scripts/**`, test/mutation
 configs, `tsconfig*.json`, `eslint.config.*`, `.eslintrc*` and repo-root `.github/**`
 (workflows, composite actions, CODEOWNERS, dependabot.yml) need the same grant
-(`.prettierrc` is intentionally excluded, format only): `POLICY_CHANGE_APPROVED=1`
-or PR label `policy-change-approved`. A committed `allow*` counts only if already
+(`.prettierrc` is intentionally excluded, format only): PR label `policy-change-approved`
+plus a human APPROVED review on the exact head SHA (app-identity-2; `POLICY_CHANGE_APPROVED=1`
+on local runs only). A committed `allow*` counts only if already
 true in base. CI without a resolvable base fails; first adoption (config absent in
 base) needs the grant. The in-verify run is a local fast check (head code); the
 **authoritative enforcer** is the base-run job `.github/workflows/policy-base.yml`
 (`pull_request_target` + push to main): base checkout, base deps, PR head fetched as
-data only, base `scripts/policy-base.ts --head <sha>`. **Known residual:** agents run `gh` as the owner identity,
-so grant labels are not yet provable as human, and the job only truly blocks once it is a
-required status — see the CHANGE-4 entry in
+data only, base `scripts/policy-base.ts --head <sha>`. **Known residual:** the job only truly
+blocks once it is a required status — see the CHANGE-4 entry in
 [ADR-spec-sync-drift.md](./docs/ADR-spec-sync-drift.md).
+
+**app-identity-2 (human grants):** every grant label (`policy-change-approved`, `specs-approved`,
+`deps-approved`, `holes-approved`, `spec-sync-approved`) only names the grant. In CI it counts
+only with an APPROVED review by a human (not the agents' App or any bot) on the exact head SHA,
+read live from the GitHub API (fail closed). A login whose token is shared with agents
+(`GAUNTLET_SHARED_TOKEN_LOGINS`, default `Klaillton` in this repo's workflows) fails as
+`human-unattributed` until the token is revoked. Env grant flags are local-only. See
+[ADR-0002](./docs/adr/ADR-0002-app-identity-2.md).
 
 Todo is `strict` (D3 fail). The template is `lenient` (D3 warn).
 

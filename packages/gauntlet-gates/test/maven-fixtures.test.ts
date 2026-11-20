@@ -77,6 +77,8 @@ function run(name: string, prepare?: (root: string) => void, options: RunOptions
     "GITHUB_EVENT_NAME",
     "GITHUB_EVENT_PATH",
     "POLICY_CHANGE_APPROVED",
+    // app-identity-2: inside GitHub Actions env grants are ignored; fixtures are local runs.
+    "GITHUB_ACTIONS",
   ]) {
     delete env[key];
   }

@@ -6,8 +6,13 @@ name: policy-base
 # - pull_request_target: checks out the BASE of this repo, checks out the gauntlet kit at a
 #   pinned commit, installs the kit runner's locked deps (no lifecycle scripts), fetches the
 #   PR head as a ref, and runs the kit's policy-base against base...head.
-# - push to main: a git worktree at github.event.before is the base; the grant is the merged
-#   PR's policy-change-approved label (none on a direct push).
+# - push to main: a git worktree at github.event.before is the base; the grant comes from the
+#   merged PR (none on a direct push).
+# Grant (app-identity-2): label policy-change-approved names the grant; only an APPROVED review
+# by a human (not an App/bot, not GAUNTLET_AGENT_LOGINS) on the exact head SHA proves it, read
+# live from the API. Reviews do not fire pull_request_target: approve, then add the label (or
+# re-run this job). GAUNTLET_SHARED_TOKEN_LOGINS (Actions variable) lists humans whose token
+# agents also hold; their reviews fail as human-unattributed until the token is revoked.
 # Hardening: no secrets, persist-credentials: false, read-only token, PR number and SHAs only
 # via env (never interpolated into run:). Make this job a required status check.
 
@@ -67,7 +72,10 @@ jobs:
         env:
           CI: "true"
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        # Grant: the policy-change-approved label, read by the script from the event payload.
+          GITHUB_TOKEN: ${{ github.token }}
+          GAUNTLET_SHARED_TOKEN_LOGINS: ${{ vars.GAUNTLET_SHARED_TOKEN_LOGINS }}
+          GAUNTLET_AGENT_LOGINS: ${{ vars.GAUNTLET_AGENT_LOGINS }}
+        # Grant: label + human APPROVED review on HEAD_SHA, read live by the pinned kit.
         run: node .gauntlet-kit/packages/gauntlet-gates/run.mjs --root . --policy-head "$HEAD_SHA"
 
   enforce-push:
@@ -95,19 +103,6 @@ jobs:
           node-version: 22
       - name: Install the kit runner deps only (locked, no lifecycle scripts)
         run: npm ci --prefix .gauntlet-kit/packages/gauntlet-gates --ignore-scripts --no-audit --no-fund
-      - name: Policy grant from the merged PR label (none on a direct push)
-        id: policy-grant
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          SHA: ${{ github.sha }}
-        run: |
-          labels=$(gh api "repos/${REPO}/commits/${SHA}/pulls" \
-            --jq '[.[] | select(.merged_at != null) | .labels[].name] | join(",")' || true)
-          case ",$labels," in
-            *,policy-change-approved,*) echo "approved=1" >> "$GITHUB_OUTPUT" ;;
-            *) echo "approved=" >> "$GITHUB_OUTPUT" ;;
-          esac
       - name: Base worktree at github.event.before
         env:
           BEFORE: ${{ github.event.before }}
@@ -124,5 +119,7 @@ jobs:
           CI: "true"
           HEAD_SHA: ${{ github.sha }}
           BASE_DIR: ${{ runner.temp }}/policy-base-base
-          POLICY_CHANGE_APPROVED: ${{ steps.policy-grant.outputs.approved }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GAUNTLET_SHARED_TOKEN_LOGINS: ${{ vars.GAUNTLET_SHARED_TOKEN_LOGINS }}
+          GAUNTLET_AGENT_LOGINS: ${{ vars.GAUNTLET_AGENT_LOGINS }}
         run: node .gauntlet-kit/packages/gauntlet-gates/run.mjs --root "$BASE_DIR" --policy-head "$HEAD_SHA"

@@ -81,8 +81,11 @@ describe("CHANGE-1 no-git fail-closed", () => {
   it("depsLockDoesNotFailClosedForMissingGitInRealCheckout", () => {
     // Branch may touch package.json (deps-approved). Assert CHANGE-1 positive path:
     // a real git checkout must not fail with "git required for this gate".
+    // app-identity-2: env grants are local-only, so run this as a local (non-Actions) check.
     const prev = process.env.ALLOW_DEPS_EDIT;
+    const prevActions = process.env.GITHUB_ACTIONS;
     process.env.ALLOW_DEPS_EDIT = "1";
+    delete process.env.GITHUB_ACTIONS;
     try {
       const result = runDepsLock(process.cwd());
       expect(
@@ -95,6 +98,9 @@ describe("CHANGE-1 no-git fail-closed", () => {
       } else {
         process.env.ALLOW_DEPS_EDIT = prev;
       }
+      if (prevActions !== undefined) {
+        process.env.GITHUB_ACTIONS = prevActions;
+      }
     }
   });
 });
@@ -104,19 +110,17 @@ describe("CHANGE-1 grants exclude working-tree allow files", () => {
     const dir = scratch("protect-allowfile-");
     mkdirSync(join(dir, ".gauntlet"), { recursive: true });
     writeFileSync(join(dir, ".gauntlet/allow-spec-edit"), "agent theater\n");
-    expect(specEditAllowed(dir, false).allowed).toBe(false);
-    expect(specEditAllowed(dir, true).reason).toContain("allowSpecEdit");
-    process.env.ALLOW_SPEC_EDIT = "1";
-    expect(specEditAllowed(dir, false).allowed).toBe(true);
+    expect(specEditAllowed(dir, false, {}).allowed).toBe(false);
+    expect(specEditAllowed(dir, true, {}).reason).toContain("allowSpecEdit");
+    expect(specEditAllowed(dir, false, { ALLOW_SPEC_EDIT: "1" }).allowed).toBe(true);
   });
 
   it("depsEditAllowedIgnoresGauntletAllowFile", () => {
     const dir = scratch("deps-allowfile-");
     mkdirSync(join(dir, ".gauntlet"), { recursive: true });
     writeFileSync(join(dir, ".gauntlet/allow-deps-edit"), "agent theater\n");
-    expect(depsEditAllowed(dir, false).allowed).toBe(false);
-    expect(depsEditAllowed(dir, true).reason).toContain("allowDepsEdit");
-    process.env.ALLOW_DEPS_EDIT = "1";
-    expect(depsEditAllowed(dir, false).allowed).toBe(true);
+    expect(depsEditAllowed(dir, false, {}).allowed).toBe(false);
+    expect(depsEditAllowed(dir, true, {}).reason).toContain("allowDepsEdit");
+    expect(depsEditAllowed(dir, false, { ALLOW_DEPS_EDIT: "1" }).allowed).toBe(true);
   });
 });

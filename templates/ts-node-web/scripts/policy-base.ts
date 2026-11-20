@@ -11,7 +11,8 @@
  * - `scripts/**`, Maven build files (`pom.xml`, `.mvn/**`, `mvnw*`), test/mutation runner
  *   configs, `tsconfig*.json`, `eslint.config.*`, `.eslintrc*` (tree-relative) and repo-root `.github/**` changed base→head need the
  *   same grant. `.prettierrc` is intentionally excluded (formatting only).
- * - Grant: `POLICY_CHANGE_APPROVED=1` or PR label `policy-change-approved`.
+ * - Grant (app-identity-2, `human-grant.ts`): in CI, PR label `policy-change-approved` plus an
+ *   APPROVED human review on the exact head SHA; locally, `POLICY_CHANGE_APPROVED=1`.
  *   A committed `allow*` / `approved` flag counts only when it is already true in base.
  *
  * Authoritative enforcement is the BASE-run CI job (`.github/workflows/policy-base.yml`,
@@ -23,6 +24,7 @@ import { basename, delimiter, join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import process from "node:process";
+import { resolveHumanGrant } from "./human-grant.js";
 
 export const POLICY_GRANT_ENV = "POLICY_CHANGE_APPROVED";
 export const POLICY_GRANT_LABEL = "policy-change-approved";
@@ -112,20 +114,23 @@ function readEvent(env: NodeJS.ProcessEnv): Record<string, unknown> | undefined 
   }
 }
 
-/** Human grant only: env or PR label. Never a committed config value. */
-export function policyChangeAllowed(env: NodeJS.ProcessEnv = process.env): {
+/**
+ * Human grant only (app-identity-2): in CI, label policy-change-approved + an APPROVED human
+ * review on the exact head SHA; locally, POLICY_CHANGE_APPROVED=1. Never a committed config value.
+ */
+export function policyChangeAllowed(
+  env: NodeJS.ProcessEnv = process.env,
+  headRef?: string,
+): {
   allowed: boolean;
   reason: string;
 } {
-  if (env[POLICY_GRANT_ENV] === "1") {
-    return { allowed: true, reason: `${POLICY_GRANT_ENV}=1` };
-  }
-  const event = readEvent(env) as { pull_request?: { labels?: { name?: string }[] } } | undefined;
-  const labels = event?.pull_request?.labels ?? [];
-  if (labels.some((label) => label.name === POLICY_GRANT_LABEL)) {
-    return { allowed: true, reason: `GitHub label ${POLICY_GRANT_LABEL}` };
-  }
-  return { allowed: false, reason: "no human policy-change grant" };
+  return resolveHumanGrant({
+    label: POLICY_GRANT_LABEL,
+    envFlag: POLICY_GRANT_ENV,
+    env,
+    ...(headRef === undefined ? {} : { headRef }),
+  });
 }
 
 function commitOf(cwd: string, ref: string): string | undefined {
@@ -138,7 +143,13 @@ export function resolvePolicyBase(cwd: string, env: NodeJS.ProcessEnv = process.
   if (baseRef) {
     const ref = `origin/${baseRef}`;
     return commitOf(cwd, ref)
-      ? { ok: true, ref, sep: "...", range: `${ref}...HEAD`, via: "GITHUB_BASE_REF" }
+      ? {
+          ok: true,
+          ref,
+          sep: "...",
+          range: `${ref}...HEAD`,
+          via: "GITHUB_BASE_REF",
+        }
       : {
           ok: false,
           reason: `GITHUB_BASE_REF=${baseRef} but ${ref} is not available (fetch it)`,
@@ -492,7 +503,9 @@ function info(message: string): PolicyFinding {
   return { id: "policy-base", severity: "info", message };
 }
 
-const GRANT_HINT = `Human grant: ${POLICY_GRANT_ENV}=1 or PR label ${POLICY_GRANT_LABEL}.`;
+const GRANT_HINT =
+  `Human grant (app-identity-2): PR label ${POLICY_GRANT_LABEL} + an APPROVED review by a human ` +
+  `CODEOWNER on the exact head SHA (local runs: ${POLICY_GRANT_ENV}=1).`;
 
 function checkBase(
   cwd: string,
@@ -581,7 +594,7 @@ export function runPolicyBase(
   } catch (error) {
     return done([fail(`policy-base: cannot read ${CONFIG_FILE}: ${(error as Error).message}`)]);
   }
-  const granted = policyChangeAllowed(env);
+  const granted = policyChangeAllowed(env, headRef);
   const { base, baseConfig, findings } = checkBase(cwd, env, granted);
   if (!base || !baseConfig) {
     return done(findings);
@@ -603,7 +616,7 @@ export function runPolicyBase(
       granted.allowed
         ? info(`policy-base: ${CONFIG_FILE} policy changes granted via ${granted.reason}: ${list}`)
         : fail(
-            `policy-base: ${CONFIG_FILE} changed vs base ${base.ref} without human grant: ${list}. ${GRANT_HINT}`,
+            `policy-base: ${CONFIG_FILE} changed vs base ${base.ref} without human grant: ${list}. ${GRANT_HINT} Grant check: ${granted.reason}.`,
           ),
     );
   }
@@ -622,7 +635,7 @@ export function runPolicyBase(
             `policy-base: protected policy paths granted via ${granted.reason}: ${touched.join(", ")}`,
           )
         : fail(
-            `policy-base: protected policy paths changed vs base ${base.ref} without human grant: ${touched.join(", ")}. ${GRANT_HINT}`,
+            `policy-base: protected policy paths changed vs base ${base.ref} without human grant: ${touched.join(", ")}. ${GRANT_HINT} Grant check: ${granted.reason}.`,
           ),
     );
   }

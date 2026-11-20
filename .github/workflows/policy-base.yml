@@ -6,8 +6,13 @@ name: policy-base
 #   only (git fetch; no checkout, no npm ci, no execution) and runs the base's
 #   scripts/policy-base.ts against base...head.
 # - push to main: git worktree at github.event.before runs the base enforcer against the
-#   pushed commit; the grant is the merged PR's label (commits/{sha}/pulls), so a direct
-#   push through the owner bypass has no grant and goes red.
+#   pushed commit; the grant is the merged PR (commits/{sha}/pulls), so a direct push
+#   through the owner bypass has no grant and goes red.
+# Grant (app-identity-2, scripts/human-grant.ts): label policy-change-approved names the grant;
+# only an APPROVED review by a human (not the App, not an agent) on the exact head SHA proves
+# it, read live from the API with the read-only token. pull_request_target does not fire on
+# reviews: approve first and then add the label (the labeled event re-runs this job), or
+# re-run the job after approving.
 # Hardening: no secrets, persist-credentials: false, read-only token, head-controlled values
 # only via env (never interpolated into run:). The in-head policy-base inside `npm run verify`
 # is a local fast check; this job is the one that counts.
@@ -59,7 +64,9 @@ jobs:
         env:
           CI: "true"
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        # Grant: the policy-change-approved label, read by the script from the event payload.
+          GITHUB_TOKEN: ${{ github.token }}
+          GAUNTLET_SHARED_TOKEN_LOGINS: ${{ vars.GAUNTLET_SHARED_TOKEN_LOGINS || 'Klaillton' }}
+        # Grant: label + human APPROVED review on HEAD_SHA, read live by the base enforcer.
         run: |
           status=0
           for tree in templates/ts-node-web examples/todo; do
@@ -88,7 +95,10 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
-      - name: Policy grant from the merged PR label (none on a direct push)
+      # Bootstrap only: a pre-app-identity-2 base enforcer (the push that merges app-identity-2)
+      # still reads POLICY_CHANGE_APPROVED. app-identity-2 enforcers ignore it inside Actions
+      # and read the merged PR's review on its head SHA instead.
+      - name: Legacy policy grant for a pre-app-identity-2 base enforcer
         id: policy-grant
         env:
           GH_TOKEN: ${{ github.token }}
@@ -118,6 +128,8 @@ jobs:
           HEAD_SHA: ${{ github.sha }}
           BASE_DIR: ${{ runner.temp }}/policy-base-base
           POLICY_CHANGE_APPROVED: ${{ steps.policy-grant.outputs.approved }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GAUNTLET_SHARED_TOKEN_LOGINS: ${{ vars.GAUNTLET_SHARED_TOKEN_LOGINS || 'Klaillton' }}
         run: |
           status=0
           for tree in templates/ts-node-web examples/todo; do

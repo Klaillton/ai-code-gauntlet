@@ -270,12 +270,20 @@ describe("CHANGE-4 policy read from base", () => {
     expect(result.ok).toBe(false);
     expect(failText(result)).toContain(".github/workflows/verify.yml");
     expect(runPolicyBase(app, GRANT_ENV).ok).toBe(true);
+    // app-identity-2: a label alone never grants (local run ignores labels entirely).
     const labeled = eventFile(root, {
       pull_request: { labels: [{ name: "policy-change-approved" }] },
     });
-    expect(runPolicyBase(app, { GITHUB_EVENT_PATH: labeled }).ok).toBe(true);
-    const wrongLabel = eventFile(root, { pull_request: { labels: [{ name: "specs-approved" }] } });
-    expect(runPolicyBase(app, { GITHUB_EVENT_PATH: wrongLabel }).ok).toBe(false);
+    expect(runPolicyBase(app, { GITHUB_EVENT_PATH: labeled }).ok).toBe(false);
+    // In Actions without a readable reviews API the gate fails closed, label or not.
+    expect(
+      runPolicyBase(app, {
+        GITHUB_ACTIONS: "true",
+        GITHUB_EVENT_PATH: labeled,
+        GITHUB_REPOSITORY: "o/r",
+        POLICY_CHANGE_APPROVED: "1",
+      }).ok,
+    ).toBe(false);
   });
 
   it("failsOnScriptEditWithoutGrantAndPassesWithGrant", () => {
@@ -498,6 +506,7 @@ describe("CHANGE-4 helpers", () => {
 
 const WORKFLOW_WITH_VERIFY = "name: verify\njobs:\n  t:\n    steps:\n      - run: npm run verify\n";
 const REAL_ENFORCER = resolve("scripts", "policy-base.ts");
+const REAL_GRANT = resolve("scripts", "human-grant.ts");
 const TSX = resolve("node_modules", "tsx", "dist", "cli.mjs");
 
 /** Base = real enforcer + workflow with a verify step; head neutralises both (adversarial). */
@@ -505,6 +514,7 @@ function neutralisedHead(): { root: string; app: string; headSha: string } {
   const { root, app } = fixture();
   git(root, ["checkout", "-q", "main"]);
   copyFileSync(REAL_ENFORCER, join(app, "scripts", "policy-base.ts"));
+  copyFileSync(REAL_GRANT, join(app, "scripts", "human-grant.ts"));
   write(join(root, ".github", "workflows", "verify.yml"), WORKFLOW_WITH_VERIFY);
   commitAll(root, "base with enforcer");
   git(root, ["update-ref", "refs/remotes/origin/main", "HEAD"]);
@@ -705,6 +715,7 @@ describe("CHANGE-4 protected tooling paths (tsconfig, eslint, .github/**)", () =
     const { root, app } = toolingFixture();
     git(root, ["checkout", "-q", "main"]);
     copyFileSync(REAL_ENFORCER, join(app, "scripts", "policy-base.ts"));
+    copyFileSync(REAL_GRANT, join(app, "scripts", "human-grant.ts"));
     commitAll(root, "real enforcer in base");
     git(root, ["update-ref", "refs/remotes/origin/main", "HEAD"]);
     git(root, ["checkout", "-q", "-B", "feature"]);

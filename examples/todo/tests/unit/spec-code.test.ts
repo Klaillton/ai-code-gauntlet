@@ -80,12 +80,12 @@ describe("evaluateSpecCode", () => {
 
 describe("specCodeAllowed", () => {
   it("honorsEnvGrant", () => {
-    process.env.SPEC_SYNC_APPROVED = "1";
-    expect(specCodeAllowed("/tmp", false).allowed).toBe(true);
+    expect(specCodeAllowed("/tmp", false, { SPEC_SYNC_APPROVED: "1" }).allowed).toBe(true);
+    expect(specCodeAllowed("/tmp", false, {}).allowed).toBe(false);
   });
 
   it("honorsConfigSkip", () => {
-    expect(specCodeAllowed("/tmp", true).allowed).toBe(true);
+    expect(specCodeAllowed("/tmp", true, {}).allowed).toBe(true);
   });
 });
 
