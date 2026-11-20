@@ -69,7 +69,7 @@ export function isProtectedDepPath(repoRelPath: string): boolean {
 }
 
 /** Grants (app-identity-2): committed config already true in base (CHANGE-4), else the human
- * grant from `human-grant.ts` (label deps-approved + APPROVED human review on the exact head SHA in
+ * grant from `human-grant.ts` (label deps-approved + APPROVED review by the repo OWNER on the exact head SHA in
  * CI; ALLOW_DEPS_EDIT=1 on a local run). Never a working-tree allow file. */
 export function depsEditAllowed(
   cwd: string,
@@ -157,7 +157,7 @@ export function runDepsLock(cwd = process.cwd()): {
     message:
       "deps-lock blocked package.json / package-lock.json edits without human grant: " +
       depChanges.join(", ") +
-      ". Grant: label deps-approved + a human APPROVED review on the exact head SHA (app-identity-2; " +
+      ". Grant: label deps-approved + an APPROVED review by the repo OWNER on the exact head SHA (app-identity-2; " +
       "ALLOW_DEPS_EDIT=1 on local runs only), or allowDepsEdit: true already on the base branch (CHANGE-4). " +
       `Grant check: ${grant.reason}.`,
   });

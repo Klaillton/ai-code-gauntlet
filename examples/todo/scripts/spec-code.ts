@@ -77,7 +77,7 @@ function prBaseDiffs(cwd: string): string[] {
 }
 
 /** Grants (app-identity-2): committed config already true in base (CHANGE-4), else the human
- * grant from `human-grant.ts` (label spec-sync-approved + APPROVED human review on the exact head SHA in
+ * grant from `human-grant.ts` (label spec-sync-approved + APPROVED review by the repo OWNER on the exact head SHA in
  * CI; SPEC_SYNC_APPROVED=1 on a local run). Never a working-tree allow file. */
 export function specCodeAllowed(
   cwd: string,
@@ -163,7 +163,7 @@ export function evaluateSpecCode(input: SpecCodeEvalInput): SpecCodeFinding[] {
     message:
       "CHANGE-3 spec-code: implementation (`src/**`) changed without protected spec " +
       "(Gherkin/OpenAPI/holes-review) in the same PR. Add a spec touch, or grant " +
-      "label spec-sync-approved + a human APPROVED review on the exact head SHA (app-identity-2; " +
+      "label spec-sync-approved + an APPROVED review by the repo OWNER on the exact head SHA (app-identity-2; " +
       "SPEC_SYNC_APPROVED=1 on local runs only) / committed allowSpecCodeSkip.",
   });
   return findings;

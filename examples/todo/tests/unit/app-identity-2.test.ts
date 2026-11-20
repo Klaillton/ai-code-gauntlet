@@ -1,6 +1,6 @@
 /**
  * app-identity-2 — adversarial tests agreed by Gate + Challenge (2026-11-05):
- * grant = label (intent) + APPROVED review by a human, not an agent, on the exact head SHA.
+ * grant = label (intent) + APPROVED review by the repo OWNER (never an agent) on the exact head SHA.
  */
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -48,8 +48,20 @@ function fakeApi(pr: FakePr): GitHubFetch {
   };
 }
 
-function review(login: string, commit: string, state = "APPROVED", type = "User"): ReviewRecord {
-  return { user: { login, type }, state, commit_id: commit, submitted_at: "2026-11-20T10:00:00Z" };
+function review(
+  login: string,
+  commit: string,
+  state = "APPROVED",
+  type = "User",
+  association: string | null = "OWNER",
+): ReviewRecord {
+  return {
+    user: { login, type },
+    author_association: association,
+    state,
+    commit_id: commit,
+    submitted_at: "2026-11-20T10:00:00Z",
+  };
 }
 
 function grant(pr: FakePr, extraEnv: NodeJS.ProcessEnv = {}, eventHead = HEAD) {
@@ -124,6 +136,19 @@ describe("app-identity-2 adversarial (Gate + Challenge, 2026-11-05)", () => {
     const result = grant({ labels: [], headSha: HEAD, reviews: [] });
     expect(result.allowed).toBe(false);
     expect(result.reason).toContain(`label ${LABEL} absent`);
+  });
+
+  it("7 externalAccountApprovalOnHeadWithLabelFailsOnlyOwnerGrants", () => {
+    // Public repo: any account can leave an APPROVED review the API returns (Gate, 2026-11-20).
+    for (const association of ["NONE", "CONTRIBUTOR", "COLLABORATOR", "MEMBER", null]) {
+      const result = grant({
+        labels: [LABEL],
+        headSha: HEAD,
+        reviews: [review("random-stranger", HEAD, "APPROVED", "User", association)],
+      });
+      expect(result.allowed).toBe(false);
+      expect(result.reason).toContain("only the repo OWNER grants");
+    }
   });
 });
 

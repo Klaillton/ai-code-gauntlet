@@ -12,7 +12,7 @@
  *   configs, `tsconfig*.json`, `eslint.config.*`, `.eslintrc*` (tree-relative) and repo-root `.github/**` changed base→head need the
  *   same grant. `.prettierrc` is intentionally excluded (formatting only).
  * - Grant (app-identity-2, `human-grant.ts`): in CI, PR label `policy-change-approved` plus an
- *   APPROVED human review on the exact head SHA; locally, `POLICY_CHANGE_APPROVED=1`.
+ *   APPROVED review by the repo OWNER on the exact head SHA; locally, `POLICY_CHANGE_APPROVED=1`.
  *   A committed `allow*` / `approved` flag counts only when it is already true in base.
  *
  * Authoritative enforcement is the BASE-run CI job (`.github/workflows/policy-base.yml`,
@@ -504,8 +504,8 @@ function info(message: string): PolicyFinding {
 }
 
 const GRANT_HINT =
-  `Human grant (app-identity-2): PR label ${POLICY_GRANT_LABEL} + an APPROVED review by a human ` +
-  `CODEOWNER on the exact head SHA (local runs: ${POLICY_GRANT_ENV}=1).`;
+  `Human grant (app-identity-2): PR label ${POLICY_GRANT_LABEL} + an APPROVED review by the repo ` +
+  `OWNER (author_association OWNER) on the exact head SHA (local runs: ${POLICY_GRANT_ENV}=1).`;
 
 function checkBase(
   cwd: string,

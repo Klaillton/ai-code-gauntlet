@@ -70,7 +70,7 @@ function matchGlob(rel: string, glob: string): boolean {
 }
 
 /** Grants (app-identity-2): committed config already true in base (CHANGE-4), else the human
- * grant from `human-grant.ts` (label specs-approved + APPROVED human review on the exact head SHA in
+ * grant from `human-grant.ts` (label specs-approved + APPROVED review by the repo OWNER on the exact head SHA in
  * CI; ALLOW_SPEC_EDIT=1 on a local run). Never a working-tree allow file. */
 export function specEditAllowed(
   cwd: string,
@@ -163,7 +163,7 @@ export function runProtectSpecs(cwd = process.cwd()): {
     message:
       "protect-specs blocked spec edits without human grant: " +
       localChanges.join(", ") +
-      ". Grant: label specs-approved + a human APPROVED review on the exact head SHA (app-identity-2; " +
+      ". Grant: label specs-approved + an APPROVED review by the repo OWNER on the exact head SHA (app-identity-2; " +
       "ALLOW_SPEC_EDIT=1 on local runs only), or allowSpecEdit: true already on the base branch (CHANGE-4). " +
       `Grant check: ${grant.reason}.`,
   });

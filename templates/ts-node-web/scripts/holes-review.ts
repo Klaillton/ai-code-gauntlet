@@ -107,7 +107,7 @@ export function isHolesReviewArtifact(
 }
 
 /** Grants (app-identity-2): committed config already true in base (CHANGE-4), else the human
- * grant from `human-grant.ts` (label holes-approved + APPROVED human review on the exact head SHA in
+ * grant from `human-grant.ts` (label holes-approved + APPROVED review by the repo OWNER on the exact head SHA in
  * CI; HOLES_REVIEW_APPROVED=1 on a local run). Never a working-tree allow file. */
 export function holesReviewAllowed(
   cwd: string,
@@ -233,7 +233,7 @@ export function evaluateHolesReview(input: HolesReviewEvalInput): HolesFinding[]
       message:
         `D12 holes-review: implementation changed (${implChanges.join(", ")}) without ` +
         `docs/holes-review/**/*.md in the same diff and without a human grant ` +
-        `(label holes-approved + a human APPROVED review on the exact head SHA, app-identity-2; ` +
+        `(label holes-approved + an APPROVED review by the repo OWNER on the exact head SHA, app-identity-2; ` +
         `HOLES_REVIEW_APPROVED=1 on local runs only; or allowHolesReviewSkip: true).`,
     });
     return findings;

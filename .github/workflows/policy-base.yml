@@ -9,8 +9,8 @@ name: policy-base
 #   pushed commit; the grant is the merged PR (commits/{sha}/pulls), so a direct push
 #   through the owner bypass has no grant and goes red.
 # Grant (app-identity-2, scripts/human-grant.ts): label policy-change-approved names the grant;
-# only an APPROVED review by a human (not the App, not an agent) on the exact head SHA proves
-# it, read live from the API with the read-only token. pull_request_target does not fire on
+# only an APPROVED review by the repo OWNER (author_association OWNER; never the App or an
+# agent) on the exact head SHA proves it, read live from the API with the read-only token. pull_request_target does not fire on
 # reviews: approve first and then add the label (the labeled event re-runs this job), or
 # re-run the job after approving.
 # Hardening: no secrets, persist-credentials: false, read-only token, head-controlled values
@@ -66,7 +66,7 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           GITHUB_TOKEN: ${{ github.token }}
           GAUNTLET_SHARED_TOKEN_LOGINS: ${{ vars.GAUNTLET_SHARED_TOKEN_LOGINS || 'Klaillton' }}
-        # Grant: label + human APPROVED review on HEAD_SHA, read live by the base enforcer.
+        # Grant: label + OWNER APPROVED review on HEAD_SHA, read live by the base enforcer.
         run: |
           status=0
           for tree in templates/ts-node-web examples/todo; do

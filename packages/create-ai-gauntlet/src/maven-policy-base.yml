@@ -9,7 +9,8 @@ name: policy-base
 # - push to main: a git worktree at github.event.before is the base; the grant comes from the
 #   merged PR (none on a direct push).
 # Grant (app-identity-2): label policy-change-approved names the grant; only an APPROVED review
-# by a human (not an App/bot, not GAUNTLET_AGENT_LOGINS) on the exact head SHA proves it, read
+# by the repo OWNER (author_association OWNER; never an App/bot or GAUNTLET_AGENT_LOGINS) on the
+# exact head SHA proves it, read
 # live from the API. Reviews do not fire pull_request_target: approve, then add the label (or
 # re-run this job). GAUNTLET_SHARED_TOKEN_LOGINS (Actions variable) lists humans whose token
 # agents also hold; their reviews fail as human-unattributed until the token is revoked.
@@ -75,7 +76,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           GAUNTLET_SHARED_TOKEN_LOGINS: ${{ vars.GAUNTLET_SHARED_TOKEN_LOGINS }}
           GAUNTLET_AGENT_LOGINS: ${{ vars.GAUNTLET_AGENT_LOGINS }}
-        # Grant: label + human APPROVED review on HEAD_SHA, read live by the pinned kit.
+        # Grant: label + OWNER APPROVED review on HEAD_SHA, read live by the pinned kit.
         run: node .gauntlet-kit/packages/gauntlet-gates/run.mjs --root . --policy-head "$HEAD_SHA"
 
   enforce-push:

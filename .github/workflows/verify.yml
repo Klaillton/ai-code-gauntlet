@@ -182,8 +182,8 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       # app-identity-2: grants are read live by the gates (scripts/human-grant.ts): the PR label
-      # names the grant, and only an APPROVED review by a human (not the App, not an agent) on
-      # the exact head SHA proves it. On push, the PR that produced the commit is used. Env
+      # names the grant, and only an APPROVED review by the repo OWNER (author_association OWNER;
+      # never the App or an agent) on the exact head SHA proves it. On push, the PR that produced the commit is used. Env
       # grant flags are ignored inside GitHub Actions; API errors fail closed.
       - run: npm run verify
         env:
@@ -225,8 +225,8 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       # app-identity-2: grants are read live by the gates (scripts/human-grant.ts): the PR label
-      # names the grant, and only an APPROVED review by a human (not the App, not an agent) on
-      # the exact head SHA proves it. On push, the PR that produced the commit is used. Env
+      # names the grant, and only an APPROVED review by the repo OWNER (author_association OWNER;
+      # never the App or an agent) on the exact head SHA proves it. On push, the PR that produced the commit is used. Env
       # grant flags are ignored inside GitHub Actions; API errors fail closed.
       - run: npm run verify
         env:

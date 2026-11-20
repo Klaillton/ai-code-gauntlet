@@ -1,4 +1,4 @@
-# ADR-0002: app-identity-2 — grant = human approve on the exact head SHA
+# ADR-0002: app-identity-2 — grant = repo OWNER approve on the exact head SHA
 
 ## Status
 
@@ -20,10 +20,14 @@ the shared token adds the label as "Klaillton" and passes.
 
 ## Decision
 
-1. **Grant = review APPROVED on the exact head SHA**, from a login that is neither the App nor
-   another known agent (`*[bot]`, `type: Bot`, or `GAUNTLET_AGENT_LOGINS`). Read live from the
-   GitHub API (PR, labels, reviews). The latest decisive review per login wins
-   (`CHANGES_REQUESTED` / `DISMISSED` after an approval revokes it).
+1. **Grant = review APPROVED on the exact head SHA by the repo OWNER.** The review's
+   `author_association` (reviews API) must be `OWNER`; `NONE`, `CONTRIBUTOR`, `COLLABORATOR`,
+   `MEMBER` or a missing value never grant (fail closed). The repo is public, so any GitHub
+   account can leave an APPROVED review that the API returns even though GitHub does not count
+   it (Gate review, 2026-11-20). Agents never grant either: the App, any `*[bot]` /
+   `type: Bot`, or `GAUNTLET_AGENT_LOGINS`. Read live from the GitHub API (PR, labels,
+   reviews). The latest decisive review per login wins (`CHANGES_REQUESTED` / `DISMISSED`
+   after an approval revokes it).
 2. **Shared token = human-unattributed.** While a human's token is shared with agents, that
    login is listed in `GAUNTLET_SHARED_TOKEN_LOGINS` and its review **fails** with reason
    `human-unattributed` (no exception). After the token is revoked the login leaves the list and
@@ -51,6 +55,8 @@ policy-base, deps-lock, protect-specs, holes-review and spec-code. Adversarial t
 4. approved review followed by a new commit = FAIL (and a stale run on the old head = FAIL)
 5. review by a shared-token login on the head = FAIL `human-unattributed`; PASS after revocation
 6. no label and no review = FAIL
+7. APPROVED review from an outside account (`author_association` NONE / CONTRIBUTOR /
+   COLLABORATOR / MEMBER / missing) on the head with the label = FAIL (Gate review, 2026-11-20)
 
 ## Consequences
 
@@ -70,5 +76,7 @@ policy-base, deps-lock, protect-specs, holes-review and spec-code. Adversarial t
   owner token adds the label as the owner and passes.
 - Review by `Klaillton` passes with a note "unattributed" while the token is shared — circular:
   with a shared token the review is not proof of a human, and the exception would live forever.
+- Any human login outside the agent list grants — on a public repo any GitHub account can
+  approve; the API returns it even though GitHub does not count it (Gate review, 2026-11-20).
 - Trust a review on an earlier SHA until GitHub dismisses it — depends on a ruleset setting the
   gate does not control.

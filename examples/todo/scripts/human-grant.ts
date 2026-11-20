@@ -1,9 +1,11 @@
 /**
- * app-identity-2 — a human grant is an APPROVED review on the exact head SHA.
+ * app-identity-2 — a human grant is an APPROVED review by the repo OWNER on the exact head SHA.
  *
  * Design closed by Gate with Challenge (2026-11-05, lote de 11/11):
  * 1. Grant = review APPROVED on the exact head SHA, from a login that is neither the
- *    agents' GitHub App nor another known agent.
+ *    agents' GitHub App nor another known agent, and whose review `author_association` is
+ *    `OWNER` (Gate review 2026-11-20: on a public repo any account can leave an APPROVED review;
+ *    NONE / CONTRIBUTOR / COLLABORATOR / missing never grant).
  * 2. While a human's token is shared with agents (`GAUNTLET_SHARED_TOKEN_LOGINS`), a review
  *    from that login FAILs with reason "human-unattributed". After the token is revoked
  *    (login removed from the list), the same review passes.
@@ -31,6 +33,8 @@ export type HumanGrant = { allowed: boolean; reason: string };
 export type ReviewRecord = {
   id?: number;
   user?: { login?: string; type?: string } | null;
+  /** From the reviews API. Only OWNER can grant; missing = no grant (fail closed). */
+  author_association?: string | null;
   state?: string;
   commit_id?: string | null;
   submitted_at?: string | null;
@@ -56,6 +60,8 @@ export const DEFAULT_AGENT_LOGINS: readonly string[] = ["klaillton-gauntlet-agen
 export const SHARED_TOKEN_LOGINS_ENV = "GAUNTLET_SHARED_TOKEN_LOGINS";
 export const AGENT_LOGINS_ENV = "GAUNTLET_AGENT_LOGINS";
 export const HUMAN_UNATTRIBUTED = "human-unattributed";
+/** The only review author_association that can grant (repo owner). */
+export const GRANTOR_ASSOCIATION = "OWNER";
 
 /** Comma/space separated logins. `none` or `-` means an empty list. */
 export function parseLogins(raw: string | undefined): string[] {
@@ -137,6 +143,7 @@ export function evaluateReviewGrant(input: ReviewGrantInput): HumanGrant {
   const approvedElsewhere: string[] = [];
   const agentApprovals: string[] = [];
   const unattributed: string[] = [];
+  const nonOwnerApprovals: string[] = [];
   for (const [, review] of latestDecisiveByLogin(input.reviews)) {
     if ((review.state ?? "").toUpperCase() !== "APPROVED") {
       continue;
@@ -144,6 +151,13 @@ export function evaluateReviewGrant(input: ReviewGrantInput): HumanGrant {
     const login = review.user?.login ?? "?";
     if (isAgentReviewer(review.user, agents)) {
       agentApprovals.push(login);
+      continue;
+    }
+    // Public repo: any GitHub account can leave an APPROVED review that the API returns even
+    // though GitHub does not count it. Only the repo OWNER grants; missing association = no.
+    const association = review.author_association ?? "";
+    if (association !== GRANTOR_ASSOCIATION) {
+      nonOwnerApprovals.push(`${login} (${association || "no author_association"})`);
       continue;
     }
     if (review.commit_id !== input.headSha) {
@@ -181,6 +195,9 @@ export function evaluateReviewGrant(input: ReviewGrantInput): HumanGrant {
   const notes: string[] = [];
   if (agentApprovals.length > 0) {
     notes.push(`agent reviews never grant (${agentApprovals.join(", ")})`);
+  }
+  if (nonOwnerApprovals.length > 0) {
+    notes.push(`only the repo OWNER grants (${nonOwnerApprovals.join(", ")})`);
   }
   if (approvedElsewhere.length > 0) {
     notes.push(`approvals on other SHAs do not count (${approvedElsewhere.join(", ")})`);

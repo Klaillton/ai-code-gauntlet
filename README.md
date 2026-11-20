@@ -137,7 +137,7 @@ entries (D13); removing one needs the grant. Edits to `scripts/**`, test/mutatio
 configs, `tsconfig*.json`, `eslint.config.*`, `.eslintrc*` and repo-root `.github/**`
 (workflows, composite actions, CODEOWNERS, dependabot.yml) need the same grant
 (`.prettierrc` is intentionally excluded, format only): PR label `policy-change-approved`
-plus a human APPROVED review on the exact head SHA (app-identity-2; `POLICY_CHANGE_APPROVED=1`
+plus an APPROVED review by the repo OWNER on the exact head SHA (app-identity-2; `POLICY_CHANGE_APPROVED=1`
 on local runs only). A committed `allow*` counts only if already
 true in base. CI without a resolvable base fails; first adoption (config absent in
 base) needs the grant. The in-verify run is a local fast check (head code); the
@@ -149,7 +149,8 @@ blocks once it is a required status — see the CHANGE-4 entry in
 
 **app-identity-2 (human grants):** every grant label (`policy-change-approved`, `specs-approved`,
 `deps-approved`, `holes-approved`, `spec-sync-approved`) only names the grant. In CI it counts
-only with an APPROVED review by a human (not the agents' App or any bot) on the exact head SHA,
+only with an APPROVED review by the repo OWNER (review `author_association` = `OWNER`; never
+the agents' App, a bot, or an outside account) on the exact head SHA,
 read live from the GitHub API (fail closed). A login whose token is shared with agents
 (`GAUNTLET_SHARED_TOKEN_LOGINS`, default `Klaillton` in this repo's workflows) fails as
 `human-unattributed` until the token is revoked. Env grant flags are local-only. See
