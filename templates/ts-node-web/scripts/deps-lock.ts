@@ -1,8 +1,9 @@
 import { basename, resolve, sep } from "node:path";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import process from "node:process";
+import { resolveHumanGrant } from "./human-grant.js";
 import { includeGitBranchDivergence, loadConfig } from "./inventory.js";
 
 export type DepsFinding = {
@@ -11,7 +12,9 @@ export type DepsFinding = {
   message: string;
 };
 
-type ConfigWithDeps = ReturnType<typeof loadConfig> & { allowDepsEdit?: boolean };
+type ConfigWithDeps = ReturnType<typeof loadConfig> & {
+  allowDepsEdit?: boolean;
+};
 
 function prBaseDiffs(cwd: string): string[] {
   const base = process.env.GITHUB_BASE_REF;
@@ -65,35 +68,26 @@ export function isProtectedDepPath(repoRelPath: string): boolean {
   return false;
 }
 
-/** Grants: env, CI label, or committed config already true in base (CHANGE-4) — not a working-tree allow file. */
+/** Grants (app-identity-2): committed config already true in base (CHANGE-4), else the human
+ * grant from `human-grant.ts` (label deps-approved + APPROVED review by the repo OWNER on the exact head SHA in
+ * CI; ALLOW_DEPS_EDIT=1 on a local run). Never a working-tree allow file. */
 export function depsEditAllowed(
   cwd: string,
   allowDepsEdit: boolean,
+  env: NodeJS.ProcessEnv = process.env,
 ): { allowed: boolean; reason: string } {
-  if (process.env.ALLOW_DEPS_EDIT === "1") {
-    return { allowed: true, reason: "ALLOW_DEPS_EDIT=1" };
-  }
+  void cwd;
   if (allowDepsEdit) {
     return {
       allowed: true,
       reason: "base-branch gauntlet.config.json allowDepsEdit=true",
     };
   }
-  const eventPath = process.env.GITHUB_EVENT_PATH;
-  if (eventPath && existsSync(eventPath)) {
-    try {
-      const event = JSON.parse(readFileSync(eventPath, "utf8")) as {
-        pull_request?: { labels?: { name?: string }[] };
-      };
-      const labels = event.pull_request?.labels ?? [];
-      if (labels.some((label) => label.name === "deps-approved")) {
-        return { allowed: true, reason: "GitHub label deps-approved" };
-      }
-    } catch {
-      // event payload unreadable; fall through
-    }
-  }
-  return { allowed: false, reason: "no human deps-edit grant" };
+  return resolveHumanGrant({
+    label: "deps-approved",
+    envFlag: "ALLOW_DEPS_EDIT",
+    env,
+  });
 }
 
 export function runDepsLock(cwd = process.cwd()): {
@@ -163,7 +157,9 @@ export function runDepsLock(cwd = process.cwd()): {
     message:
       "deps-lock blocked package.json / package-lock.json edits without human grant: " +
       depChanges.join(", ") +
-      ". Set ALLOW_DEPS_EDIT=1, label deps-approved, or have allowDepsEdit: true already on the base branch (CHANGE-4).",
+      ". Grant: label deps-approved + an APPROVED review by the repo OWNER on the exact head SHA (app-identity-2; " +
+      "ALLOW_DEPS_EDIT=1 on local runs only), or allowDepsEdit: true already on the base branch (CHANGE-4). " +
+      `Grant check: ${grant.reason}.`,
   });
   writeReport(cwd, false, findings);
   return { ok: false, findings };

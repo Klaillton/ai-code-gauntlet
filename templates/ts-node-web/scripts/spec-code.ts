@@ -5,11 +5,12 @@
  * also touch a protected spec (Gherkin / OpenAPI / holes-review) **or** carry a
  * human grant. Docs-only / spec-only diffs skip. No local allow-file.
  */
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { relative, resolve, sep } from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import process from "node:process";
+import { resolveHumanGrant } from "./human-grant.js";
 import { includeGitBranchDivergence, loadConfig } from "./inventory.js";
 import { isImplementationPath, matchGlob } from "./holes-review.js";
 
@@ -75,33 +76,26 @@ function prBaseDiffs(cwd: string): string[] {
   ];
 }
 
-/** Grants: env, committed config, or CI label — never a working-tree allow-file. */
+/** Grants (app-identity-2): committed config already true in base (CHANGE-4), else the human
+ * grant from `human-grant.ts` (label spec-sync-approved + APPROVED review by the repo OWNER on the exact head SHA in
+ * CI; SPEC_SYNC_APPROVED=1 on a local run). Never a working-tree allow file. */
 export function specCodeAllowed(
   cwd: string,
   allowSkip: boolean,
+  env: NodeJS.ProcessEnv = process.env,
 ): { allowed: boolean; reason: string } {
-  if (process.env.SPEC_SYNC_APPROVED === "1") {
-    return { allowed: true, reason: "SPEC_SYNC_APPROVED=1" };
-  }
-  if (allowSkip) {
-    return { allowed: true, reason: "gauntlet.config.json allowSpecCodeSkip/specCode.approved" };
-  }
-  const eventPath = process.env.GITHUB_EVENT_PATH;
-  if (eventPath && existsSync(eventPath)) {
-    try {
-      const event = JSON.parse(readFileSync(eventPath, "utf8")) as {
-        pull_request?: { labels?: { name?: string }[] };
-      };
-      const labels = event.pull_request?.labels ?? [];
-      if (labels.some((label) => label.name === "spec-sync-approved")) {
-        return { allowed: true, reason: "GitHub label spec-sync-approved" };
-      }
-    } catch {
-      // fall through
-    }
-  }
   void cwd;
-  return { allowed: false, reason: "no human SPEC_SYNC_APPROVED grant" };
+  if (allowSkip) {
+    return {
+      allowed: true,
+      reason: "gauntlet.config.json allowSpecCodeSkip/specCode.approved",
+    };
+  }
+  return resolveHumanGrant({
+    label: "spec-sync-approved",
+    envFlag: "SPEC_SYNC_APPROVED",
+    env,
+  });
 }
 
 export function isProtectedSpecPath(rel: string, specGlobs: readonly string[]): boolean {
@@ -169,7 +163,8 @@ export function evaluateSpecCode(input: SpecCodeEvalInput): SpecCodeFinding[] {
     message:
       "CHANGE-3 spec-code: implementation (`src/**`) changed without protected spec " +
       "(Gherkin/OpenAPI/holes-review) in the same PR. Add a spec touch, or grant " +
-      "SPEC_SYNC_APPROVED=1 / label spec-sync-approved / committed allowSpecCodeSkip.",
+      "label spec-sync-approved + an APPROVED review by the repo OWNER on the exact head SHA (app-identity-2; " +
+      "SPEC_SYNC_APPROVED=1 on local runs only) / committed allowSpecCodeSkip.",
   });
   return findings;
 }

@@ -1,8 +1,9 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { relative, resolve, sep } from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import process from "node:process";
+import { resolveHumanGrant } from "./human-grant.js";
 import { includeGitBranchDivergence, loadConfig } from "./inventory.js";
 
 export type ProtectFinding = {
@@ -68,35 +69,26 @@ function matchGlob(rel: string, glob: string): boolean {
   return normalized === pattern || normalized.endsWith("/" + pattern);
 }
 
-/** Grants: env, CI label, or committed config already true in base (CHANGE-4) — not a working-tree allow file. */
+/** Grants (app-identity-2): committed config already true in base (CHANGE-4), else the human
+ * grant from `human-grant.ts` (label specs-approved + APPROVED review by the repo OWNER on the exact head SHA in
+ * CI; ALLOW_SPEC_EDIT=1 on a local run). Never a working-tree allow file. */
 export function specEditAllowed(
   cwd: string,
   allowSpecEdit: boolean,
+  env: NodeJS.ProcessEnv = process.env,
 ): { allowed: boolean; reason: string } {
-  if (process.env.ALLOW_SPEC_EDIT === "1") {
-    return { allowed: true, reason: "ALLOW_SPEC_EDIT=1" };
-  }
+  void cwd;
   if (allowSpecEdit) {
     return {
       allowed: true,
       reason: "base-branch gauntlet.config.json allowSpecEdit=true",
     };
   }
-  const eventPath = process.env.GITHUB_EVENT_PATH;
-  if (eventPath && existsSync(eventPath)) {
-    try {
-      const event = JSON.parse(readFileSync(eventPath, "utf8")) as {
-        pull_request?: { labels?: { name?: string }[] };
-      };
-      const labels = event.pull_request?.labels ?? [];
-      if (labels.some((label) => label.name === "specs-approved")) {
-        return { allowed: true, reason: "GitHub label specs-approved" };
-      }
-    } catch {
-      // event payload unreadable; fall through
-    }
-  }
-  return { allowed: false, reason: "no human spec-edit grant" };
+  return resolveHumanGrant({
+    label: "specs-approved",
+    envFlag: "ALLOW_SPEC_EDIT",
+    env,
+  });
 }
 
 export function runProtectSpecs(cwd = process.cwd()): {
@@ -171,7 +163,9 @@ export function runProtectSpecs(cwd = process.cwd()): {
     message:
       "protect-specs blocked spec edits without human grant: " +
       localChanges.join(", ") +
-      ". Set ALLOW_SPEC_EDIT=1, label specs-approved, or have allowSpecEdit: true already on the base branch (CHANGE-4).",
+      ". Grant: label specs-approved + an APPROVED review by the repo OWNER on the exact head SHA (app-identity-2; " +
+      "ALLOW_SPEC_EDIT=1 on local runs only), or allowSpecEdit: true already on the base branch (CHANGE-4). " +
+      `Grant check: ${grant.reason}.`,
   });
   writeReport(cwd, false, findings);
   return { ok: false, findings };

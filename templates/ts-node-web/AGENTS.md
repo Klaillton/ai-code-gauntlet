@@ -52,7 +52,8 @@ Do not, without a human grant:
   `.eslintrc*`, or anything under the repo-root `.github/**` (workflows, composite actions,
   CODEOWNERS, dependabot.yml). `.prettierrc` is intentionally not protected (format only).
 
-Grant (human-only): `POLICY_CHANGE_APPROVED=1` or PR label `policy-change-approved`.
+Grant (human-only, app-identity-2): PR label `policy-change-approved` + an APPROVED review by the repo OWNER
+on the exact head SHA in CI; `POLICY_CHANGE_APPROVED=1` on a local run only.
 A committed `allow*` / `approved` flag counts only if it is already true in base. First adoption
 (config absent in base) fails unless that grant is present. Without a base locally, only the env
 grant lets verify proceed; CI never does.
@@ -63,9 +64,20 @@ enforcer is the base-run CI job (kit: `.github/workflows/policy-base.yml`, on
 as git data and runs the base `scripts/policy-base.ts --head <sha>`. Neutralising the script or
 the workflow in a PR does not bypass it.
 
-Known residual: agents run `gh` as the owner identity, so a grant label (or env) is not yet
-provable as human, and the base-run job only truly blocks once it is a required status.
+Known residual: the base-run job only truly blocks once it is a required status.
 Never apply grant labels yourself. See the CHANGE-4 ADR entry.
+
+### Human grants — app-identity-2
+
+Every grant label (`policy-change-approved`, `specs-approved`, `deps-approved`, `holes-approved`,
+`spec-sync-approved`) only names the grant. In CI it counts only with an **APPROVED review by the
+repo OWNER on the exact head SHA** (review `author_association` = `OWNER`; never the agents' App,
+a `[bot]`, `GAUNTLET_AGENT_LOGINS` or an outside account),
+read live from the GitHub API; API errors fail closed. A review on an older commit, or a run on
+a head that has since moved, does not count. A login in `GAUNTLET_SHARED_TOKEN_LOGINS` (token
+shared with agents) fails as `human-unattributed`. Env flags (`ALLOW_*`, `*_APPROVED`) grant only
+on local runs and are ignored inside GitHub Actions. See `docs/adr/ADR-0002-app-identity-2.md`
+in the kit. Never apply grant labels or approve PRs yourself.
 
 ### Specs — protect-specs
 
@@ -84,10 +96,8 @@ If those files change, verify **fails** unless a **human grant** exists:
 2. `allowSpecEdit: true` already in the **base-branch** `gauntlet.config.json` (default **false**; committed human config; flipping it in a PR does nothing — CHANGE-4)
 3. GitHub PR label `specs-approved`
 
-On GitHub Actions `pull_request` jobs, `.github/workflows/verify.yml` exports
-`ALLOW_SPEC_EDIT=1` **only if** the PR has label `specs-approved`. That is the
-CI wiring for grant (3), not a standing override. Unlabeled PRs and pushes to
-main stay fail-closed.
+Grant (3) counts only with an APPROVED review by the repo OWNER on the exact head SHA
+(app-identity-2); `ALLOW_SPEC_EDIT=1` is ignored inside GitHub Actions.
 
 Working-tree `.gauntlet/allow-*` files are **not** grants. If git is unavailable,
 protect-specs / deps-lock / crap **fail** (`git required for this gate`).
@@ -101,8 +111,8 @@ Do not edit without a human grant:
 - `templates/*/package.json` / `package-lock.json`
 
 Grants: `ALLOW_DEPS_EDIT=1`, `allowDepsEdit: true` (only if already true in base-branch config, default false; CHANGE-4),
-or PR label `deps-approved`. CI exports `ALLOW_DEPS_EDIT=1`
-only when the PR has `deps-approved`.
+or PR label `deps-approved` + an APPROVED review by the repo OWNER on the exact head SHA (app-identity-2;
+`ALLOW_DEPS_EDIT=1` is local-only).
 
 ### Holes review — D12 (holes-review)
 

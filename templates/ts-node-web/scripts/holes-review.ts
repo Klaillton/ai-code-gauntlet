@@ -3,6 +3,7 @@ import { relative, resolve, sep } from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import process from "node:process";
+import { resolveHumanGrant } from "./human-grant.js";
 import { includeGitBranchDivergence, loadConfig } from "./inventory.js";
 
 export type HolesFinding = {
@@ -105,32 +106,26 @@ export function isHolesReviewArtifact(
   return matchGlob(appRel, artifactGlob);
 }
 
-/** Grants: env, committed config, or CI label — not a working-tree allow file. */
+/** Grants (app-identity-2): committed config already true in base (CHANGE-4), else the human
+ * grant from `human-grant.ts` (label holes-approved + APPROVED review by the repo OWNER on the exact head SHA in
+ * CI; HOLES_REVIEW_APPROVED=1 on a local run). Never a working-tree allow file. */
 export function holesReviewAllowed(
   cwd: string,
   allowSkip: boolean,
+  env: NodeJS.ProcessEnv = process.env,
 ): { allowed: boolean; reason: string } {
-  if (process.env.HOLES_REVIEW_APPROVED === "1") {
-    return { allowed: true, reason: "HOLES_REVIEW_APPROVED=1" };
-  }
+  void cwd;
   if (allowSkip) {
-    return { allowed: true, reason: "gauntlet.config.json allowHolesReviewSkip=true" };
+    return {
+      allowed: true,
+      reason: "gauntlet.config.json allowHolesReviewSkip=true",
+    };
   }
-  const eventPath = process.env.GITHUB_EVENT_PATH;
-  if (eventPath && existsSync(eventPath)) {
-    try {
-      const event = JSON.parse(readFileSync(eventPath, "utf8")) as {
-        pull_request?: { labels?: { name?: string }[] };
-      };
-      const labels = event.pull_request?.labels ?? [];
-      if (labels.some((label) => label.name === "holes-approved")) {
-        return { allowed: true, reason: "GitHub label holes-approved" };
-      }
-    } catch {
-      // fall through
-    }
-  }
-  return { allowed: false, reason: "no human holes-review grant" };
+  return resolveHumanGrant({
+    label: "holes-approved",
+    envFlag: "HOLES_REVIEW_APPROVED",
+    env,
+  });
 }
 
 function normalizeHeaderTitle(raw: string): string {
@@ -238,7 +233,8 @@ export function evaluateHolesReview(input: HolesReviewEvalInput): HolesFinding[]
       message:
         `D12 holes-review: implementation changed (${implChanges.join(", ")}) without ` +
         `docs/holes-review/**/*.md in the same diff and without a human grant ` +
-        `(HOLES_REVIEW_APPROVED=1, allowHolesReviewSkip: true, or label holes-approved).`,
+        `(label holes-approved + an APPROVED review by the repo OWNER on the exact head SHA, app-identity-2; ` +
+        `HOLES_REVIEW_APPROVED=1 on local runs only; or allowHolesReviewSkip: true).`,
     });
     return findings;
   }
