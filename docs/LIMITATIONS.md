@@ -24,6 +24,10 @@ Each entry says what passes, why, and whether a fix is planned. Facts are as of 
    agents' GitHub App, or any agent that holds the owner's shared token, can add them. Planned:
    app-identity-2 (grant = APPROVED human review on the exact head SHA; reviews from a login
    whose token is shared with agents fail as `human-unattributed`).
+   Residual of that plan: while the `Klaillton` token is shared with agents, whoever holds it can
+   set the Actions variable `GAUNTLET_SHARED_TOKEN_LOGINS` to `none` and make that login's
+   reviews count. The mitigation is the order: Dante revokes the token first, then changes the
+   variable himself.
 2. **A grant does not prove the human read the diff.** Even with app-identity-2, the gate proves
    that someone approved, not that the approval was careful.
 3. **The base-run `policy-base` job only blocks when it is required.** If the ruleset does not
