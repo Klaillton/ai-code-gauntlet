@@ -107,6 +107,8 @@ npm run verify   # template + example + maven fixtures; needs Chromium, JDK 21 a
 
 See [docs/PREMISES.md](./docs/PREMISES.md) and [docs/original-plan.md](./docs/original-plan.md).
 
+What a green verify does **not** prove (known false-greens, D17a): [docs/LIMITATIONS.md](./docs/LIMITATIONS.md).
+
 **You** defend Gherkin + OpenAPI + dependency manifests. **The agent** implements.
 **`verify` / CI** are the filter.
 
