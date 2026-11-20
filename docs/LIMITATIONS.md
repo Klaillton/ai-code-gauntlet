@@ -22,7 +22,7 @@ Each entry says what passes, why, and whether a fix is planned. Facts are as of 
 1. **A grant label is not proof of a human.** `policy-change-approved`, `deps-approved`,
    `specs-approved`, `holes-approved` and `spec-sync-approved` grant on their own today. The
    agents' GitHub App, or any agent that holds the owner's shared token, can add them. Planned:
-   app-identity-2 (grant = APPROVED human review on the exact head SHA; reviews from a login
+   app-identity-2 (grant = APPROVED review by the repo OWNER on the exact head SHA; reviews from a login
    whose token is shared with agents fail as `human-unattributed`).
    Residual of that plan: while the `Klaillton` token is shared with agents, whoever holds it can
    set the Actions variable `GAUNTLET_SHARED_TOKEN_LOGINS` to `none` and make that login's
