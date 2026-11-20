@@ -717,6 +717,7 @@ Cucumber/Testcontainers, openapi-diff, Gradle. gitleaks history scan is not in t
 ## Checklist
 - [ ] Commit gauntlet.config.json and .github/workflows/policy-base.yml on main first
 - [ ] Make \`policy-base (base-run, PR)\` a required status check
+- [ ] Set the Actions variable \`GAUNTLET_SHARED_TOKEN_LOGINS\` (mandatory; \`none\` when no human shares a token with agents; missing or empty fails every grant closed)
 - [ ] Review AGENTS.md
 - [ ] Confirm \`docs/sdd/Security.md\` and \`docs/sdd/Observability.md\` (D15)
 - [ ] CI verify: copy the \`maven-skeleton\` job idea from the kit's .github/workflows/verify.yml

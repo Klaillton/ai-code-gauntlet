@@ -12,8 +12,9 @@ name: policy-base
 # by the repo OWNER (author_association OWNER; never an App/bot or GAUNTLET_AGENT_LOGINS) on the
 # exact head SHA proves it, read
 # live from the API. Reviews do not fire pull_request_target: approve, then add the label (or
-# re-run this job). GAUNTLET_SHARED_TOKEN_LOGINS (Actions variable) lists humans whose token
-# agents also hold; their reviews fail as human-unattributed until the token is revoked.
+# re-run this job). GAUNTLET_SHARED_TOKEN_LOGINS (Actions variable, MANDATORY) lists humans whose
+# token agents also hold; their reviews fail as human-unattributed until the token is revoked.
+# Set it to `none` when no human shares a token with agents. Missing or empty fails closed.
 # Hardening: no secrets, persist-credentials: false, read-only token, PR number and SHAs only
 # via env (never interpolated into run:). Make this job a required status check.
 

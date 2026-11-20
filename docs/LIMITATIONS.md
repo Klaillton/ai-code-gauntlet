@@ -27,7 +27,9 @@ Each entry says what passes, why, and whether a fix is planned. Facts are as of 
    Residual of that plan: while the `Klaillton` token is shared with agents, whoever holds it can
    set the Actions variable `GAUNTLET_SHARED_TOKEN_LOGINS` to `none` and make that login's
    reviews count. The mitigation is the order: Dante revokes the token first, then changes the
-   variable himself.
+   variable himself. The variable is mandatory: missing or empty fails every grant closed
+   (`GAUNTLET_SHARED_TOKEN_LOGINS por definir (fail closed)`); only an explicit `none` means an
+   empty list.
 2. **A grant does not prove the human read the diff.** Even with app-identity-2, the gate proves
    that someone approved, not that the approval was careful.
 3. **The base-run `policy-base` job only blocks when it is required.** If the ruleset does not

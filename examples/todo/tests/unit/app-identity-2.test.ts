@@ -10,6 +10,8 @@ import {
   type GitHubFetch,
   type ReviewRecord,
   HUMAN_UNATTRIBUTED,
+  SHARED_TOKEN_LOGINS_UNSET_REASON,
+  parseSharedTokenLogins,
   resolveHumanGrant,
 } from "../../scripts/human-grant.js";
 
@@ -152,6 +154,83 @@ describe("app-identity-2 adversarial (Gate + Challenge, 2026-11-05)", () => {
   });
 });
 
+describe("app-identity-2 GAUNTLET_SHARED_TOKEN_LOGINS is mandatory (fail closed)", () => {
+  const ok = { labels: [LABEL], headSha: HEAD, reviews: [review("dante-human", HEAD)] };
+
+  it("reasonTextIsTheAgreedOne", () => {
+    expect(SHARED_TOKEN_LOGINS_UNSET_REASON).toBe(
+      "GAUNTLET_SHARED_TOKEN_LOGINS por definir (fail closed)",
+    );
+  });
+
+  it("8 variableAbsentWithOwnerApprovedOnHeadAndLabelFails", () => {
+    const result = grant(ok, { GAUNTLET_SHARED_TOKEN_LOGINS: undefined });
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toBe(SHARED_TOKEN_LOGINS_UNSET_REASON);
+  });
+
+  it("9 variableEmptyOrWhitespaceFails", () => {
+    for (const raw of ["", " ", "\t\n  "]) {
+      const result = grant(ok, { GAUNTLET_SHARED_TOKEN_LOGINS: raw });
+      expect(result.allowed).toBe(false);
+      expect(result.reason).toBe(SHARED_TOKEN_LOGINS_UNSET_REASON);
+    }
+  });
+
+  it("10 onlyAnExplicitNoneMeansAnEmptyList", () => {
+    for (const raw of ["none", "NONE", "  None \n"]) {
+      const result = grant(ok, { GAUNTLET_SHARED_TOKEN_LOGINS: raw });
+      expect(result.allowed).toBe(true);
+    }
+    // A dash or a bare separator is not "none": still fails closed.
+    for (const raw of ["-", ",", " , "]) {
+      const result = grant(ok, { GAUNTLET_SHARED_TOKEN_LOGINS: raw });
+      expect(result.allowed).toBe(false);
+      expect(result.reason).toBe(SHARED_TOKEN_LOGINS_UNSET_REASON);
+    }
+  });
+
+  it("11 variableNamingTheReviewerStillFailsHumanUnattributed", () => {
+    const result = grant(
+      { ...ok, reviews: [review("Klaillton", HEAD)] },
+      { GAUNTLET_SHARED_TOKEN_LOGINS: "Klaillton" },
+    );
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toContain(HUMAN_UNATTRIBUTED);
+  });
+
+  it("12 theCheckComesBeforeAnyApiRead", () => {
+    let calls = 0;
+    const result = resolveHumanGrant({
+      label: LABEL,
+      envFlag: "POLICY_CHANGE_APPROVED",
+      env: { GITHUB_ACTIONS: "true", GITHUB_REPOSITORY: REPO, GITHUB_EVENT_PATH: prEvent() },
+      fetchJson: () => {
+        calls += 1;
+        return [];
+      },
+    });
+    expect(result.reason).toBe(SHARED_TOKEN_LOGINS_UNSET_REASON);
+    expect(calls).toBe(0);
+  });
+
+  it("13 localRunIgnoresTheVariable", () => {
+    const result = resolveHumanGrant({
+      label: LABEL,
+      envFlag: "POLICY_CHANGE_APPROVED",
+      env: { POLICY_CHANGE_APPROVED: "1" },
+    });
+    expect(result.allowed).toBe(true);
+  });
+
+  it("parseSharedTokenLoginsAcceptsListsAndRejectsEmpty", () => {
+    expect(parseSharedTokenLogins(undefined)).toEqual({ ok: false });
+    expect(parseSharedTokenLogins("  ")).toEqual({ ok: false });
+    expect(parseSharedTokenLogins("None")).toEqual({ ok: true, logins: [] });
+    expect(parseSharedTokenLogins("a, b c")).toEqual({ ok: true, logins: ["a", "b", "c"] });
+  });
+});
+
 describe("app-identity-2 controls", () => {
   it("passesWithLabelAndHumanReviewOnTheExactHead", () => {
     const result = grant({
@@ -223,6 +302,7 @@ describe("app-identity-2 controls", () => {
       GITHUB_REPOSITORY: REPO,
       GITHUB_EVENT_PATH: event,
       GITHUB_SHA: "c".repeat(40),
+      GAUNTLET_SHARED_TOKEN_LOGINS: "none",
     };
     const merged: GitHubFetch = (path) => {
       if (path.endsWith("/pulls")) {

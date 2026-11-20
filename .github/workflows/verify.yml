@@ -190,10 +190,10 @@ jobs:
           CI: true
           GAUNTLET_E2E: "1"
           GITHUB_TOKEN: ${{ github.token }}
-          # Logins whose token is shared with agents: their reviews are "human-unattributed".
-          # Default Klaillton until the shared token is revoked; then a repo admin sets the
-          # Actions variable GAUNTLET_SHARED_TOKEN_LOGINS to "none".
-          GAUNTLET_SHARED_TOKEN_LOGINS: ${{ vars.GAUNTLET_SHARED_TOKEN_LOGINS || 'Klaillton' }}
+          # Mandatory Actions variable. Logins whose token is shared with agents: their reviews
+          # are "human-unattributed". Explicit "none" = nobody shares a token. Missing or empty
+          # fails closed in the gate code (no default here).
+          GAUNTLET_SHARED_TOKEN_LOGINS: ${{ vars.GAUNTLET_SHARED_TOKEN_LOGINS }}
       - if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -233,10 +233,10 @@ jobs:
           CI: true
           GAUNTLET_E2E: "1"
           GITHUB_TOKEN: ${{ github.token }}
-          # Logins whose token is shared with agents: their reviews are "human-unattributed".
-          # Default Klaillton until the shared token is revoked; then a repo admin sets the
-          # Actions variable GAUNTLET_SHARED_TOKEN_LOGINS to "none".
-          GAUNTLET_SHARED_TOKEN_LOGINS: ${{ vars.GAUNTLET_SHARED_TOKEN_LOGINS || 'Klaillton' }}
+          # Mandatory Actions variable. Logins whose token is shared with agents: their reviews
+          # are "human-unattributed". Explicit "none" = nobody shares a token. Missing or empty
+          # fails closed in the gate code (no default here).
+          GAUNTLET_SHARED_TOKEN_LOGINS: ${{ vars.GAUNTLET_SHARED_TOKEN_LOGINS }}
       - if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

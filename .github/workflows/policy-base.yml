@@ -65,7 +65,7 @@ jobs:
           CI: "true"
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           GITHUB_TOKEN: ${{ github.token }}
-          GAUNTLET_SHARED_TOKEN_LOGINS: ${{ vars.GAUNTLET_SHARED_TOKEN_LOGINS || 'Klaillton' }}
+          GAUNTLET_SHARED_TOKEN_LOGINS: ${{ vars.GAUNTLET_SHARED_TOKEN_LOGINS }}
         # Grant: label + OWNER APPROVED review on HEAD_SHA, read live by the base enforcer.
         run: |
           status=0
@@ -129,7 +129,7 @@ jobs:
           BASE_DIR: ${{ runner.temp }}/policy-base-base
           POLICY_CHANGE_APPROVED: ${{ steps.policy-grant.outputs.approved }}
           GITHUB_TOKEN: ${{ github.token }}
-          GAUNTLET_SHARED_TOKEN_LOGINS: ${{ vars.GAUNTLET_SHARED_TOKEN_LOGINS || 'Klaillton' }}
+          GAUNTLET_SHARED_TOKEN_LOGINS: ${{ vars.GAUNTLET_SHARED_TOKEN_LOGINS }}
         run: |
           status=0
           for tree in templates/ts-node-web examples/todo; do
