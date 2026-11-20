@@ -31,9 +31,13 @@ the shared token adds the label as "Klaillton" and passes.
 2. **Shared token = human-unattributed.** While a human's token is shared with agents, that
    login is listed in `GAUNTLET_SHARED_TOKEN_LOGINS` and its review **fails** with reason
    `human-unattributed` (no exception). After the token is revoked the login leaves the list and
-   the same review passes. In this repo the workflows default the list to `Klaillton`
-   (`vars.GAUNTLET_SHARED_TOKEN_LOGINS || 'Klaillton'`); after revoking the token a repo admin
-   sets the Actions variable `GAUNTLET_SHARED_TOKEN_LOGINS` to `none`.
+   the same review passes. The variable is **mandatory**: when it is missing, empty or
+   whitespace-only in CI, every grant fails closed with reason
+   `GAUNTLET_SHARED_TOKEN_LOGINS por definir (fail closed)`. The only value that means "no login
+   shares a token with agents" is an explicit `none` (case-insensitive, trimmed). The workflows
+   pass the raw `${{ vars.GAUNTLET_SHARED_TOKEN_LOGINS }}`; no workflow or template carries a
+   default, so the decision lives only in `human-grant.ts`. After revoking the token a repo
+   admin sets the Actions variable to `none`.
 3. **Exact head only.** A review on an older SHA does not count, even when GitHub did not
    dismiss it. A run whose head is no longer the PR's live head fails (`head moved`).
 4. **The label never grants alone.** It stays as the intent signal naming which grant is asked

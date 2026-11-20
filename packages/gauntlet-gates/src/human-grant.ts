@@ -20,7 +20,9 @@
  * Modes:
  * - GitHub Actions (`GITHUB_ACTIONS=true`): the only grant is the review read live from the
  *   GitHub API (PR, labels, reviews). Env flags such as `ALLOW_DEPS_EDIT=1` are ignored.
- *   Any API error, missing token or missing PR context fails closed.
+ *   Any API error, missing token or missing PR context fails closed. So does a missing, empty or
+ *   whitespace-only `GAUNTLET_SHARED_TOKEN_LOGINS`: the variable is mandatory in CI and only an
+ *   explicit `none` (case-insensitive, trimmed) means that no human shares a token with agents.
  * - Local run (no `GITHUB_ACTIONS`): the env flag is the local fast-check grant. A local run
  *   is never authoritative; CI is.
  */
@@ -53,7 +55,7 @@ export type ReviewGrantInput = {
   /** Extra agent logins (case-insensitive). Any `*[bot]` / type Bot is always an agent. */
   agentLogins?: readonly string[];
   /** Human logins whose token is shared with agents: their reviews are human-unattributed. */
-  sharedTokenLogins?: readonly string[];
+  sharedTokenLogins: readonly string[];
 };
 
 export const DEFAULT_AGENT_LOGINS: readonly string[] = ["klaillton-gauntlet-agents[bot]"];
@@ -63,7 +65,7 @@ export const HUMAN_UNATTRIBUTED = "human-unattributed";
 /** The only review author_association that can grant (repo owner). */
 export const GRANTOR_ASSOCIATION = "OWNER";
 
-/** Comma/space separated logins. `none` or `-` means an empty list. */
+/** Comma/space separated logins. `none` or `-` means an empty list (agent logins only; see below). */
 export function parseLogins(raw: string | undefined): string[] {
   if (!raw) {
     return [];
@@ -71,7 +73,30 @@ export function parseLogins(raw: string | undefined): string[] {
   return raw
     .split(/[\s,]+/)
     .map((login) => login.trim())
-    .filter((login) => login.length > 0 && login !== "none" && login !== "-");
+    .filter((login) => login.length > 0 && login.toLowerCase() !== "none" && login !== "-");
+}
+
+export const SHARED_TOKEN_LOGINS_UNSET_REASON =
+  "GAUNTLET_SHARED_TOKEN_LOGINS por definir (fail closed)";
+
+/**
+ * GAUNTLET_SHARED_TOKEN_LOGINS is mandatory in CI. Missing, empty or whitespace-only fails closed,
+ * so a repo that never configured it cannot silently accept a shared-token login. The only value
+ * meaning "nobody shares a token" is an explicit `none` (case-insensitive, trimmed). Any other
+ * value must name at least one login (`-` alone is not a way to say empty).
+ */
+export function parseSharedTokenLogins(
+  raw: string | undefined,
+): { ok: true; logins: string[] } | { ok: false } {
+  const value = (raw ?? "").trim();
+  if (value.length === 0) {
+    return { ok: false };
+  }
+  if (value.toLowerCase() === "none") {
+    return { ok: true, logins: [] };
+  }
+  const logins = parseLogins(value);
+  return logins.length === 0 ? { ok: false } : { ok: true, logins };
 }
 
 function lower(values: readonly string[]): Set<string> {
@@ -123,7 +148,7 @@ export function isAgentReviewer(
 /** Pure decision: does this PR state carry the human grant for `label`? */
 export function evaluateReviewGrant(input: ReviewGrantInput): HumanGrant {
   const agents = [...DEFAULT_AGENT_LOGINS, ...(input.agentLogins ?? [])];
-  const shared = lower(input.sharedTokenLogins ?? []);
+  const shared = lower(input.sharedTokenLogins);
   const hasLabel = input.labels.includes(input.label);
   if (!input.headSha || !input.liveHeadSha) {
     return {
@@ -369,6 +394,10 @@ function resolveLive(options: ResolveGrantOptions, env: NodeJS.ProcessEnv): Huma
     }
     return { allowed: false, reason: `no local ${options.envFlag}=1 grant` };
   }
+  const sharedTokenLogins = parseSharedTokenLogins(env[SHARED_TOKEN_LOGINS_ENV]);
+  if (!sharedTokenLogins.ok) {
+    return { allowed: false, reason: SHARED_TOKEN_LOGINS_UNSET_REASON };
+  }
   const repo = env.GITHUB_REPOSITORY;
   if (!repo) {
     return { allowed: false, reason: "GITHUB_REPOSITORY unset (fail closed)" };
@@ -389,7 +418,7 @@ function resolveLive(options: ResolveGrantOptions, env: NodeJS.ProcessEnv): Huma
       liveHeadSha: live.merged_at ? context.headSha : (live.head?.sha ?? ""),
       reviews,
       agentLogins: parseLogins(env[AGENT_LOGINS_ENV]),
-      sharedTokenLogins: parseLogins(env[SHARED_TOKEN_LOGINS_ENV]),
+      sharedTokenLogins: sharedTokenLogins.logins,
     });
     return {
       allowed: verdict.allowed,

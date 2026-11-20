@@ -154,7 +154,8 @@ blocks once it is a required status — see the CHANGE-4 entry in
 only with an APPROVED review by the repo OWNER (review `author_association` = `OWNER`; never
 the agents' App, a bot, or an outside account) on the exact head SHA,
 read live from the GitHub API (fail closed). A login whose token is shared with agents
-(`GAUNTLET_SHARED_TOKEN_LOGINS`, default `Klaillton` in this repo's workflows) fails as
+(`GAUNTLET_SHARED_TOKEN_LOGINS`, a **mandatory** Actions variable: missing or empty fails every
+grant closed, and only an explicit `none` means that nobody shares a token) fails as
 `human-unattributed` until the token is revoked. Env grant flags are local-only. See
 [ADR-0002](./docs/adr/ADR-0002-app-identity-2.md).
 

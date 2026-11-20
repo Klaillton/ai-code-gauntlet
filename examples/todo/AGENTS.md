@@ -69,7 +69,8 @@ Every grant label (`policy-change-approved`, `specs-approved`, `deps-approved`, 
 repo OWNER on the exact head SHA** (review `author_association` = `OWNER`; never the agents' App,
 a `[bot]`, `GAUNTLET_AGENT_LOGINS` or an outside account),
 read live from the GitHub API; API errors fail closed. A review on an older commit, or a run on
-a head that has since moved, does not count. A login in `GAUNTLET_SHARED_TOKEN_LOGINS` (token
+a head that has since moved, does not count. The Actions variable `GAUNTLET_SHARED_TOKEN_LOGINS` is mandatory: missing or empty fails every grant closed;
+explicit `none` means no human shares a token with agents. A login in it (token
 shared with agents) fails as `human-unattributed`. Env flags (`ALLOW_*`, `*_APPROVED`) grant only
 on local runs and are ignored inside GitHub Actions. See `docs/adr/ADR-0002-app-identity-2.md`
 in the kit. Never apply grant labels or approve PRs yourself.
