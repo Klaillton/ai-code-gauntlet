@@ -90,6 +90,13 @@ Each entry says what passes, why, and whether a fix is planned. Facts are as of 
     to the approver.
 17. **Bumping the pinned kit SHA in a consumer is manual.** A consumer keeps the gates of the SHA
     it pins until someone opens that policy change.
+18. **The consumer `policy-base` job fetches the kit anonymously.** The hardened fetch (`git init`
+    + `git fetch` of the pinned SHA into `$RUNNER_TEMP`, with a fail-closed `kit SHA mismatch`
+    check) does not authenticate to GitHub, so it only works while
+    [`Klaillton/ai-code-gauntlet`](https://github.com/Klaillton/ai-code-gauntlet) is a public
+    repository. If the kit becomes private, every consumer's `policy-base` (and any other job
+    that fetches the kit the same way) fails closed until the fetch is given a token. There is
+    no in-repo fallback.
 
 ## Reporting a new false-green
 

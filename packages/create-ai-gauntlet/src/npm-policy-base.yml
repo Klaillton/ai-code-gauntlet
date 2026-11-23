@@ -1,0 +1,162 @@
+name: policy-base
+
+# Authoritative policy enforcer for npm/TS consumers. Written by
+# `create-ai-gauntlet adopt` (stack: npm). Runs BASE code + the PINNED kit only; the PR
+# head is data (git fetch, no checkout, no build, no execution).
+# - pull_request_target: checks out the BASE of this repo, fetches the gauntlet kit at a
+#   pinned commit into $RUNNER_TEMP (git init + fetch, SHA-checked; never actions/checkout
+#   of another repo), installs the kit runner's locked deps (no lifecycle scripts), fetches
+#   the PR head as a ref, and runs the kit's policy-base against base...head.
+# - push to main: a git worktree at github.event.before is the base; the grant comes from the
+#   merged PR (none on a direct push).
+# Grant (app-identity-2): label policy-change-approved names the grant; only an APPROVED review
+# by the repo OWNER (author_association OWNER; never an App/bot or GAUNTLET_AGENT_LOGINS) on the
+# exact head SHA proves it, read
+# live from the API. Reviews do not fire pull_request_target: approve, then add the label (or
+# re-run this job). GAUNTLET_SHARED_TOKEN_LOGINS (Actions variable, MANDATORY) lists humans whose
+# token agents also hold; their reviews fail as human-unattributed until the token is revoked.
+# Set it to `none` when no human shares a token with agents. Missing or empty fails closed.
+# Hardening: no secrets, persist-credentials: false, read-only token, PR number and SHAs only
+# via env (never interpolated into run:). The kit fetch is anonymous and only works while
+# Klaillton/ai-code-gauntlet is public. Make this job a required status check.
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  push:
+    branches: [main, master]
+
+# Nothing at workflow level; each job gets exactly contents: read + pull-requests: read.
+permissions: {}
+
+concurrency:
+  group: policy-base-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request_target' }}
+
+env:
+  # Pinned gauntlet kit commit (the runner). Changing it is a .github/** policy change.
+  GAUNTLET_KIT_REPO: Klaillton/ai-code-gauntlet
+  GAUNTLET_KIT_SHA: __KIT_SHA__
+
+jobs:
+  enforce-pr:
+    name: policy-base (base-run, PR)
+    permissions:
+      contents: read
+      pull-requests: read
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the BASE (never the PR head)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      # S7631: do not use actions/checkout of another repo/ref in this
+      # pull_request_target workflow. The kit is pinned data in $RUNNER_TEMP.
+      - name: Fetch the pinned gauntlet kit (data, not checkout)
+        env:
+          KIT_REPO: ${{ env.GAUNTLET_KIT_REPO }}
+          KIT_SHA: ${{ env.GAUNTLET_KIT_SHA }}
+          KIT_DIR: ${{ runner.temp }}/gauntlet-kit
+        run: |
+          set -euo pipefail
+          git init --quiet "$KIT_DIR"
+          git -C "$KIT_DIR" remote add origin "https://github.com/${KIT_REPO}.git"
+          git -C "$KIT_DIR" fetch --no-tags --depth 1 origin "$KIT_SHA"
+          git -C "$KIT_DIR" checkout --quiet --detach FETCH_HEAD
+          got=$(git -C "$KIT_DIR" rev-parse HEAD)
+          if [ "$got" != "$KIT_SHA" ]; then
+            echo "::error::kit SHA mismatch: got $got want $KIT_SHA"
+            exit 1
+          fi
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - name: Install the kit runner deps only (locked, no lifecycle scripts)
+        run: npm ci --prefix "$RUNNER_TEMP/gauntlet-kit/packages/gauntlet-gates" --ignore-scripts --no-audit --no-fund
+      - name: Fetch the PR head as data (no checkout)
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          AUTH=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${AUTH}" \
+            fetch --no-tags origin "+refs/pull/${PR_NUMBER}/head:refs/remotes/pr/head"
+          git cat-file -e "${HEAD_SHA}^{commit}"
+      - name: Enforce with the pinned kit against base...head
+        env:
+          CI: "true"
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GAUNTLET_SHARED_TOKEN_LOGINS: ${{ vars.GAUNTLET_SHARED_TOKEN_LOGINS }}
+          GAUNTLET_AGENT_LOGINS: ${{ vars.GAUNTLET_AGENT_LOGINS }}
+        # Grant: label + OWNER APPROVED review on HEAD_SHA, read live by the pinned kit.
+        run: node "$RUNNER_TEMP/gauntlet-kit/packages/gauntlet-gates/run.mjs" --root . --policy-head "$HEAD_SHA"
+
+  enforce-push:
+    name: policy-base (base-run, push)
+    permissions:
+      contents: read
+      pull-requests: read
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      # S7631: do not use actions/checkout of another repo/ref in this
+      # pull_request_target workflow. The kit is pinned data in $RUNNER_TEMP.
+      - name: Fetch the pinned gauntlet kit (data, not checkout)
+        env:
+          KIT_REPO: ${{ env.GAUNTLET_KIT_REPO }}
+          KIT_SHA: ${{ env.GAUNTLET_KIT_SHA }}
+          KIT_DIR: ${{ runner.temp }}/gauntlet-kit
+        run: |
+          set -euo pipefail
+          git init --quiet "$KIT_DIR"
+          git -C "$KIT_DIR" remote add origin "https://github.com/${KIT_REPO}.git"
+          git -C "$KIT_DIR" fetch --no-tags --depth 1 origin "$KIT_SHA"
+          git -C "$KIT_DIR" checkout --quiet --detach FETCH_HEAD
+          got=$(git -C "$KIT_DIR" rev-parse HEAD)
+          if [ "$got" != "$KIT_SHA" ]; then
+            echo "::error::kit SHA mismatch: got $got want $KIT_SHA"
+            exit 1
+          fi
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - name: Install the kit runner deps only (locked, no lifecycle scripts)
+        run: npm ci --prefix "$RUNNER_TEMP/gauntlet-kit/packages/gauntlet-gates" --ignore-scripts --no-audit --no-fund
+      - name: Base worktree at github.event.before
+        env:
+          BEFORE: ${{ github.event.before }}
+          BASE_DIR: ${{ runner.temp }}/policy-base-base
+        run: |
+          set -euo pipefail
+          case "$BEFORE" in
+            "" | 0000000000000000000000000000000000000000)
+              echo "::error::no usable github.event.before; cannot resolve the base (fail closed)"
+              exit 1 ;;
+            *)
+              if ! [[ "$BEFORE" =~ ^[0-9a-f]{40}$ ]]; then
+                echo "::error::no usable github.event.before; cannot resolve the base (fail closed)"
+                exit 1
+              fi
+              ;;
+          esac
+          git worktree add --detach "$BASE_DIR" "$BEFORE"
+      - name: Enforce with the pinned kit against the pushed commit
+        env:
+          CI: "true"
+          HEAD_SHA: ${{ github.sha }}
+          BASE_DIR: ${{ runner.temp }}/policy-base-base
+          GITHUB_TOKEN: ${{ github.token }}
+          GAUNTLET_SHARED_TOKEN_LOGINS: ${{ vars.GAUNTLET_SHARED_TOKEN_LOGINS }}
+          GAUNTLET_AGENT_LOGINS: ${{ vars.GAUNTLET_AGENT_LOGINS }}
+        run: node "$RUNNER_TEMP/gauntlet-kit/packages/gauntlet-gates/run.mjs" --root "$BASE_DIR" --policy-head "$HEAD_SHA"
