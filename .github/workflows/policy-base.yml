@@ -57,8 +57,12 @@ jobs:
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          git fetch --no-tags origin "+refs/pull/${PR_NUMBER}/head:refs/remotes/pr/head"
+          set -euo pipefail
+          AUTH=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${AUTH}" \
+            fetch --no-tags origin "+refs/pull/${PR_NUMBER}/head:refs/remotes/pr/head"
           git cat-file -e "${HEAD_SHA}^{commit}"
       - name: Enforce with the BASE enforcer against base...head
         env:
@@ -116,10 +120,17 @@ jobs:
           BEFORE: ${{ github.event.before }}
           BASE_DIR: ${{ runner.temp }}/policy-base-base
         run: |
+          set -euo pipefail
           case "$BEFORE" in
             "" | 0000000000000000000000000000000000000000)
               echo "::error::no usable github.event.before; cannot resolve the base (fail closed)"
               exit 1 ;;
+            *)
+              if ! [[ "$BEFORE" =~ ^[0-9a-f]{40}$ ]]; then
+                echo "::error::no usable github.event.before; cannot resolve the base (fail closed)"
+                exit 1
+              fi
+              ;;
           esac
           git worktree add --detach "$BASE_DIR" "$BEFORE"
       - name: Enforce with the BASE enforcer against the pushed commit

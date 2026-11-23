@@ -13,7 +13,12 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { CREATE_SKIP, findKitRoot, skillFiles } from "./cli.js";
+import {
+  CREATE_SKIP,
+  findKitRoot,
+  skillFiles,
+  policyBaseWorkflowProblems,
+} from "./cli.js";
 
 const pkgRoot = dirname(fileURLToPath(import.meta.url));
 
@@ -170,10 +175,13 @@ test("adopt --stack maven: config + docs only, no package.json, no scripts/", ()
     const wf = readFileSync(join(dir, ".github/workflows/policy-base.yml"), "utf8");
     assert.match(wf, /^on:\n {2}pull_request_target:/m);
     assert.match(wf, /^permissions: \{\}$/m);
-    assert.equal((wf.match(/^ +persist-credentials: false$/gm) ?? []).length, 4);
+    assert.equal((wf.match(/^ +persist-credentials: false$/gm) ?? []).length, 2);
     assert.match(wf, /GAUNTLET_KIT_SHA: [0-9a-f]{40}$/m);
     assert.match(wf, /--policy-head "\$HEAD_SHA"/);
     assert.deepEqual(expressionsInRunBlocks(wf), [], "PR data reaches run: only via env");
+    assert.deepEqual(policyBaseWorkflowProblems(wf), []);
+    assert.match(wf, /\$RUNNER_TEMP\/gauntlet-kit/);
+    assert.doesNotMatch(wf, /path: \.gauntlet-kit/);
     assert.equal(existsSync(join(dir, "package.json")), false);
     assert.equal(existsSync(join(dir, "scripts")), false);
     assert.equal(existsSync(join(dir, "docs/sdd/Security.md")), true);
@@ -231,4 +239,76 @@ test("adopt --stack maven pins --kit-ref and lists module globs; bad ref fails c
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+
+test("adopt (npm) writes a hardened policy-base.yml pinned to the kit", () => {
+  const dir = mkdtempSync(join(tmpdir(), "gauntlet-adopt-npm-wf-"));
+  try {
+    const sha = "b".repeat(40);
+    const result = adopt([dir, "--kit-ref", sha]);
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    const wf = readFileSync(join(dir, ".github/workflows/policy-base.yml"), "utf8");
+    assert.match(wf, new RegExp(`GAUNTLET_KIT_SHA: ${sha}$`, "m"));
+    assert.deepEqual(policyBaseWorkflowProblems(wf), []);
+    assert.match(wf, /\$RUNNER_TEMP\/gauntlet-kit/);
+    assert.doesNotMatch(wf, /path: \.gauntlet-kit/);
+    assert.deepEqual(expressionsInRunBlocks(wf), [], "PR data reaches run: only via env");
+    const status = readFileSync(join(dir, "ADOPT-STATUS.md"), "utf8");
+    assert.match(status, new RegExp(`Pinned kit: \`${sha}\``));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("policy-base templates are hardened; the checker catches each hole", () => {
+  const sha = "c".repeat(40);
+  for (const name of ["maven-policy-base.yml", "npm-policy-base.yml"]) {
+    const rendered = readFileSync(join(pkgRoot, name), "utf8").replaceAll("__KIT_SHA__", sha);
+    assert.deepEqual(
+      policyBaseWorkflowProblems(rendered),
+      [],
+      `${name} must generate a hardened workflow`,
+    );
+    assert.match(rendered, new RegExp(`GAUNTLET_KIT_SHA: ${sha}$`, "m"));
+  }
+
+  const good = readFileSync(join(pkgRoot, "maven-policy-base.yml"), "utf8").replaceAll(
+    "__KIT_SHA__",
+    sha,
+  );
+
+  const withExternalCheckout = `${good}
+      - name: Check out the pinned gauntlet kit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: \${{ env.GAUNTLET_KIT_REPO }}
+          ref: \${{ env.GAUNTLET_KIT_SHA }}
+          path: .gauntlet-kit
+`;
+  assert.deepEqual(policyBaseWorkflowProblems(withExternalCheckout), [
+    "actions/checkout with repository:",
+  ]);
+
+  const withoutMismatch = good
+    .replace(/kit SHA mismatch/g, "unexpected revision")
+    .replace(/"\$got" != "\$KIT_SHA"/g, '"$got" == "$KIT_SHA"');
+  assert.deepEqual(policyBaseWorkflowProblems(withoutMismatch), [
+    "missing kit SHA mismatch check",
+  ]);
+
+  const bothHoles = `
+name: policy-base
+jobs:
+  enforce-pr:
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: some/other-repo
+          ref: main
+          path: .gauntlet-kit
+`;
+  assert.equal(policyBaseWorkflowProblems(bothHoles).length, 2);
+  assert.ok(policyBaseWorkflowProblems(bothHoles).includes("actions/checkout with repository:"));
+  assert.ok(policyBaseWorkflowProblems(bothHoles).includes("missing kit SHA mismatch check"));
 });
