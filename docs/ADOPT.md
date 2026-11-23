@@ -97,6 +97,8 @@ diff (`docs:generate`). Reabrir spec fechada: grant protect-specs + skill
 
 ## Grants humanos (não bakear no CI)
 
+> **Desde app-identity-2:** em CI, uma label de grant só **nomeia** o grant. Ele só conta com um review APPROVED do OWNER do repo no **head SHA exato** (aprovar primeiro, depois a label; push novo invalida). Env/flags abaixo valem só local. A variável Actions `GAUNTLET_SHARED_TOKEN_LOGINS` é **obrigatória** (ausente ou vazia falha fechado; só `none` explícito = ninguém partilha token). Ver [ADR-0002](./adr/ADR-0002-app-identity-2.md) e [LIMITATIONS](./LIMITATIONS.md).
+
 ### Specs (`protect-specs`)
 
 Verify falha se o diff tocar specs protegidos **a menos que** um destes exista:
